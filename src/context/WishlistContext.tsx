@@ -1,0 +1,81 @@
+"use client";
+
+import React, { createContext, useContext, useEffect, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { useNotification } from "@/components/notifications/NotificationProvider";
+import { useAuth } from "@/context/AuthContext";
+
+interface WishlistContextType {
+  wishlistIds: string[];
+  isWishlisted: (courseId: string) => boolean;
+  toggleWishlist: (courseId: string, courseTitle?: string) => void;
+}
+
+const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
+const EMPTY: string[] = [];
+let ids: string[] = EMPTY;
+let activeUserId = "";
+const listeners = new Set<() => void>();
+function emit(next: string[]) { ids = next; listeners.forEach((listener) => listener()); }
+function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
+function snapshot() { return ids; }
+function serverSnapshot() { return EMPTY; }
+
+export function WishlistProvider({ children }: { children: React.ReactNode }) {
+  const wishlistIds = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+  const { user, isAuthenticated, isReady } = useAuth();
+  const { notify } = useNotification();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isReady) return;
+    const nextUserId = isAuthenticated ? user.id : "";
+    if (nextUserId === activeUserId) return;
+    activeUserId = nextUserId;
+    emit(EMPTY);
+    if (!nextUserId) return;
+    fetch("/api/me/wishlist", { credentials: "same-origin", cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error?.message || "Unable to load wishlist.");
+        return body.data as Array<{ id: string }>;
+      })
+      .then((items) => { if (activeUserId === nextUserId) emit(items.map((item) => item.id)); })
+      .catch(() => { if (activeUserId === nextUserId) notify({ type: "error", title: "Wishlist unavailable", message: "Please refresh and try again." }); });
+  }, [isReady, isAuthenticated, user.id, notify]);
+
+  const toggleWishlist = (courseId: string, courseTitle?: string) => {
+    if (!isAuthenticated) {
+      notify({ type: "info", title: "Sign in to save courses", message: "Your wishlist will be kept with your account." });
+      router.push("/login");
+      return;
+    }
+    const userId = user.id;
+    const removing = ids.includes(courseId);
+    emit(removing ? ids.filter((id) => id !== courseId) : [...ids, courseId]);
+    void fetch(removing ? `/api/me/wishlist/${encodeURIComponent(courseId)}` : "/api/me/wishlist", {
+      method: removing ? "DELETE" : "POST", credentials: "same-origin",
+      ...(removing ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ courseId }) }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error?.message || "Wishlist could not be updated.");
+      }
+      notify({ type: removing ? "info" : "success", title: removing ? "Removed from wishlist" : "Added to wishlist",
+        message: courseTitle || "Your saved courses have been updated" });
+    }).catch((error) => {
+      if (activeUserId === userId) emit(removing ? [...ids, courseId] : ids.filter((id) => id !== courseId));
+      notify({ type: "error", title: "Wishlist not saved", message: error instanceof Error ? error.message : "Please try again." });
+    });
+  };
+
+  return <WishlistContext.Provider value={{ wishlistIds, isWishlisted: (courseId) => wishlistIds.includes(courseId), toggleWishlist }}>
+    {children}
+  </WishlistContext.Provider>;
+}
+
+export function useWishlist() {
+  const context = useContext(WishlistContext);
+  if (!context) throw new Error("useWishlist must be used within a WishlistProvider");
+  return context;
+}

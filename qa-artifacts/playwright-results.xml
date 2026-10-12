@@ -1,0 +1,52 @@
+<testsuites id="" name="" tests="8" failures="0" skipped="0" errors="0" time="37.427053">
+<testsuite name="lifecycle.spec.mjs" timestamp="2026-10-12T11:24:14.789Z" hostname="" tests="8" failures="0" skipped="0" time="32.215" errors="0">
+<testcase name="public browsing and learner enrollment persist after reload" classname="lifecycle.spec.mjs" time="6.59">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="learner is denied admin portal; admin signs in separately" classname="lifecycle.spec.mjs" time="2.65">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="tutor draft persists and local video preview respects speed cap" classname="lifecycle.spec.mjs" time="3.124">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="mobile menu opens, navigates, closes and pages fit viewport" classname="lifecycle.spec.mjs" time="2.681">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="reading course is rejected, revised, approved and explicitly published" classname="lifecycle.spec.mjs" time="6.716">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="stored classroom chat survives reload and learner leave revokes access" classname="lifecycle.spec.mjs" time="6.181">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="marketplace search, category filter, empty state and sorting change cards" classname="lifecycle.spec.mjs" time="1.097">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="learner logout invalidates access without uncaught page errors" classname="lifecycle.spec.mjs" time="3.176">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,0 +1,9 @@
+# Authentication and authorization
+
+Passwords are hashed with salted scrypt. Registration creates a learner account; instructor/admin roles are assigned through controlled seed/admin data, never by trusting a client role field. Learners and instructors use the same email-and-password form; the server returns the role stored for that account, which determines the destination after login. Instructors can still open Learner View from Instructor Studio without changing accounts. Login creates a random 256-bit token; only its SHA-256 digest is stored in `sessions`. Each new login atomically revokes all prior sessions for that user, so only the newest session is accepted by protected APIs. The previous browser checks its session on focus, visibility return, and every 15 seconds while visible to update its UI. The cookie is HttpOnly, SameSite=Lax, seven days, and Secure when `NODE_ENV=production`. Logout revokes the database session and clears the cookie.
+
+Server routes call `requireAuth`, `requireAnyRole` and an ownership check before reading or changing private records. Instructor course, live class and bootcamp mutations verify the owner; learner enrollment/progress/certificate/wishlist records are scoped by the authenticated user. The UI role is a display hint only. All authoritative checks occur on the server.
+
+JSON writes check Origin / `Sec-Fetch-Site` for same-origin browser requests. Auth endpoints are rate limited. Invalid credentials use a generic response. Structured API errors avoid returning stack traces. In production, terminate TLS before the app, restrict database and environment file access, and add operational session cleanup/monitoring.
+
+Development fixture accounts use a password supplied at seed time through `DEV_SEED_PASSWORD`. The repository does not ship a usable default password. Do not seed production data.
