@@ -1,5 +1,9 @@
 # Elevate frontend QA audit
 
+## Render startup verification — 20 October 2026
+
+`npm run build` passed with `DATABASE_URL` pointing to a deliberately nonexistent SQLite file; the build did not create it. `npm run start` with a fresh isolated absolute database path applied all 14 migrations and bound to the configured port. `npm run test:backend` passed 34/34, including an HTTP `/api/health` assertion against the migrated database. `npm run lint -- --quiet` passed. An actual Render persistent disk, production domain, Google consent, and Razorpay Test Mode payment were not available in this local run. Render Free storage is ephemeral, so live learner data requires a paid instance with a persistent disk.
+
 ## Repository update verification — 20 October 2026
 
 The current working tree passed `npm run build`, `npm run test:backend` (33/33), `npm run test:browser -- --reporter=line` (12/12), and `npm run lint` (0 errors, 271 warnings). The browser suite used isolated SQLite and media fixtures and exercised the published video completion, tutor upload, admin moderation, learner access, wishlist, chat, and mobile navigation flows. Provider-dependent Razorpay Test Mode payment, Google consent, and live audio/video remain unverified in this run.

@@ -85,6 +85,13 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     return result.response.headers.get('set-cookie').split(';')[0];
   }
 
+  await t.test('health endpoint checks the migrated database', async () => {
+    const health = await call('/api/health');
+    assert.equal(health.response.status, 200);
+    assert.deepEqual(health.body, { status: 'ok' });
+    assert.equal(health.response.headers.get('cache-control'), 'no-store');
+  });
+
   await t.test('public catalogue and search', async () => {
     const list = await call('/api/courses?search=foundations');
     assert.equal(list.response.status, 200);

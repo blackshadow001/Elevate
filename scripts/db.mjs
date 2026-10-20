@@ -1,9 +1,15 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
 
-const raw = process.env.DATABASE_URL || 'file:./data/learnly.sqlite';
-if (!raw.startsWith('file:')) throw new Error('Phase 1 supports SQLite DATABASE_URL=file:<path> only.');
+const deployment = process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
+const raw = process.env.DATABASE_URL || (deployment ? '' : 'file:./data/learnly.sqlite');
+if (!raw.startsWith('file:') || !raw.slice(5))
+  throw new Error('Set DATABASE_URL=file:<absolute durable SQLite path> before starting production.');
+if (deployment && !isAbsolute(raw.slice(5)))
+  throw new Error('Production DATABASE_URL must use an absolute path on persistent storage.');
+if (deployment && process.env.MEDIA_STORAGE_DIR && !isAbsolute(process.env.MEDIA_STORAGE_DIR))
+  throw new Error('Production MEDIA_STORAGE_DIR must use an absolute path on persistent storage.');
 const dbPath = resolve(process.cwd(), raw.slice(5));
 mkdirSync(dirname(dbPath), { recursive: true });
 const db = new DatabaseSync(dbPath);
