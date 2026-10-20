@@ -8,7 +8,5 @@ export default async function AdminLoginLayout({ children }: { children: React.R
   await connection();
   const user = await currentUser();
   if (user?.role === "admin") redirect("/control-center");
-  if (user?.role === "instructor") redirect("/instructor");
-  if (user?.role === "learner") redirect("/dashboard");
   return children;
 }

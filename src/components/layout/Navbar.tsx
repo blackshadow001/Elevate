@@ -157,9 +157,10 @@ export function Navbar() {
         <div className="hidden lg:flex items-center gap-3.5">
           {/* Wishlist */}
           <Link
-            href="/courses"
+            href="/wishlist"
             className="relative p-2 text-[#64748B] hover:text-[#FF6B35] transition-colors"
             title="Wishlist"
+            aria-label="View wishlist"
           >
             <Heart className="w-5 h-5" />
             {wishlistIds.length > 0 && (
@@ -336,6 +337,9 @@ export function Navbar() {
               className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]"
             >
               Browse All Courses
+            </Link>
+            <Link href="/wishlist" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA] flex items-center justify-between">
+              <span>Wishlist</span><span className="text-xs text-[#64748B]">{wishlistIds.length}</span>
             </Link>
             <Link
               href="/career-paths"

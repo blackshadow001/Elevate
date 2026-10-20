@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { PasswordVisibilityToggle } from "@/components/ui/PasswordVisibilityToggle";
 import { Logo } from "@/components/ui/Logo";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AdminLoginPage() {
+  const { user, isAuthenticated, isReady } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +35,9 @@ export default function AdminLoginPage() {
       <div className="flex items-center gap-3 text-[#172033]"><Logo href="/control-center" size="large" /><span className="text-xl font-extrabold">Admin</span></div>
       <h1 className="mt-9 text-3xl font-extrabold text-[#172033]">Administrator sign in</h1>
       <p className="mt-2 text-sm text-[#64748B]">Review courses, manage pricing, and control publication.</p>
+      {isReady && isAuthenticated && user.role !== "admin" && <p className="mt-5 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+        Signed in as {user.email}. Signing in here with an administrator account will switch this browser to that account.
+      </p>}
       <form onSubmit={submit} className="mt-8 space-y-5">
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div><label htmlFor="admin-email" className="block text-sm font-bold text-[#172033]">Admin email</label><input id="admin-email" type="email" required autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[#E5E7EB] px-4 py-3 text-[#172033] focus:border-[#FF6B35] focus:outline-none" /></div>

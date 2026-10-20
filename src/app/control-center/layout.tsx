@@ -1,5 +1,5 @@
 import React from "react";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { currentUser } from "@/server/auth";
 import AdminShell from "@/components/admin/AdminShell";
@@ -20,7 +20,7 @@ export default async function AdminRootLayout({
   const user = await currentUser();
 
   if (!user) redirect("/control-center/login");
-  if (user.role !== "admin") notFound();
+  if (user.role !== "admin") redirect("/control-center/login");
 
   return (
     <AdminShell

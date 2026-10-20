@@ -39,12 +39,13 @@ interface OrderSummary {
   paidVolumeMinor: number;
   paidCount: number;
   pendingCount: number;
+  failedCount: number;
   refundedCount: number;
 }
 interface OrderDetail {
   order: { id: string; status: string; total_minor: number; currency: string; provider_reference: string | null; user_name: string; user_email: string; created_at: string };
   items: Array<{ id: string; course_title: string; price_minor: number }>;
-  payments: Array<{ id: string; provider: string; status: string; amount_minor: number; verified_at: string | null }>;
+  payments: Array<{ id: string; provider: string; provider_payment_id: string; gateway_order_id: string | null; status: string; amount_minor: number; verified_at: string | null }>;
 }
 
 const formatRupees = (minor: number) =>
@@ -121,29 +122,29 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Order Quotes & Status"
-        subtitle="Persisted price quotes and order states. Payment capture and settlement require a payment provider."
+        title="Orders & Payments"
+        subtitle="Persisted course orders and gateway-confirmed payment states. Refund initiation and payouts are not available here."
         breadcrumbs={[{ label: "Commerce" }, { label: "Orders Ledger" }]}
       />
 
       {/* Top Ledger Metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-          <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Recorded Paid Status Volume</span>
+          <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Confirmed Sales</span>
           <p className="mt-1 text-2xl font-black text-[#172033]">{formatRupees(totalVolume)}</p>
-          <span className="text-[10px] text-[#64748B] font-semibold">Provider settlement is not configured</span>
+          <span className="text-[10px] text-[#64748B] font-semibold">Captured payment orders in the database</span>
         </div>
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-          <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Total Transactions</span>
-          <p className="mt-1 text-2xl font-black text-[#172033]">{totalOrdersCount}</p>
-          <span className="text-[10px] text-[#64748B]">Persisted order records</span>
+          <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Successful Transactions</span>
+          <p className="mt-1 text-2xl font-black text-[#172033]">{paidCount}</p>
+          <span className="text-[10px] text-[#64748B]">{summary?.pendingCount || 0} pending orders · {summary?.failedCount || 0} failed attempts</span>
         </div>
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-          <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Recorded Paid Ratio</span>
+          <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Paid Order Ratio</span>
           <p className="mt-1 text-2xl font-black text-[#FF6B35]">
             {paidRatio}%
           </p>
-          <span className="text-[10px] text-[#64748B]">Based on stored status only</span>
+          <span className="text-[10px] text-[#64748B]">{totalOrdersCount} total order records</span>
         </div>
       </div>
 
@@ -252,7 +253,7 @@ export default function AdminOrdersPage() {
           </div>
         )}
       </div>
-      {detail && <section className="rounded-2xl border border-[#E5E7EB] bg-white p-5 text-xs text-[#475569]"><div className="flex justify-between gap-3"><h2 className="text-base font-bold text-[#172033]">Order {detail.order.id}</h2><button onClick={() => setDetail(null)} aria-label="Close order details">Close</button></div><p className="mt-2">{detail.order.user_name} · {detail.order.user_email} · {detail.order.status}</p><p>Quote: {formatRupees(detail.order.total_minor)} {detail.order.currency} · Provider reference: {detail.order.provider_reference || "None"}</p><h3 className="mt-4 font-bold">Items</h3>{detail.items.map(item => <p key={item.id}>{item.course_title}: {formatRupees(item.price_minor)}</p>)}<h3 className="mt-4 font-bold">Payment records</h3>{detail.payments.length ? detail.payments.map(payment => <p key={payment.id}>{payment.provider} · {payment.status} · {formatRupees(payment.amount_minor)} · Verified: {payment.verified_at || "No"}</p>) : <p>No provider payment record exists.</p>}</section>}
+      {detail && <section className="rounded-2xl border border-[#E5E7EB] bg-white p-5 text-xs text-[#475569]"><div className="flex justify-between gap-3"><h2 className="text-base font-bold text-[#172033]">Order {detail.order.id}</h2><button onClick={() => setDetail(null)} aria-label="Close order details">Close</button></div><p className="mt-2">{detail.order.user_name} · {detail.order.user_email} · {detail.order.status}</p><p>Amount snapshot: {formatRupees(detail.order.total_minor)} {detail.order.currency} · Gateway order: {detail.order.provider_reference || "None"}</p><h3 className="mt-4 font-bold">Items</h3>{detail.items.map(item => <p key={item.id}>{item.course_title}: {formatRupees(item.price_minor)}</p>)}<h3 className="mt-4 font-bold">Payment attempts</h3>{detail.payments.length ? detail.payments.map(payment => <p key={payment.id} className="break-all">{payment.provider} · {payment.status} · {formatRupees(payment.amount_minor)} · Payment ID: {payment.provider_payment_id} · Verified: {payment.verified_at || "No"}</p>) : <p>No provider payment record exists.</p>}</section>}
       <div className="flex justify-end gap-3 text-xs text-[#64748B]"><button disabled={page <= 1} onClick={() => setPage(page - 1)} className="disabled:opacity-40">Previous</button><span>Page {page} of {Math.max(1, Math.ceil(total / 25))}</span><button disabled={page * 25 >= total} onClick={() => setPage(page + 1)} className="disabled:opacity-40">Next</button></div>
     </div>
   );

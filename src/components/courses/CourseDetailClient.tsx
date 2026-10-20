@@ -22,6 +22,7 @@ import { formatINR } from "@/lib/utils";
 import { useWishlist } from "@/context/WishlistContext";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { EnrollmentModal } from "@/components/courses/EnrollmentModal";
+import { PaidCheckoutModal } from "@/components/courses/PaidCheckoutModal";
 import { CourseThumbnail } from "@/components/courses/CourseThumbnail";
 import { enrollCourse, useLearningState } from "@/lib/learningState";
 import { useAuth } from "@/context/AuthContext";
@@ -91,12 +92,14 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
   return (
     <>
       <EnrollmentModal
-        isOpen={enrollModalOpen}
+        isOpen={enrollModalOpen && course.price === 0}
         onClose={() => setEnrollModalOpen(false)}
         onConfirm={handleConfirmEnrollment}
         courseTitle={course.title}
         coursePrice={course.price}
       />
+      <PaidCheckoutModal open={enrollModalOpen && course.price > 0} onClose={() => setEnrollModalOpen(false)}
+        courseId={course.id} courseTitle={course.title} displayedPrice={course.price} />
 
       {/* Navy Hero Banner */}
       <section className="bg-[#172033] text-white py-12 lg:py-16">
@@ -392,7 +395,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                   {discountPercent > 0 && <span className="text-base text-[#64748B] line-through">{formatINR(course.originalPrice)}</span>}
                   {discountPercent > 0 && <span className="text-xs font-bold text-[#16A34A] bg-emerald-50 px-2 py-0.5 rounded">{discountPercent}% OFF</span>}
                 </div>
-                <p className="text-xs text-[#64748B]">{course.price === 0 ? "Free enrollment gives immediate access." : "Checkout will be available after payment integration."}</p>
+                <p className="text-xs text-[#64748B]">{course.price === 0 ? "Free enrollment gives immediate access." : "Secure checkout uses the final price confirmed by the server."}</p>
               </div>
 
               {/* Primary CTA Buttons */}
@@ -402,7 +405,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                   onClick={() => isEnrolled ? router.push(`/learn/${course.slug}/${firstLessonId}`) : setEnrollModalOpen(true)}
                   className="w-full inline-flex items-center justify-center text-center font-bold text-white bg-[#FF6B35] hover:bg-[#E85D2A] py-3.5 px-6 rounded-xl shadow-lg shadow-orange-500/25 transition-all text-base active:scale-98"
                 >
-                  {isEnrolled ? "Continue Learning" : course.price > 0 ? "View Enrollment Options" : "Enroll for Free"}
+                  {isEnrolled ? "Continue Learning" : course.price > 0 ? "Buy Course" : "Enroll for Free"}
                 </button>
 
                 <div className="flex gap-2">
@@ -448,7 +451,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#16A34A]" />
-                  <span>{course.price === 0 ? "No payment required" : "Payment provider not connected"}</span>
+                  <span>{course.price === 0 ? "No payment required" : "Course access begins after verified payment"}</span>
                 </div>
               </div>
             </div>

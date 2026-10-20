@@ -22,6 +22,7 @@ import { useNotification } from "@/components/notifications/NotificationProvider
 import { VideoPlayer } from "@/components/learning/VideoPlayer";
 import { setLessonCompletion, useLearningState } from "@/lib/learningState";
 import { useAuth } from "@/context/AuthContext";
+import { formatVideoDuration } from "@/lib/videoDuration";
 
 interface CoursePlayerProps {
   course: Course;
@@ -56,6 +57,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
   const [questionText, setQuestionText] = useState("");
   const [questionsByLesson, setQuestionsByLesson] = useState<Record<string, string[]>>({});
   const [savingProgress, setSavingProgress] = useState(false);
+  const [actualDurations, setActualDurations] = useState<Record<string, string>>({});
 
   const currentLesson = allFlatLessons.find((l) => l.id === currentLessonId) || allFlatLessons[0];
   const notesList = notesByLesson[currentLesson.id] || [];
@@ -206,6 +208,19 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
               lessonId={currentLesson.id}
               isCompleted={isCompleted}
               onLessonEnded={() => { void toggleCompleted(currentLesson.id); }}
+              onWatchEvent={async (event) => {
+                const response = await fetch(`/api/courses/${encodeURIComponent(course.id)}/lessons/${encodeURIComponent(currentLesson.id)}/watch`, {
+                  method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(event),
+                });
+                if (!response.ok) {
+                  const result = await response.json();
+                  throw new Error(result.error?.message || "Video watch progress could not be saved.");
+                }
+              }}
+              onDurationKnown={(seconds) => setActualDurations((previous) => ({
+                ...previous, [currentLesson.id]: formatVideoDuration(seconds),
+              }))}
               onContinueNext={nextLesson ? handleMarkCompleteAndNext : undefined}
               hasNextLesson={!!nextLesson}
             />
@@ -220,7 +235,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
           <div className="p-4 sm:p-6 border-b border-[#E5E7EB] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="text-xs font-semibold text-[#FF6B35] uppercase tracking-wider mb-1">
-                Lecture {currentIndex + 1} of {allFlatLessons.length} · {currentLesson.duration}
+                Lecture {currentIndex + 1} of {allFlatLessons.length} · {actualDurations[currentLesson.id] || currentLesson.duration}
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-[#172033]">
                 {currentLesson.title}
@@ -469,7 +484,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                               {lesson.title}
                             </h4>
                             <div className="flex items-center gap-2 mt-1 text-[11px] text-[#64748B]">
-                              <span>{lesson.duration}</span>
+                              <span>{actualDurations[lesson.id] || lesson.duration}</span>
                               {lesson.type === "project" && (
                                 <span className="bg-orange-100 text-[#FF6B35] px-1.5 py-0.2 rounded font-bold">
                                   Project

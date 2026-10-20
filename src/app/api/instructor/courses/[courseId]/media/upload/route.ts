@@ -2,6 +2,7 @@ import { ApiError, id, number, readJson, safe, text } from "@/server/api";
 import { requireAnyRole } from "@/server/auth";
 import { ownedCourse } from "@/server/courses";
 import { mediaService } from "@/server/integrations";
+import { MAX_VIDEO_SIZE_BYTES } from "@/lib/mediaLimits";
 
 export async function POST(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
   return safe(async () => {
@@ -12,7 +13,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cou
     if (!/^(video\/(mp4|webm)|application\/pdf|image\/(png|jpeg|webp))$/.test(mimeType)) {
       throw new ApiError(422, "INVALID_MEDIA_TYPE", "This media type is not supported.");
     }
-    const sizeBytes = number(body.sizeBytes, "File size", 1, 2_000_000_000);
+    const sizeBytes = number(body.sizeBytes, "File size", 1, mimeType.startsWith("video/") ? MAX_VIDEO_SIZE_BYTES : 2_000_000_000);
     if (!Number.isInteger(sizeBytes)) throw new ApiError(422, "INVALID_INPUT", "File size must be whole bytes.");
     return mediaService.createUploadUrl({ storageKey: `${user.id}/${crypto.randomUUID()}`, mimeType, sizeBytes });
   });

@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { mockInstructors } from "@/data/instructors";
-import { InstructorCourse, saveInstructorCourse } from "@/lib/instructorCourses";
+import { InstructorCourse, refreshInstructorCourses, saveInstructorCourse } from "@/lib/instructorCourses";
+import { MAX_VIDEO_SIZE_BYTES } from "@/lib/mediaLimits";
+import { formatVideoDuration, measureVideoDuration } from "@/lib/videoDuration";
 import { VideoPlayer } from "@/components/learning/VideoPlayer";
 import { 
   ArrowLeft, 
@@ -52,6 +54,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const router = useRouter();
   const { notify } = useNotification();
   const courseId = useRef(initialCourse?.id || `local-${crypto.randomUUID()}`);
+  const courseSlug = useRef(initialCourse?.slug || "");
 
   // Multi-step: 1. Basic Info -> 2. Thumbnail -> 3. Curriculum -> 4. Video & Content -> 5. Pricing -> 6. Publish
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -71,6 +74,9 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
 
   // Thumbnail State
   const [thumbnailPreview, setThumbnailPreview] = useState<string>(initialCourse?.image || "/courses/course-1.jpg");
+  const persistedThumbnail = useRef(initialCourse?.image || "/courses/course-1.jpg");
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  useEffect(() => () => { if (thumbnailPreview.startsWith("blob:")) URL.revokeObjectURL(thumbnailPreview); }, [thumbnailPreview]);
 
   // Curriculum State
   const [sections, setSections] = useState<BuilderSection[]>(initialCourse ? initialCourse.sections.map((section) => ({
@@ -122,10 +128,14 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     },
   ]);
 
-  // Local preview only; provider-backed uploads are not configured.
-  const [activeUploadLesson, setActiveUploadLesson] = useState<string>("les-1");
+  // A selected file is previewed locally while it streams to private server storage.
+  const [activeUploadLesson, setActiveUploadLesson] = useState<string>(
+    initialCourse?.sections.flatMap((section) => section.lessons).find((lesson) => lesson.type === "video")?.id ||
+    (initialCourse ? "" : "les-1")
+  );
   const [previewFileName, setPreviewFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   // Pricing State
@@ -208,26 +218,13 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     }));
   };
 
-  const handleLocalVideoPreview = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!["video/mp4", "video/webm"].includes(file.type) || file.size > 200_000_000) {
-      notify({ type: "error", title: "Preview unavailable", message: "Choose an MP4 or WebM file no larger than 200 MB." });
-      e.target.value = "";
-      return;
-    }
-    setPreviewFileName(file.name);
-    setPreviewUrl(URL.createObjectURL(file));
-    notify({ type: "info", title: "Local preview ready", message: "This file is only previewed in your browser. It has not been uploaded or saved with the course." });
-  };
-
   const buildCourse = (status: InstructorCourse["status"]): InstructorCourse => {
     const lessons = sections.flatMap((section) => section.lessons);
     const minutes = lessons.reduce((sum, lesson) => sum + (Number.parseInt(lesson.duration, 10) || 0), 0);
     const title = basicInfo.title.trim();
     return {
       id: courseId.current,
-      slug: initialCourse?.slug || `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${courseId.current.slice(-8)}`,
+      slug: courseSlug.current || `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${courseId.current.slice(-8)}`,
       title,
       subtitle: basicInfo.shortDescription.trim(),
       description: basicInfo.fullDescription.trim(),
@@ -243,7 +240,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
       studentsCount: initialCourse?.studentsCount || 0,
       duration: minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} mins`,
       totalLessons: lessons.length,
-      image: thumbnailPreview.startsWith("blob:") ? "/courses/course-1.jpg" : thumbnailPreview,
+      image: thumbnailPreview.startsWith("blob:") ? persistedThumbnail.current : thumbnailPreview,
       instructor: initialCourse?.instructor || mockInstructors[0],
       updatedAt: new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
       whatYouWillLearn: basicInfo.whatYouWillLearn.split("\n").map((item) => item.trim()).filter(Boolean),
@@ -264,14 +261,103 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     };
   };
 
+  const saveDraft = async () => {
+    const previousSections = sections;
+    const saved = await saveInstructorCourse(buildCourse("Draft"));
+    courseId.current = saved.id;
+    courseSlug.current = saved.slug;
+    const mappedActive = previousSections.flatMap((section, sectionIndex) => section.lessons.map((lesson, lessonIndex) => ({
+      oldId: lesson.id, newId: saved.sections[sectionIndex]?.lessons[lessonIndex]?.id || lesson.id,
+    }))).find((lesson) => lesson.oldId === activeUploadLesson)?.newId || activeUploadLesson;
+    setSections(previousSections.map((section, sectionIndex) => ({
+      ...section,
+      id: saved.sections[sectionIndex]?.id || section.id,
+      lessons: section.lessons.map((lesson, lessonIndex) => ({
+        ...lesson,
+        id: saved.sections[sectionIndex]?.lessons[lessonIndex]?.id || lesson.id,
+        videoUrl: saved.sections[sectionIndex]?.lessons[lessonIndex]?.mediaAssetId
+          ? `/api/media/${saved.sections[sectionIndex].lessons[lessonIndex].mediaAssetId}/stream` : lesson.videoUrl,
+      })),
+    })));
+    setActiveUploadLesson(mappedActive);
+    return { saved, lessonId: mappedActive };
+  };
+
+  const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5_000_000) {
+      notify({ type: "error", title: "Thumbnail not uploaded", message: "Choose a JPG, PNG or WebP image no larger than 5 MB." });
+      return;
+    }
+    setThumbnailPreview(URL.createObjectURL(file));
+    setUploadingThumbnail(true);
+    try {
+      const { saved } = await saveDraft();
+      const response = await fetch(`/api/instructor/courses/${encodeURIComponent(saved.id)}/thumbnail`, {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": file.type }, body: file,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || "Thumbnail upload failed.");
+      persistedThumbnail.current = result.data.url as string;
+      setThumbnailPreview(persistedThumbnail.current);
+      await refreshInstructorCourses();
+      notify({ type: "success", title: "Thumbnail uploaded", message: initialCourse?.status === "Pending Approval" || initialCourse?.status === "Approved"
+        ? "The new image is saved. Submit the course again for admin review." : "The image is saved and will appear on the course card." });
+    } catch (error) {
+      setThumbnailPreview(persistedThumbnail.current);
+      notify({ type: "error", title: "Thumbnail not uploaded", message: error instanceof Error ? error.message : "Please try again." });
+    } finally { setUploadingThumbnail(false); }
+  };
+
+  const handleLocalVideoPreview = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    if (!["video/mp4", "video/webm"].includes(file.type) || file.size > MAX_VIDEO_SIZE_BYTES) {
+      notify({ type: "error", title: "Upload unavailable", message: "Choose an MP4 or WebM file no larger than 1 GB." });
+      return;
+    }
+    if (!sections.some((section) => section.lessons.some((lesson) => lesson.id === activeUploadLesson && lesson.type === "Video"))) {
+      notify({ type: "error", title: "Select a video lesson", message: "Choose the lesson that should receive this video." });
+      return;
+    }
+    setPreviewFileName(file.name);
+    setPreviewUrl(URL.createObjectURL(file));
+    setUploadingVideo(true);
+    try {
+      const durationSeconds = await measureVideoDuration(file);
+      const { saved, lessonId } = await saveDraft();
+      const response = await fetch(`/api/instructor/courses/${encodeURIComponent(saved.id)}/lessons/${encodeURIComponent(lessonId)}/media`, {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": file.type, "X-Video-Duration-Seconds": String(durationSeconds) }, body: file,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || "Video upload failed.");
+      const hostedUrl = result.data.url as string;
+      setSections((previous) => previous.map((section) => ({ ...section, lessons: section.lessons.map((lesson) =>
+        lesson.id === lessonId ? { ...lesson, videoUrl: hostedUrl, duration: formatVideoDuration(durationSeconds) } : lesson) })));
+      notify({ type: "success", title: "Video uploaded", message: "The video is saved privately with this lesson. You can now submit the completed course for review." });
+    } catch (error) {
+      notify({ type: "error", title: "Video not uploaded", message: error instanceof Error ? error.message : "Please try again." });
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
   const handlePublishCourse = async () => {
+    if (uploadingThumbnail || uploadingVideo) {
+      notify({ type: "info", title: "Upload in progress", message: "Wait for the upload to finish before submitting the course." });
+      return;
+    }
     const missing = [];
     if (!basicInfo.title.trim()) missing.push("title");
     if (!basicInfo.shortDescription.trim()) missing.push("short description");
     if (!basicInfo.fullDescription.trim()) missing.push("full description");
     if (!basicInfo.whatYouWillLearn.trim()) missing.push("learning outcomes");
     if (!sections.length || sections.some((section) => !section.title.trim() || !section.lessons.length || section.lessons.some((lesson) => !lesson.title.trim()))) missing.push("complete curriculum");
-    if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Video"))) missing.push("hosted video media (provider not connected)");
+    if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Video" && !lesson.videoUrl?.startsWith("/api/media/")))) missing.push("uploaded video for each video lesson");
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Text" && !lesson.content?.trim()))) missing.push("reading lesson content");
     if (sections.some((section) => section.lessons.some((lesson) => ["Quiz", "Assignment", "Resource"].includes(lesson.type)))) missing.push("quiz, assignment, and resource authoring (not connected)");
     if (!Number.isFinite(proposedPrice) || proposedPrice < 0) missing.push("valid proposed pricing");
@@ -283,7 +369,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
       return;
     }
     try {
-      courseId.current = await saveInstructorCourse(buildCourse("Pending Approval"));
+      courseId.current = (await saveInstructorCourse(buildCourse("Pending Approval"))).id;
       notify({ type: "success", title: "Submitted for review", message: `"${basicInfo.title}" is awaiting admin approval and publication.` });
       router.push("/instructor/courses");
     } catch (error) {
@@ -299,6 +385,8 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     { num: 5, label: "Pricing" },
     { num: 6, label: "Publish" },
   ];
+  const selectedVideo = sections.flatMap((section) => section.lessons).find((lesson) => lesson.id === activeUploadLesson);
+  const videoIsHosted = Boolean(selectedVideo?.videoUrl?.startsWith("/api/media/"));
 
   return (
     <div className="space-y-8">
@@ -320,10 +408,11 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
         <div className="flex items-center gap-2">
           <button
             type="button"
+            disabled={uploadingVideo || uploadingThumbnail}
             onClick={() => {
               void (async () => {
                 try {
-                  courseId.current = await saveInstructorCourse(buildCourse("Draft"));
+                  await saveDraft();
                   notify({ type: "success", title: "Draft saved", message: "This draft is saved to your instructor account." });
                 } catch (error) {
                   notify({ type: "error", title: "Draft not saved", message: error instanceof Error ? error.message : "Please try again." });
@@ -486,23 +575,18 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-[#172033]">Drop course thumbnail here</h4>
-                <p className="text-xs text-[#64748B]">1280x720 (16:9 ratio) recommended. JPG or PNG.</p>
+                <p className="text-xs text-[#64748B]">1280x720 (16:9 ratio) recommended. JPG, PNG or WebP, up to 5 MB.</p>
               </div>
 
               <div>
                 <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#172033] hover:bg-[#26344D] text-white text-xs font-bold cursor-pointer">
-                  <span>Choose Image</span>
+                  <span>{uploadingThumbnail ? "Uploading…" : "Choose Image"}</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={uploadingThumbnail || uploadingVideo}
                     className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        const url = URL.createObjectURL(e.target.files[0]);
-                        setThumbnailPreview(url);
-                        notify({ type: "success", title: "Thumbnail Updated", message: "New preview active." });
-                      }
-                    }}
+                    onChange={(e) => { void handleThumbnailUpload(e); }}
                   />
                 </label>
               </div>
@@ -741,7 +825,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                 <label className="block text-xs font-bold uppercase text-[#172033]">Select Lesson to Edit Video</label>
                 <select
                   value={activeUploadLesson}
-                  onChange={(e) => setActiveUploadLesson(e.target.value)}
+                  onChange={(e) => { setActiveUploadLesson(e.target.value); setPreviewFileName(""); setPreviewUrl(""); }}
                   className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#172033]"
                 >
                   {sections.flatMap((s) =>
@@ -760,28 +844,29 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                   <Upload className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs font-bold text-[#172033]">Preview a local video</div>
-                  <div className="text-[11px] text-[#64748B]">MP4 or WebM, up to 200 MB. Upload and publishing require private media storage.</div>
+                  <div className="text-xs font-bold text-[#172033]">Upload a lesson video</div>
+                  <div className="text-[11px] text-[#64748B]">MP4 or WebM, up to 1 GB per video. Saved privately on this server.</div>
                 </div>
 
                 <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#172033] hover:bg-[#26344D] text-white text-xs font-bold cursor-pointer">
-                  <span>Select file to preview</span>
+                  <span>{uploadingVideo ? "Uploading video…" : "Select file to upload"}</span>
                   <input
                     type="file"
                     accept="video/mp4,video/webm"
                     className="hidden"
+                    disabled={uploadingVideo}
                     onChange={handleLocalVideoPreview}
                   />
                 </label>
               </div>
 
-              {/* Local preview status, never represented as a completed upload. */}
+              {/* A local preview remains distinct from a completed server upload. */}
               <div className="bg-[#F7F8FA] p-4 rounded-2xl border border-[#E5E7EB] space-y-2.5">
                 <div className="flex items-center justify-between text-xs font-bold text-[#172033]">
-                  <span className="min-w-0 truncate">{previewFileName || "No local file selected"}</span>
-                  <span className="shrink-0 text-amber-700">Not uploaded</span>
+                  <span className="min-w-0 truncate">{previewFileName || (videoIsHosted ? "Saved lesson video" : "No local file selected")}</span>
+                  <span className={`shrink-0 ${videoIsHosted ? "text-emerald-700" : "text-amber-700"}`}>{uploadingVideo ? "Uploading…" : videoIsHosted ? "Uploaded" : "Not uploaded"}</span>
                 </div>
-                <p className="text-[11px] text-[#64748B]">The selected file stays in this browser tab only. A draft saves lesson details, not video bytes.</p>
+                <p className="text-[11px] text-[#64748B]">{videoIsHosted ? "This lesson video is stored on the server and available only to authorized viewers." : "Wait for Upload complete before submitting. A local preview alone is not saved with the lesson."}</p>
               </div>
             </div>
 
@@ -792,7 +877,8 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
               </span>
               <div className="rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-xl bg-black">
                 <VideoPlayer
-                  src={previewUrl || "/videos/lesson-demo.webm"}
+                  allowSeeking
+                  src={previewUrl || selectedVideo?.videoUrl || "/videos/lesson-demo.webm"}
                   title="Lesson Preview Mode"
                   lessonId="preview-lesson"
                   poster={thumbnailPreview}
@@ -920,6 +1006,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
             <button
               type="button"
               onClick={handlePublishCourse}
+              disabled={uploadingVideo}
               className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-[#16A34A] hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-97 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />

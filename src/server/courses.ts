@@ -81,11 +81,13 @@ export function getCourse(idOrSlug: string, publishedOnly = true) {
     ...courseDto(row),
     sections: sections.map((section) => ({
       id: String(section.id), title: String(section.title), position: Number(section.position),
-      lessons: db.prepare(`SELECT id,title,description,position,type,duration_seconds,is_preview,status
-        FROM lessons WHERE section_id=? ${publishedOnly ? "AND status='published'" : ""} ORDER BY position`).all(String(section.id)).map((lesson) => ({
+      lessons: db.prepare(`SELECT l.id,l.title,l.description,l.position,l.type,l.duration_seconds,l.is_preview,l.status,
+        m.id media_asset_id FROM lessons l LEFT JOIN media_assets m ON m.storage_key=l.video_storage_key
+        WHERE l.section_id=? ${publishedOnly ? "AND l.status='published'" : ""} ORDER BY l.position`).all(String(section.id)).map((lesson) => ({
           id: String(lesson.id), title: String(lesson.title), description: String(lesson.description),
           position: Number(lesson.position), type: String(lesson.type), durationSeconds: Number(lesson.duration_seconds),
           isPreview: Boolean(lesson.is_preview), status: String(lesson.status),
+          mediaAssetId: lesson.media_asset_id ? String(lesson.media_asset_id) : null,
         })),
     })),
   };

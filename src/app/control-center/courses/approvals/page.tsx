@@ -28,8 +28,8 @@ interface CourseDetail {
     description: string;
     thumbnail: string | null;
     status: string;
-    review_status: string;
-    price_minor: number;
+    reviewStatus: string;
+    price: number;
     metadata: {
       whatYouWillLearn?: string[];
       requirements?: string[];
@@ -273,7 +273,7 @@ export default function AdminReviewQueuePage() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#E5E7EB] pb-5">
                   <div>
                     <div className="flex items-center gap-2">
-                      <StatusBadge status={detail.course.review_status} />
+                      <StatusBadge status={detail.course.reviewStatus} />
                       <span className="text-[11px] font-mono text-[#94A3B8]">{detail.course.id}</span>
                     </div>
                     <h2 className="mt-2 text-lg font-black text-[#172033]">{detail.course.title}</h2>
@@ -284,7 +284,7 @@ export default function AdminReviewQueuePage() {
                   <div className="flex flex-col items-end shrink-0">
                     <span className="text-[10px] uppercase font-bold text-[#94A3B8]">Final Catalog Price</span>
                     <span className="text-xl font-black text-[#172033]">
-                      {formatRupees(detail.pricing?.finalPriceMinor ?? detail.course.price_minor)}
+                      {formatRupees(detail.pricing?.finalPriceMinor ?? Math.round(detail.course.price * 100))}
                     </span>
                   </div>
                 </div>

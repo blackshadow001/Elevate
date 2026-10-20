@@ -74,12 +74,13 @@ export function markRevision(courseId: string, user: SessionUser) {
   }
 }
 
-export function adminCourseList(filters: { search?: string; status?: string; tutorId?: string; category?: string;
+export function adminCourseList(filters: { search?: string; courseId?: string; status?: string; tutorId?: string; category?: string;
   minPriceMinor?: number; maxPriceMinor?: number; updatedFrom?: string; updatedTo?: string;
   sort?: "updated_desc" | "updated_asc" | "price_asc" | "price_desc" | "title_asc"; page?: number; pageSize?: number } = {}) {
   const db = getDb();
   const where = ["1=1"];
   const values: Array<string | number> = [];
+  if (filters.courseId) { where.push("c.id=?"); values.push(filters.courseId); }
   if (filters.search) {
     const query = `%${filters.search.replace(/[\\%_]/g, "\\$&")}%`;
     where.push("(c.title LIKE ? ESCAPE '\\' OR u.name LIKE ? ESCAPE '\\' OR u.email LIKE ? ESCAPE '\\' OR c.category LIKE ? ESCAPE '\\')");

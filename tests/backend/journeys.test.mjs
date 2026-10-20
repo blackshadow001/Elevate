@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -11,8 +11,11 @@ const root = resolve(import.meta.dirname, '../..');
 const dbName = `backend-test-${randomBytes(6).toString('hex')}.sqlite`;
 const databaseUrl = `file:./data/${dbName}`;
 const password = `Test-${randomBytes(20).toString('hex')}!`;
-const env = { ...process.env, DATABASE_URL: databaseUrl, DEV_SEED_PASSWORD: password };
+const env = { ...process.env, DATABASE_URL: databaseUrl, DEV_SEED_PASSWORD: password,
+  RAZORPAY_KEY_ID: '', RAZORPAY_KEY_SECRET: '', RAZORPAY_WEBHOOK_SECRET: '' };
 const dbPath = resolve(root, 'data', dbName);
+const mediaPath = resolve(root, 'data', `${dbName}.media`);
+env.MEDIA_STORAGE_DIR = mediaPath;
 
 function runScript(script) {
   const result = spawnSync(process.execPath, [script], { cwd: root, env, encoding: 'utf8' });
@@ -49,6 +52,8 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       await new Promise((resolveExit) => server.once('exit', resolveExit));
     }
     for (const suffix of ['', '-wal', '-shm']) rmSync(`${dbPath}${suffix}`, { force: true });
+    assert.ok(mediaPath.startsWith(resolve(root, 'data') + '\\'));
+    rmSync(mediaPath, { recursive: true, force: true });
   });
   let ready = false;
   let lastProbe = '';
@@ -170,6 +175,12 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const paid = await call('/api/courses/course-1/enroll', { method: 'POST', cookie: learner });
     assert.equal(paid.response.status, 409);
     assert.equal(paid.body.error.code, 'PAYMENT_REQUIRED');
+    const quote = await call('/api/orders', { method: 'POST', cookie: learner, body: { courseId: 'course-1' } });
+    assert.equal(quote.response.status, 201);
+    const unavailable = await call(`/api/orders/${quote.body.data.id}/checkout`, { method: 'POST', cookie: learner });
+    assert.equal(unavailable.response.status, 503);
+    assert.equal(unavailable.body.error.code, 'PAYMENT_NOT_CONFIGURED');
+    assert.equal((await call('/api/payments/configuration')).body.data.checkoutAvailable, false);
   });
 
   await t.test('idempotent free enrollment, progress and certificate', async () => {
@@ -268,11 +279,91 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const invalid = await call(path, { method: 'POST', cookie: instructor, body: { mimeType: 'text/html', sizeBytes: 1000 } });
     assert.equal(invalid.response.status, 422);
     assert.equal(invalid.body.error.code, 'INVALID_MEDIA_TYPE');
+    const overOneGigabyte = await call(path, { method: 'POST', cookie: instructor, body: { mimeType: 'video/mp4', sizeBytes: 1_000_000_001 } });
+    assert.equal(overOneGigabyte.response.status, 422);
     const oversized = await call(path, { method: 'POST', cookie: instructor, body: { mimeType: 'video/mp4', sizeBytes: 2_000_000_001 } });
     assert.equal(oversized.response.status, 422);
+    const atOneGigabyte = await call(path, { method: 'POST', cookie: instructor, body: { mimeType: 'video/mp4', sizeBytes: 1_000_000_000 } });
+    assert.equal(atOneGigabyte.response.status, 503);
+    assert.equal(atOneGigabyte.body.error.code, 'PROVIDER_NOT_CONFIGURED');
     const valid = await call(path, { method: 'POST', cookie: instructor, body: { mimeType: 'video/mp4', sizeBytes: 1000 } });
     assert.equal(valid.response.status, 503);
     assert.equal(valid.body.error.code, 'PROVIDER_NOT_CONFIGURED');
+  });
+  let uploadedMediaAssetId = '';
+  await t.test('local video upload is owned, streamed and preserved when a draft is saved again', async () => {
+    const draft = {
+      id: `local-${randomBytes(8).toString('hex')}`, slug: `local-media-${randomBytes(8).toString('hex')}`,
+      title: 'Local media QA course', subtitle: 'Private lesson media', description: 'Private video storage and replay test.',
+      category: 'Development', level: 'Beginner', language: 'English', price: 0,
+      image: '/courses/course-1.jpg', whatYouWillLearn: ['Play a lesson'], requirements: [],
+      sections: [{ id: 'temporary-section', title: 'Module one', lessons: [
+        { id: 'temporary-lesson', title: 'Private video', type: 'video', duration: '1 mins' },
+      ] }], status: 'Draft',
+    };
+    const created = await call('/api/instructor/courses/save', { method: 'POST', cookie: instructor, body: draft });
+    assert.equal(created.response.status, 200, JSON.stringify(created.body));
+    const courseId = created.body.data.id;
+    const lessonId = created.body.data.sections[0].lessons[0].id;
+    const path = `/api/instructor/courses/${courseId}/lessons/${lessonId}/media`;
+    const bytes = readFileSync(resolve(root, 'public/videos/lesson-demo.webm'));
+    async function upload(cookie, data, mimeType = 'video/webm', origin = base) {
+      const response = await fetch(`${base}${path}`, { method: 'POST', headers: {
+        ...(cookie ? { Cookie: cookie } : {}), Origin: origin, 'Content-Type': mimeType,
+        'X-Video-Duration-Seconds': '123',
+      }, body: data });
+      return { response, body: await response.json() };
+    }
+    assert.equal((await upload(null, bytes)).response.status, 401);
+    assert.equal((await upload(otherInstructor, bytes)).response.status, 403);
+    assert.equal((await upload(instructor, bytes, 'video/webm', 'https://elsewhere.invalid')).response.status, 403);
+    assert.equal((await upload(instructor, Buffer.from('not a video'))).response.status, 422);
+    const uploaded = await upload(instructor, bytes);
+    assert.equal(uploaded.response.status, 201, JSON.stringify(uploaded.body));
+    assert.equal(uploaded.body.data.durationSeconds, 123);
+    const assetId = uploaded.body.data.assetId;
+    uploadedMediaAssetId = assetId;
+    const streamPath = `/api/media/${assetId}/stream`;
+    assert.equal((await call(streamPath)).response.status, 401);
+    assert.equal((await call(streamPath, { cookie: otherLearner })).response.status, 403);
+    const ranged = await fetch(`${base}${streamPath}`, { headers: { Cookie: instructor, Range: 'bytes=0-15' } });
+    assert.equal(ranged.status, 206);
+    assert.equal(ranged.headers.get('content-range'), `bytes 0-15/${bytes.length}`);
+    assert.deepEqual(Buffer.from(await ranged.arrayBuffer()), bytes.subarray(0, 16));
+    assert.equal((await call(`/api/media/${assetId}/access`, { cookie: instructor })).body.data.url, streamPath);
+    const persistedDraft = {
+      ...draft, id: courseId, sections: [{ id: created.body.data.sections[0].id, title: 'Module one', lessons: [
+        { id: lessonId, title: 'Private video', type: 'video', duration: '1 mins' },
+      ] }],
+    };
+    const savedAgain = await call('/api/instructor/courses/save', { method: 'POST', cookie: instructor, body: persistedDraft });
+    assert.equal(savedAgain.response.status, 200, JSON.stringify(savedAgain.body));
+    assert.equal(savedAgain.body.data.sections[0].lessons[0].id, lessonId);
+    assert.equal(savedAgain.body.data.sections[0].lessons[0].mediaAssetId, assetId);
+    assert.equal(savedAgain.body.data.sections[0].lessons[0].durationSeconds, 123);
+    assert.equal(savedAgain.body.data.durationSeconds, 123);
+    const submitted = await call('/api/instructor/courses/save', { method: 'POST', cookie: instructor,
+      body: { ...persistedDraft, status: 'Pending Approval' } });
+    assert.equal(submitted.response.status, 200, JSON.stringify(submitted.body));
+    assert.equal(submitted.body.data.reviewStatus, 'pending_approval');
+    assert.equal(submitted.body.data.sections[0].lessons[0].mediaAssetId, assetId);
+    assert.equal((await call(streamPath, { cookie: otherLearner })).response.status, 403);
+    const adminLogin = await call('/api/admin/auth/login', { method: 'POST', body: { email: 'admin@example.com', password } });
+    assert.equal(adminLogin.response.status, 200);
+    const adminCookie = adminLogin.response.headers.get('set-cookie').split(';')[0];
+    assert.equal((await call(`/api/admin/courses/${courseId}/pricing`, { method: 'PUT', cookie: adminCookie,
+      body: { basePriceMinor: 0, minMarginBps: 0, maxMarginBps: 0 } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${courseId}/pricing`, { method: 'POST', cookie: adminCookie,
+      body: { action: 'approve', marginBps: 0 } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${courseId}/review`, { method: 'POST', cookie: adminCookie,
+      body: { action: 'approve' } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${courseId}/review`, { method: 'POST', cookie: adminCookie,
+      body: { action: 'publish' } })).response.status, 200);
+    assert.equal((await call(`/api/courses/${courseId}`)).body.data.sections[0].lessons[0].mediaAssetId, assetId);
+    assert.equal((await call(`/api/courses/${courseId}/enroll`, { method: 'POST', cookie: learner })).response.status, 200);
+    const learnerPlayback = await fetch(`${base}${streamPath}`, { headers: { Cookie: learner, Range: 'bytes=0-3' } });
+    assert.equal(learnerPlayback.status, 206);
+    assert.deepEqual(Buffer.from(await learnerPlayback.arrayBuffer()), bytes.subarray(0, 4));
   });
   await t.test('draft preview media cannot be accessed by another learner', async () => {
     const slug = `media-draft-${randomBytes(5).toString('hex')}`;
@@ -295,6 +386,40 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     } finally { db.close(); }
     assert.equal((await call(`/api/media/${assetId}/access`, { cookie: learner })).response.status, 403);
   });
+  await t.test('course thumbnails upload privately and persist instead of reverting to the default', async () => {
+    const slug = `thumbnail-test-${randomBytes(5).toString('hex')}`;
+    const created = await call('/api/instructor/courses', { method: 'POST', cookie: instructor, body: {
+      title: 'Thumbnail Persistence Test', slug, description: 'An isolated image upload test.', thumbnail: '/courses/course-1.jpg',
+    } });
+    assert.equal(created.response.status, 201, JSON.stringify(created.body));
+    const courseId = created.body.data.id;
+    const uploadPath = `/api/instructor/courses/${courseId}/thumbnail`;
+    const image = readFileSync(resolve(root, 'public/courses/course-2.jpg'));
+    const postImage = (cookie, bytes, mime = 'image/jpeg', origin = base) => fetch(`${base}${uploadPath}`, {
+      method: 'POST', headers: { ...(cookie ? { Cookie: cookie } : {}), Origin: origin, 'Content-Type': mime }, body: bytes,
+    });
+    assert.equal((await postImage(null, image)).status, 401);
+    assert.equal((await postImage(otherInstructor, image)).status, 403);
+    assert.equal((await postImage(instructor, image, 'image/jpeg', 'https://elsewhere.invalid')).status, 403);
+    assert.equal((await postImage(instructor, Buffer.from('not an image'))).status, 422);
+    const uploaded = await postImage(instructor, image);
+    assert.equal(uploaded.status, 201, await uploaded.clone().text());
+    const firstUrl = (await uploaded.json()).data.url;
+    assert.match(firstUrl, /^\/api\/course-thumbnails\/[0-9a-f-]+\.jpg$/);
+    assert.equal((await call(`/api/instructor/courses/${courseId}`, { cookie: instructor })).body.data.thumbnail, firstUrl);
+    assert.equal((await call(firstUrl)).response.status, 404, 'A draft image is private to its tutor and admins.');
+    assert.equal((await call(firstUrl, { cookie: otherInstructor })).response.status, 404);
+    const imageResponse = await fetch(`${base}${firstUrl}`, { headers: { Cookie: instructor } });
+    assert.equal(imageResponse.status, 200);
+    assert.equal(imageResponse.headers.get('content-type'), 'image/jpeg');
+    assert.deepEqual(Buffer.from(await imageResponse.arrayBuffer()), image);
+    const replaced = await postImage(instructor, readFileSync(resolve(root, 'public/courses/course-3.jpg')));
+    assert.equal(replaced.status, 201);
+    const secondUrl = (await replaced.json()).data.url;
+    assert.notEqual(secondUrl, firstUrl);
+    assert.equal((await call(firstUrl, { cookie: instructor })).response.status, 404);
+    assert.equal((await call(`/api/instructor/courses/${courseId}`, { cookie: instructor })).body.data.thumbnail, secondUrl);
+  });
   await t.test('video completion and forged watched seconds require verified evidence', async () => {
     const db = new DatabaseSync(dbPath);
     try {
@@ -309,7 +434,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       db.prepare('UPDATE lessons SET video_storage_key=? WHERE id=?').run('isolated-test-media', lessonId);
       const direct = await call(`/api/courses/course-1/lessons/${lessonId}/complete`, { method: 'POST', cookie: learner });
       assert.equal(direct.response.status, 409);
-      assert.equal(direct.body.error.code, 'WATCH_EVIDENCE_REQUIRED');
+      assert.equal(direct.body.error.code, 'WATCH_INCOMPLETE');
       const forged = await call(`/api/courses/course-1/lessons/${lessonId}/progress`, {
         method: 'PUT', cookie: learner, body: { completed: true, watchedSeconds: 86400 },
       });
@@ -317,6 +442,33 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       assert.equal(forged.body.error.code, 'WATCH_EVIDENCE_REQUIRED');
       assert.equal(db.prepare('SELECT COUNT(*) n FROM lesson_progress WHERE user_id=? AND lesson_id=?').get('usr_seed_learner_2', lessonId).n, 0);
       assert.equal(db.prepare('SELECT COUNT(*) n FROM certificates WHERE user_id=? AND course_id=?').get('usr_seed_learner_2', 'course-1').n, 0);
+
+      const instructorId = String(db.prepare("SELECT instructor_id FROM courses WHERE id='course-1'").get().instructor_id);
+      db.prepare('INSERT INTO media_assets (id,owner_id,storage_key,mime_type,size_bytes,duration_seconds) VALUES (?,?,?,?,?,?)')
+        .run(randomBytes(10).toString('hex'), instructorId, 'isolated-test-media', 'video/webm', 286630, 3);
+      const watchPath = `/api/courses/course-1/lessons/${lessonId}/watch`;
+      const watch = (positionSeconds, state, playbackRate = 1) => call(watchPath, { method: 'POST', cookie: learner,
+        body: { positionSeconds, durationSeconds: 3, playbackRate, state } });
+      assert.equal((await watch(0, 'playing', 2)).response.status, 422);
+      assert.equal((await call(watchPath, { method: 'POST',
+        body: { positionSeconds: 0, durationSeconds: 3, playbackRate: 1, state: 'playing' } })).response.status, 401);
+      assert.equal((await call(watchPath, { method: 'POST', cookie: instructor,
+        body: { positionSeconds: 0, durationSeconds: 3, playbackRate: 1, state: 'playing' } })).response.status, 403);
+      assert.equal((await watch(0, 'playing')).response.status, 200);
+      const skipped = await watch(3, 'ended');
+      assert.equal(skipped.body.data.canComplete, false);
+      assert.equal((await call(`/api/courses/course-1/lessons/${lessonId}/complete`, { method: 'POST', cookie: learner })).response.status, 409);
+      await watch(0, 'seek');
+      await watch(0, 'playing');
+      for (const second of [1, 2, 3]) {
+        await new Promise(resolveWait => setTimeout(resolveWait, 1100));
+        const update = await watch(second, second === 3 ? 'ended' : 'playing');
+        assert.equal(update.response.status, 200, JSON.stringify(update.body));
+        if (second === 3) assert.equal(update.body.data.canComplete, true);
+      }
+      const verified = await call(`/api/courses/course-1/lessons/${lessonId}/complete`, { method: 'POST', cookie: learner });
+      assert.equal(verified.response.status, 200, JSON.stringify(verified.body));
+      assert.equal(verified.body.data.completed, true);
     } finally { db.close(); }
   });
   await t.test('live class ownership, attendance and stored chat', async () => {
@@ -466,12 +618,13 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       for (const path of protectedPages) {
         const response = await fetch(`${base}${path}`, { headers: { Cookie: cookie }, redirect: 'manual' });
         const html = await response.text();
-        assert.ok(response.status === 404 || html.includes('NEXT_HTTP_ERROR_FALLBACK;404'), `${role} opened ${path}: ${response.status}`);
+        assert.ok(response.status === 307 || html.includes('NEXT_REDIRECT'), `${role} opened ${path}: ${response.status}`);
         assert.equal(html.includes('Control Center</span>'), false, `${role} received admin shell at ${path}`);
       }
       const loginResponse = await fetch(`${base}/control-center/login`, { headers: { Cookie: cookie }, redirect: 'manual' });
       const loginHtml = await loginResponse.text();
-      assert.ok(loginResponse.status === 307 || loginHtml.includes('NEXT_REDIRECT'), `${role} opened admin login`);
+      assert.equal(loginResponse.status, 200, `${role} could not open admin login`);
+      assert.match(loginHtml, /Administrator sign in/);
     }
     for (const path of ['/api/admin/users', '/api/admin/certificates', '/api/admin/live-classes', '/api/admin/orders']) {
       assert.equal((await call(path)).response.status, 401, path);
@@ -760,6 +913,11 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     }
     assert.ok(restarted, `Restarted server did not respond: ${serverOutput}`);
     assert.equal((await call('/api/auth/me', { cookie: otherLearner })).response.status, 200);
+    const restoredMedia = await fetch(`${base}/api/media/${uploadedMediaAssetId}/stream`, {
+      headers: { Cookie: instructor, Range: 'bytes=0-3' },
+    });
+    assert.equal(restoredMedia.status, 206);
+    assert.deepEqual(Buffer.from(await restoredMedia.arrayBuffer()), readFileSync(resolve(root, 'public/videos/lesson-demo.webm')).subarray(0, 4));
     assert.equal((await call('/api/me/certificates', { cookie: otherLearner })).body.data.length, 1);
     assert.equal((await call('/api/me/enrollments', { cookie: otherLearner })).body.data.some((e) => e.courseId === 'course-free-foundations'), true);
     assert.equal((await call('/api/auth/me', { cookie: learner })).response.status, 401);

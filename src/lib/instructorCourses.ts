@@ -5,6 +5,7 @@ import { Course, Instructor } from "@/types";
 import { mockCourses } from "@/data/courses";
 import { mockInstructors } from "@/data/instructors";
 import { useAuth } from "@/context/AuthContext";
+import { formatVideoDuration } from "@/lib/videoDuration";
 
 export type InstructorCourse = Course & {
   status: "Draft" | "Pending Approval" | "Approved" | "Published" | "Rejected" | "Unpublished" | "Archived";
@@ -24,7 +25,7 @@ type ApiCourse = {
   reviewFeedback?: string | null;
   metadata: { whatYouWillLearn?: string[]; requirements?: string[]; originalPrice?: number };
   sections: Array<{ id: string; title: string; lessons: Array<{
-    id: string; title: string; description: string; type: string; durationSeconds: number;
+    id: string; title: string; description: string; type: string; durationSeconds: number; mediaAssetId?: string | null;
   }> }>;
 };
 const EMPTY: InstructorCourse[] = [];
@@ -67,9 +68,12 @@ function toCourse(course: ApiCourse): InstructorCourse {
     whatYouWillLearn: course.metadata?.whatYouWillLearn || [], requirements: course.metadata?.requirements || [],
     sections: course.sections.map((section) => ({ id: section.id, title: section.title,
       lessons: section.lessons.map((lesson) => ({
-        id: lesson.id, title: lesson.title, content: lesson.description, duration: duration(lesson.durationSeconds),
+        id: lesson.id, title: lesson.title, content: lesson.description,
+        duration: lesson.type === "video" && lesson.mediaAssetId
+          ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
         type: lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
-        videoUrl: fixture?.sections.flatMap((item) => item.lessons).find((item) => item.id === lesson.id)?.videoUrl,
+        videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` :
+          fixture?.sections.flatMap((item) => item.lessons).find((item) => item.id === lesson.id)?.videoUrl,
       })),
     })),
     status: course.status === "published" ? "Published" : course.status === "archived" ? "Archived" :
@@ -118,12 +122,12 @@ export function useInstructorCourses() {
 export function instructorCoursesLoading() { return loading; }
 export function instructorCoursesLoaded(userId: string) { return loadedUserId === userId; }
 
-export async function saveInstructorCourse(course: InstructorCourse): Promise<string> {
+export async function saveInstructorCourse(course: InstructorCourse): Promise<ApiCourse> {
   const saved = await request("/api/instructor/courses/save", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(course),
   }) as ApiCourse;
   await refreshInstructorCourses();
-  return saved.id;
+  return saved;
 }
 
 export async function setInstructorCourseStatus(id: string, status: InstructorCourse["status"]): Promise<void> {

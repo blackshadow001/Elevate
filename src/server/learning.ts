@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { ApiError, number } from "@/server/api";
 import { SessionUser } from "@/server/auth";
 import { getDb, transaction } from "@/server/db";
+import { verifiedWatch } from "@/server/videoWatch";
 
 function enrollmentDto(row: Record<string, unknown>) {
   return {
@@ -62,11 +63,14 @@ export function updateProgress(courseId: string, lessonId: string, user: Session
     if (completed && lesson.type === "video" && !lesson.video_storage_key) {
       throw new ApiError(409, "LESSON_MEDIA_UNAVAILABLE", "This lesson cannot be completed until its video is available.");
     }
-    if (lesson.type === "video" && (completed || body.watchedSeconds !== undefined)) {
-      throw new ApiError(409, "WATCH_EVIDENCE_REQUIRED", "Video progress requires server-validated watch evidence, which is not configured yet.");
-    }
+    if (lesson.type === "video" && body.watchedSeconds !== undefined)
+      throw new ApiError(409, "WATCH_EVIDENCE_REQUIRED", "Video watch time is recorded by the player.");
+    const watch = lesson.type === "video" && completed
+      ? verifiedWatch(user.id, lessonId, String(lesson.video_storage_key)) : null;
+    if (completed && lesson.type === "video" && !watch?.complete)
+      throw new ApiError(409, "WATCH_INCOMPLETE", "Watch at least 90% of the video and reach the end before marking this lesson complete.");
     const duration = Number(lesson.duration_seconds);
-    const watched = Math.min(watchedInput, duration);
+    const watched = watch ? watch.watchedSeconds : Math.min(watchedInput, duration);
     const now = new Date().toISOString();
     db.prepare(`INSERT INTO lesson_progress
       (id,user_id,lesson_id,course_id,completed,watched_seconds,completed_at,updated_at)

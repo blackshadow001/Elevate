@@ -10,7 +10,6 @@ import {
   Minimize, 
   RotateCcw, 
   Settings, 
-  PictureInPicture,
   CheckCircle2,
   ChevronRight
 } from "lucide-react";
@@ -22,8 +21,12 @@ interface VideoPlayerProps {
   lessonId: string;
   isCompleted?: boolean;
   onLessonEnded?: () => void;
+  onDurationKnown?: (seconds: number) => void;
+  onWatchEvent?: (event: { positionSeconds: number; durationSeconds: number;
+    playbackRate: number; state: "playing" | "paused" | "seek" | "ended" }) => Promise<void>;
   onContinueNext?: () => void;
   hasNextLesson?: boolean;
+  allowSeeking?: boolean;
 }
 
 export function VideoPlayer({
@@ -33,10 +36,14 @@ export function VideoPlayer({
   lessonId,
   isCompleted = false,
   onLessonEnded,
+  onDurationKnown,
+  onWatchEvent,
   onContinueNext,
   hasNextLesson = false,
+  allowSeeking = false,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const reportedDurationRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const speedMenuRef = useRef<HTMLDivElement>(null);
@@ -57,6 +64,34 @@ export function VideoPlayer({
   const [controlMessage, setControlMessage] = useState("");
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const furthestWatchedRef = useRef(0);
+  const lastTrustedTickRef = useRef(0);
+  const lastWatchTickRef = useRef(0);
+  const watchQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const queueWatch = useCallback((state: "playing" | "paused" | "seek" | "ended") => {
+    const video = videoRef.current;
+    if (!onWatchEvent || allowSeeking || !video || !Number.isFinite(video.duration) || video.duration <= 0)
+      return Promise.resolve();
+    const event = { positionSeconds: video.currentTime, durationSeconds: video.duration,
+      playbackRate: video.playbackRate, state };
+    const next = watchQueueRef.current.catch(() => {}).then(() => onWatchEvent(event));
+    watchQueueRef.current = next;
+    return next;
+  }, [allowSeeking, onWatchEvent]);
+
+  const seekTo = (requested: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const target = Math.max(0, Math.min(requested, video.duration || duration));
+    const limited = allowSeeking ? target : Math.min(target, furthestWatchedRef.current);
+    if (!allowSeeking && target > limited + 0.25) {
+      setControlMessage("You can replay watched sections, but cannot skip ahead.");
+    }
+    video.currentTime = limited;
+    setCurrentTime(limited);
+    lastTrustedTickRef.current = performance.now();
+  };
 
   // Format MM:SS or HH:MM:SS
   const formatTime = (seconds: number) => {
@@ -97,23 +132,58 @@ export function VideoPlayer({
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
-    setCurrentTime(videoRef.current.currentTime);
-    setDuration(videoRef.current.duration || 0);
+    const video = videoRef.current;
+    const now = performance.now();
+    const elapsed = lastTrustedTickRef.current ? Math.max(0, (now - lastTrustedTickRef.current) / 1000) : 0;
+    const allowedAdvance = elapsed * Math.min(Math.max(video.playbackRate, 1), 1.5) + 0.75;
+    if (!allowSeeking && (video.seeking || video.currentTime > furthestWatchedRef.current + allowedAdvance)) {
+      if (!video.seeking && video.currentTime > furthestWatchedRef.current + allowedAdvance) seekTo(furthestWatchedRef.current);
+      return;
+    }
+    if (!allowSeeking && !video.paused) furthestWatchedRef.current = Math.max(furthestWatchedRef.current, video.currentTime);
+    lastTrustedTickRef.current = now;
+    setCurrentTime(video.currentTime);
+    setDuration(video.duration || 0);
+    if (!allowSeeking && !video.paused && !document.hidden && now - lastWatchTickRef.current >= 750) {
+      lastWatchTickRef.current = now;
+      void queueWatch("playing").catch(() => {});
+    }
+  };
+
+  const handleSeeking = () => {
+    const video = videoRef.current;
+    if (!video || allowSeeking) return;
+    if (video.currentTime > furthestWatchedRef.current + 0.35) seekTo(furthestWatchedRef.current);
+    void queueWatch("seek").catch(() => {});
   };
 
   const handleLoadedMetadata = () => {
     if (!videoRef.current) return;
     setDuration(videoRef.current.duration);
+    if (Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0 &&
+      reportedDurationRef.current !== videoRef.current.duration) {
+      reportedDurationRef.current = videoRef.current.duration;
+      onDurationKnown?.(videoRef.current.duration);
+    }
   };
 
   const handleEnded = () => {
     setIsPlaying(false);
     setIsEnded(true);
     setShowControls(true);
-    if (onLessonEnded) {
-      onLessonEnded();
-    }
+    void queueWatch("ended").then(() => onLessonEnded?.()).catch(() =>
+      setControlMessage("Your final watch update could not be saved. Check your connection and replay the end."));
   };
+
+  useEffect(() => {
+    if (!onWatchEvent || allowSeeking) return;
+    const onVisibility = () => {
+      if (!videoRef.current || videoRef.current.paused) return;
+      void queueWatch(document.hidden ? "paused" : "playing").catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [allowSeeking, onWatchEvent, queueWatch]);
 
   // Seek on timeline click
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -122,8 +192,7 @@ export function VideoPlayer({
     const pos = (e.clientX - rect.left) / rect.width;
     const mediaDuration = videoRef.current.duration || duration;
     const newTime = Math.max(0, Math.min(pos * mediaDuration, mediaDuration));
-    videoRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
+    seekTo(newTime);
   };
 
   // Timeline hover preview
@@ -182,20 +251,6 @@ export function VideoPlayer({
     }
   };
 
-  const togglePip = async () => {
-    if (!videoRef.current) return;
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else {
-        await videoRef.current.requestPictureInPicture();
-      }
-      setControlMessage("");
-    } catch {
-      setControlMessage("Picture in Picture is unavailable in this browser.");
-    }
-  };
-
   // Keyboard controls
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) return;
@@ -204,10 +259,10 @@ export function VideoPlayer({
       togglePlay();
     } else if (e.code === "ArrowRight") {
       e.preventDefault();
-      if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.currentTime + 5, duration);
+      if (videoRef.current) seekTo(videoRef.current.currentTime + 5);
     } else if (e.code === "ArrowLeft") {
       e.preventDefault();
-      if (videoRef.current) videoRef.current.currentTime = Math.max(videoRef.current.currentTime - 5, 0);
+      if (videoRef.current) seekTo(videoRef.current.currentTime - 5);
     } else if (e.code === "KeyM") {
       if (videoRef.current) {
         videoRef.current.muted = !videoRef.current.muted;
@@ -216,7 +271,7 @@ export function VideoPlayer({
     } else if (e.code === "KeyF") {
       toggleFullscreen();
     }
-  }, [duration]);
+  }, [duration, allowSeeking]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -245,6 +300,7 @@ export function VideoPlayer({
       ref={containerRef}
       data-lesson-id={lessonId}
       onMouseMove={handleMouseMove}
+      onContextMenu={(event) => event.preventDefault()}
       className="relative w-full aspect-video bg-black rounded-none sm:rounded-2xl overflow-hidden select-none group max-h-[540px] flex items-center justify-center"
     >
       {/* Video Element */}
@@ -253,13 +309,20 @@ export function VideoPlayer({
         src={src}
         poster={poster}
         onTimeUpdate={handleTimeUpdate}
+        onSeeking={handleSeeking}
         onLoadedMetadata={handleLoadedMetadata}
+        onDurationChange={handleLoadedMetadata}
         onEnded={handleEnded}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+        onPlay={() => { setIsPlaying(true); void queueWatch("playing").catch(() => {}); }}
+        onPause={() => { setIsPlaying(false); void queueWatch("paused").catch(() => {}); }}
         onClick={togglePlay}
+        onContextMenu={(event) => event.preventDefault()}
         className="w-full h-full object-contain cursor-pointer"
         playsInline
+        controls={false}
+        controlsList="nodownload noremoteplayback noplaybackrate"
+        disablePictureInPicture
+        disableRemotePlayback
       />
 
       {playbackError && <p role="alert" className="absolute left-4 right-4 top-4 rounded-lg bg-red-950/90 p-3 text-center text-xs text-white">Playback unavailable: {playbackError}</p>}
@@ -338,9 +401,7 @@ export function VideoPlayer({
             if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
               event.preventDefault();
               event.stopPropagation();
-              const next = Math.max(0, Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + (event.key === "ArrowRight" ? 5 : -5)));
-              videoRef.current.currentTime = next;
-              setCurrentTime(next);
+              seekTo(videoRef.current.currentTime + (event.key === "ArrowRight" ? 5 : -5));
             }
           }}
           role="slider"
@@ -417,7 +478,7 @@ export function VideoPlayer({
             </div>
           </div>
 
-          {/* Right: Speed, PiP, Fullscreen */}
+          {/* Right: Speed and Fullscreen */}
           <div className="flex items-center gap-2.5 sm:gap-3.5">
             {/* Playback Speed Menu */}
             <div className="relative" ref={speedMenuRef}>
@@ -445,15 +506,6 @@ export function VideoPlayer({
                 </div>
               )}
             </div>
-
-            {/* Picture in Picture */}
-            <button
-              onClick={togglePip}
-              className="p-1 hover:text-[#FF6B35] transition-colors hidden sm:block"
-              title="Picture-in-Picture"
-            >
-              <PictureInPicture className="w-4 h-4" />
-            </button>
 
             {/* Fullscreen */}
             <button

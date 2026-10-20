@@ -10,6 +10,7 @@ import { ApiError } from "@/server/api";
 import { getDb } from "@/server/db";
 import { getCourse, listCourses } from "@/server/courses";
 import { currentUser } from "@/server/auth";
+import { formatVideoDuration } from "@/lib/videoDuration";
 
 type ServerCourse = ReturnType<typeof getCourse>;
 
@@ -62,9 +63,11 @@ function mapCourse(source: ServerCourse): Course {
       lessons: section.lessons.map((lesson): Lesson => {
         const seedLesson = fixture?.sections.flatMap((item) => item.lessons).find((item) => item.id === lesson.id);
         return {
-          id: lesson.id, title: lesson.title, duration: duration(lesson.durationSeconds),
+          id: lesson.id, title: lesson.title,
+          duration: lesson.mediaAssetId
+            ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
           type: lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
-          content: lesson.description, videoUrl: seedLesson?.videoUrl,
+          content: lesson.description, videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` : seedLesson?.videoUrl,
         };
       }),
     })),

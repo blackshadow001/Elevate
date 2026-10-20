@@ -24,7 +24,7 @@ const formatRupees = (minor: number | null | undefined) =>
   minor === null || minor === undefined ? "—" : `₹${(minor / 100).toLocaleString("en-IN")}`;
 
 interface AdminCourseDetail {
-  course: { id: string; title: string; subtitle?: string; description: string; price_minor: number; status: string; review_status: string;
+  course: { id: string; title: string; subtitle?: string; description: string; price: number; status: string; reviewStatus: string;
     metadata?: { whatYouWillLearn?: string[] }; sections?: Array<{ title: string; lessons?: Array<{ title: string; type: string }> }> };
   pricing: { status: string; basePriceMinor: number | null; finalPriceMinor: number | null } | null;
   history: Array<{ action: string; feedback: string; created_at: string; actor_name: string }>;
@@ -102,6 +102,13 @@ export default function AdminCourseDetailPage() {
 
   const { course, pricing, history } = data;
   const outcomes = course.metadata?.whatYouWillLearn || [];
+  const publishBlockReason = course.reviewStatus !== "approved"
+    ? "Approve the course content before publishing."
+    : pricing?.basePriceMinor === null || pricing?.basePriceMinor === undefined
+      ? "Set an admin base price and approve the official course price before publishing."
+      : pricing.status !== "approved" || pricing.finalPriceMinor === null || pricing.finalPriceMinor !== Math.round(course.price * 100)
+        ? "Approve the official course price before publishing."
+        : null;
 
   return (
     <div className="space-y-6">
@@ -131,9 +138,12 @@ export default function AdminCourseDetailPage() {
               </button>
             ) : (
               <button
-                disabled={busy || course.review_status !== "approved" || pricing?.status !== "approved"}
-                onClick={() => handleAction("publish")}
-                className="rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                type="button"
+                disabled={busy}
+                aria-disabled={Boolean(publishBlockReason)}
+                onClick={() => publishBlockReason ? setError(publishBlockReason) : void handleAction("publish")}
+                className={`rounded-xl px-3.5 py-2 text-xs font-bold text-white disabled:opacity-50 ${publishBlockReason
+                  ? "bg-slate-400 hover:bg-slate-500" : "bg-emerald-600 hover:bg-emerald-700"}`}
               >
                 Publish to Catalog
               </button>
@@ -141,6 +151,13 @@ export default function AdminCourseDetailPage() {
           </div>
         }
       />
+      {course.status !== "published" && publishBlockReason && (
+        <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <span>{publishBlockReason}</span>
+          {course.reviewStatus === "approved" && <Link href={`/control-center/pricing?courseId=${encodeURIComponent(course.id)}`}
+            className="font-bold underline underline-offset-2 hover:text-[#172033]">Open this course in Pricing &amp; Margins</Link>}
+        </div>
+      )}
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-xs text-red-700">{error}</p>}
       {success && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700">{success}</p>}
 
@@ -149,7 +166,7 @@ export default function AdminCourseDetailPage() {
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Review Status</span>
           <div className="mt-2">
-            <StatusBadge status={course.review_status} />
+            <StatusBadge status={course.reviewStatus} />
           </div>
         </div>
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
@@ -165,7 +182,7 @@ export default function AdminCourseDetailPage() {
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Final Catalog Price</span>
           <p className="mt-1 text-lg font-black text-[#FF6B35]">
-            {formatRupees(pricing?.finalPriceMinor ?? course.price_minor)}
+            {formatRupees(pricing?.finalPriceMinor ?? Math.round(course.price * 100))}
           </p>
         </div>
       </div>

@@ -43,6 +43,8 @@ export default function AdminPricingPage() {
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [requestedCourseId, setRequestedCourseId] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("courseId"));
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -63,6 +65,7 @@ export default function AdminPricingPage() {
     try {
       setLoading(true);
       const query = new URLSearchParams({ page: String(page), pageSize: "25", search });
+      if (requestedCourseId) query.set("courseId", requestedCourseId);
       const res = await fetch(`/api/admin/courses?${query}`, { credentials: "same-origin" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "Failed to load courses");
@@ -83,7 +86,7 @@ export default function AdminPricingPage() {
 
   useEffect(() => {
     void Promise.resolve().then(loadCourses);
-  }, [search, page]);
+  }, [search, page, requestedCourseId]);
 
   function selectCourse(course: CourseRow) {
     setSelectedId(course.id);
@@ -185,7 +188,7 @@ export default function AdminPricingPage() {
             <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">
               Course Pricing Registry ({total})
             </span>
-            <input aria-label="Search course pricing" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search course or tutor" className="mt-3 w-full rounded-xl border border-[#E5E7EB] p-2 text-xs" />
+            <input aria-label="Search course pricing" value={search} onChange={(event) => { setRequestedCourseId(null); setSearch(event.target.value); setPage(1); }} placeholder="Search course or tutor" className="mt-3 w-full rounded-xl border border-[#E5E7EB] p-2 text-xs" />
 
             <div className="mt-3 divide-y divide-[#F1F5F9] max-h-[600px] overflow-y-auto">
               {loading ? (
@@ -230,6 +233,7 @@ export default function AdminPricingPage() {
                   <span className="text-[11px] font-mono text-[#94A3B8]">{selectedCourse.id}</span>
                   <h3 className="text-base font-black text-[#172033]">{selectedCourse.title}</h3>
                   <p className="text-xs text-[#64748B]">Instructor: {selectedCourse.instructor_name}</p>
+                  <Link href={`/control-center/courses/${selectedCourse.id}`} className="mt-2 inline-block text-xs font-bold text-[#FF6B35] hover:underline">Back to course review →</Link>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] uppercase font-bold text-[#94A3B8]">Current Status</span>
@@ -242,10 +246,11 @@ export default function AdminPricingPage() {
               {/* Calculator Form */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
+                  <label htmlFor="admin-base-price" className="block text-xs font-bold text-[#172033] mb-1">
                     Platform Base Floor Price (₹)
                   </label>
                   <input
+                    id="admin-base-price"
                     type="number"
                     min="1"
                     value={basePrice}
@@ -258,10 +263,11 @@ export default function AdminPricingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
+                  <label htmlFor="admin-approved-margin" className="block text-xs font-bold text-[#172033] mb-1">
                     Approved Tutor Margin (%)
                   </label>
                   <input
+                    id="admin-approved-margin"
                     type="number"
                     min="0"
                     max="100"
@@ -275,10 +281,11 @@ export default function AdminPricingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
+                  <label htmlFor="admin-min-margin" className="block text-xs font-bold text-[#172033] mb-1">
                     Min Tutor Margin Allowance (%)
                   </label>
                   <input
+                    id="admin-min-margin"
                     type="number"
                     min="0"
                     max="100"
@@ -289,10 +296,11 @@ export default function AdminPricingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
+                  <label htmlFor="admin-max-margin" className="block text-xs font-bold text-[#172033] mb-1">
                     Max Tutor Margin Allowance (%)
                   </label>
                   <input
+                    id="admin-max-margin"
                     type="number"
                     min="0"
                     max="100"
@@ -303,10 +311,11 @@ export default function AdminPricingPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
+                  <label htmlFor="admin-price-cap" className="block text-xs font-bold text-[#172033] mb-1">
                     Hard Price Ceiling Cap (₹, optional)
                   </label>
                   <input
+                    id="admin-price-cap"
                     type="number"
                     value={capPrice}
                     placeholder="e.g. 5000 (leaves blank for no cap)"

@@ -1,4 +1,4 @@
-import { ApiError, safe } from "@/server/api";
+import { ApiError, id, safe } from "@/server/api";
 import { requireRole } from "@/server/auth";
 import { adminCourseList } from "@/server/courseApproval";
 import { getDb } from "@/server/db";
@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     await requireRole("admin");
     const params = new URL(request.url).searchParams;
     const search = params.get("search") || "";
+    const courseId = params.get("courseId") || "";
     const status = params.get("status") || "";
     const tutorId = params.get("tutorId") || "";
     const category = params.get("category") || "";
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
       (SELECT COUNT(*) FROM courses WHERE status='published') publishedCourses,
       (SELECT COUNT(*) FROM users WHERE role='instructor') tutors,
       (SELECT COUNT(*) FROM users WHERE role='learner') learners`).get();
-    const result = adminCourseList({ search, status, tutorId, category, sort: sort as "updated_desc", page, pageSize,
+    const result = adminCourseList({ search, courseId: courseId ? id(courseId) : undefined, status, tutorId, category, sort: sort as "updated_desc", page, pageSize,
       minPriceMinor, maxPriceMinor, updatedFrom, updatedTo });
     return { metrics, courses: result.items, pagination: { total: result.total, page: result.page, pageSize: result.pageSize } };
   });

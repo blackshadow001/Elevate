@@ -82,6 +82,7 @@ export async function GET(request: Request) {
       pending_count: number;
       refunded_count: number;
     };
+    const failedCount = Number(db.prepare("SELECT COUNT(*) n FROM payments WHERE status='failed'").get()?.n || 0);
 
     return {
       summary: {
@@ -89,6 +90,7 @@ export async function GET(request: Request) {
         paidVolumeMinor: Number(summary.paid_volume || 0),
         paidCount: Number(summary.paid_count || 0),
         pendingCount: Number(summary.pending_count || 0),
+        failedCount,
         refundedCount: Number(summary.refunded_count || 0),
       },
       pagination: { total, page, pageSize: 25 },

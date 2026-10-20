@@ -4,7 +4,8 @@ import { randomUUID } from "node:crypto";
 import { ApiError, number, text } from "@/server/api";
 import { SessionUser } from "@/server/auth";
 import { createCourse, getCourse, ownedCourse, setCourseStatus, updateCourse } from "@/server/courses";
-import { getDb, transaction } from "@/server/db";
+import { transaction } from "@/server/db";
+import { deleteLocalMedia } from "@/server/localMedia";
 
 type Input = Record<string, unknown>;
 
@@ -20,6 +21,12 @@ function lines(value: unknown, label: string): string[] {
 
 function parseMinutes(value: unknown): number {
   const raw = text(value, "Lesson duration", 1, 30);
+  const clock = /^(?:(\d+):)?(\d{1,2}):(\d{2})$/.exec(raw);
+  if (clock) {
+    const seconds = (Number(clock[1] || 0) * 3600) + (Number(clock[2]) * 60) + Number(clock[3]);
+    if ((!clock[1] || Number(clock[2]) < 60) && Number(clock[3]) < 60 && seconds >= 1 && seconds <= 86_400) return seconds;
+    throw new ApiError(422, "INVALID_DURATION", "Lesson duration must be between 1 second and 24 hours.");
+  }
   const hours = /^(\d+)h(?:\s+(\d+)m)?$/i.exec(raw);
   const minutes = /^(\d+)\s*min(?:s|utes?)?$/i.exec(raw);
   const amount = hours ? Number(hours[1]) * 60 + Number(hours[2] || 0) : minutes ? Number(minutes[1]) : NaN;
@@ -27,7 +34,7 @@ function parseMinutes(value: unknown): number {
   return amount * 60;
 }
 
-export function saveCourseDraft(user: SessionUser, body: Input) {
+export async function saveCourseDraft(user: SessionUser, body: Input) {
   const title = text(body.title, "Title", 3, 200);
   const slug = text(body.slug, "Slug", 3, 100).toLowerCase();
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new ApiError(422, "INVALID_SLUG", "Slug must use lowercase words separated by hyphens.");
@@ -51,10 +58,10 @@ export function saveCourseDraft(user: SessionUser, body: Input) {
       const lesson = object(value, "Lesson");
       const type = text(lesson.type, "Lesson type", 1, 20);
       if (!["video", "reading", "quiz", "project"].includes(type)) throw new ApiError(422, "INVALID_TYPE", "Unsupported lesson type.");
-      return { title: text(lesson.title, "Lesson title", 1, 200), type,
+      return { id: typeof lesson.id === "string" ? lesson.id : "", title: text(lesson.title, "Lesson title", 1, 200), type,
         durationSeconds: parseMinutes(lesson.duration), description: text(lesson.content ?? "", "Lesson content", 0, 5000) };
     });
-    return { title: sectionTitle, lessons };
+    return { id: typeof section.id === "string" ? section.id : "", title: sectionTitle, lessons };
   });
   if (lessonCount > 500) throw new ApiError(422, "INVALID_CURRICULUM", "A course supports up to 500 lessons.");
   const status = body.status === "Pending Approval" || body.status === "Published" ? "published" : body.status === "Archived" ? "archived" : "draft";
@@ -62,16 +69,24 @@ export function saveCourseDraft(user: SessionUser, body: Input) {
     throw new ApiError(422, "COURSE_INCOMPLETE", "Add a subtitle, description, thumbnail, learning outcomes and lessons before publishing.");
   }
 
-  return transaction((db) => {
+  const { course, unusedMediaKeys } = transaction((db) => {
     const incomingId = typeof body.id === "string" ? body.id : "";
     const existing = incomingId && !incomingId.startsWith("local-") ? ownedCourse(incomingId, user) : null;
     let courseId: string;
+    const existingSections = new Set<string>();
+    const existingLessons = new Map<string, { storageKey: string | null; mediaDurationSeconds: number | null }>();
     if (existing) {
       courseId = incomingId;
       if (existing.slug !== slug) throw new ApiError(422, "SLUG_IMMUTABLE", "Course slug cannot be changed after creation.");
       if (db.prepare("SELECT 1 FROM enrollments WHERE course_id=? LIMIT 1").get(courseId)) {
         throw new ApiError(409, "COURSE_HAS_LEARNERS", "This course has learners. Use the individual edit actions instead of replacing its curriculum.");
       }
+      for (const row of db.prepare("SELECT id FROM course_sections WHERE course_id=?").all(courseId)) existingSections.add(String(row.id));
+      for (const row of db.prepare(`SELECT l.id,l.video_storage_key,m.duration_seconds AS media_duration_seconds
+        FROM lessons l JOIN course_sections s ON s.id=l.section_id
+        LEFT JOIN media_assets m ON m.storage_key=l.video_storage_key WHERE s.course_id=?`).all(courseId))
+        existingLessons.set(String(row.id), { storageKey: row.video_storage_key ? String(row.video_storage_key) : null,
+          mediaDurationSeconds: row.media_duration_seconds === null ? null : Number(row.media_duration_seconds) });
       updateCourse(courseId, user, { title, subtitle, description, category, level: body.level, language: body.language,
         thumbnail: image || null, ...(body.marginBps === undefined ? { price } : { marginBps: body.marginBps }) });
       db.prepare("DELETE FROM course_sections WHERE course_id=?").run(courseId);
@@ -83,18 +98,38 @@ export function saveCourseDraft(user: SessionUser, body: Input) {
     db.prepare("UPDATE courses SET metadata_json=? WHERE id=?").run(JSON.stringify({ whatYouWillLearn: outcomes, requirements,
       originalPrice: typeof body.originalPrice === "number" ? body.originalPrice : price }), courseId);
     let durationSeconds = 0;
+    const usedSectionIds = new Set<string>();
+    const usedLessonIds = new Set<string>();
     sections.forEach((section, position) => {
-      const sectionId = randomUUID();
+      const sectionId = existingSections.has(section.id) ? section.id : randomUUID();
+      if (usedSectionIds.has(sectionId)) throw new ApiError(422, "INVALID_CURRICULUM", "A section appears more than once.");
+      usedSectionIds.add(sectionId);
       db.prepare("INSERT INTO course_sections (id,course_id,title,position) VALUES (?,?,?,?)").run(sectionId, courseId, section.title, position);
       section.lessons.forEach((lesson, lessonPosition) => {
-        durationSeconds += lesson.durationSeconds;
-        db.prepare(`INSERT INTO lessons (id,section_id,title,description,position,type,duration_seconds,is_preview,status)
-          VALUES (?,?,?,?,?,?,?,?,?)`).run(randomUUID(), sectionId, lesson.title, lesson.description,
-          lessonPosition, lesson.type, lesson.durationSeconds, position === 0 && lessonPosition === 0 ? 1 : 0, "published");
+        const preserved = existingLessons.get(lesson.id);
+        const actualDuration = lesson.type === "video" && preserved?.storageKey && preserved.mediaDurationSeconds
+          ? preserved.mediaDurationSeconds : lesson.durationSeconds;
+        durationSeconds += actualDuration;
+        const lessonId = preserved ? lesson.id : randomUUID();
+        if (usedLessonIds.has(lessonId)) throw new ApiError(422, "INVALID_CURRICULUM", "A lesson appears more than once.");
+        usedLessonIds.add(lessonId);
+        db.prepare(`INSERT INTO lessons (id,section_id,title,description,position,type,video_storage_key,duration_seconds,is_preview,status)
+          VALUES (?,?,?,?,?,?,?,?,?,?)`).run(lessonId, sectionId, lesson.title, lesson.description,
+          lessonPosition, lesson.type, lesson.type === "video" ? preserved?.storageKey || null : null,
+          actualDuration, position === 0 && lessonPosition === 0 ? 1 : 0, "published");
       });
     });
     db.prepare("UPDATE courses SET lesson_count=?,duration_seconds=? WHERE id=?").run(lessonCount, durationSeconds, courseId);
     setCourseStatus(courseId, user, status);
-    return getCourse(courseId, false);
+    const unusedMediaKeys = [...new Set([...existingLessons.values()].map((lesson) => lesson.storageKey).filter((key): key is string => Boolean(key)))].filter((key) => {
+      const stillUsed = db.prepare(`SELECT 1 WHERE EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=?)
+        OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)`).get(key, key);
+      if (stillUsed) return false;
+      db.prepare("DELETE FROM media_assets WHERE storage_key=?").run(key);
+      return true;
+    });
+    return { course: getCourse(courseId, false), unusedMediaKeys };
   });
+  await Promise.all(unusedMediaKeys.map((key) => deleteLocalMedia(key).catch(() => {})));
+  return course;
 }
