@@ -31,6 +31,8 @@ npm run start
 
 Run migrations on every release **before** starting the new version. Back up the SQLite database consistently, including its WAL state, and test a restore; retain the volume across deployments. Never run `npm run db:seed` against a production database. Terminate HTTPS at a reverse proxy and forward requests to the Node process. Build with the production `NEXT_PUBLIC_SITE_URL` already set because public environment values are embedded in browser assets. The administrator login is `/control-center/login`; public signup creates learner accounts only. See [deployment notes](docs/backend/DEPLOYMENT.md), [backend readiness](docs/backend/BACKEND_READINESS.md), and [the QA matrix](QA_AUDIT.md) for limits and evidence.
 
+On Render, use a **Node Web Service** with build command `npm ci && npm run build` and start command `npm run start`. The `&&` stops the build if dependency installation fails. Attach a persistent disk for both the SQLite database and media directory; run migrations against that disk before serving the new version. A static-site service or ephemeral disk cannot support this backend.
+
 ## Current QA status — 20 October 2026
 
 Before this repository update, `npm run build`, `npm run test:backend` (33/33), and `npm run lint` (0 errors, 271 warnings) passed. The isolated Playwright Chrome suite passed 12/12 with `npm run test:browser -- --reporter=line`. These checks do not verify a live Razorpay transaction, Google OAuth consent, or live audio/video transport.
