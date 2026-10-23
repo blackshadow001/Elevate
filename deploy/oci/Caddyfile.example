@@ -1,0 +1,11 @@
+# Replace the hostname with a DNS name pointing to the VM's public IP.
+# Caddy obtains and renews HTTPS certificates for a reachable hostname.
+lms.example.com {
+    # The app accepts a raw video body up to 1,000,000,000 bytes.
+    # Caddy 2.10+ supports this directive; validate the installed version.
+    request_body {
+        max_size 1GB
+    }
+
+    reverse_proxy 127.0.0.1:3000
+}

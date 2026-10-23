@@ -1,0 +1,26 @@
+[Unit]
+Description=Elevate LMS (single Node.js instance)
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/srv/elevate-data
+
+[Service]
+Type=simple
+User=elevate
+Group=elevate
+WorkingDirectory=/opt/elevate
+Environment=NODE_ENV=production
+Environment=PORT=3000
+EnvironmentFile=/etc/elevate/elevate.env
+ExecStartPre=/usr/bin/mountpoint -q /srv/elevate-data
+ExecStartPre=/usr/bin/test -w /srv/elevate-data
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=120
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
