@@ -205,7 +205,8 @@ export function adminReview(courseId: string, admin: SessionUser, action: Review
         throw new ApiError(422, "PRICING_NOT_APPROVED", "Approve a valid course price before publishing.");
       const missing = db.prepare(`SELECT 1 FROM lessons l JOIN course_sections s ON s.id=l.section_id WHERE s.course_id=?
         AND ((l.type='video' AND (l.video_storage_key IS NULL OR l.video_storage_key=''))
-        OR (l.type='reading' AND trim(l.description)='') OR l.type IN ('quiz','project')) LIMIT 1`).get(courseId);
+        OR (l.type='reading' AND trim(l.description)='' AND l.activity_json IS NULL)
+        OR (l.type IN ('quiz','project') AND l.activity_json IS NULL)) LIMIT 1`).get(courseId);
       if (!String(course.description).trim() || !course.thumbnail || !Number(course.lesson_count) || missing)
         throw new ApiError(422, "COURSE_INCOMPLETE", "Course content or hosted media is incomplete.");
       db.prepare("UPDATE courses SET status='published',published_at=COALESCE(published_at,?),updated_at=? WHERE id=?")

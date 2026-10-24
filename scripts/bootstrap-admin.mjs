@@ -7,8 +7,8 @@ const name = process.env.ADMIN_BOOTSTRAP_NAME?.trim();
 const email = process.env.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase();
 const password = process.env.ADMIN_BOOTSTRAP_PASSWORD;
 if (!url?.startsWith('file:') || !name || !email || !password ||
-  name.length < 2 || name.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 16) {
-  throw new Error('Set DATABASE_URL, ADMIN_BOOTSTRAP_NAME, ADMIN_BOOTSTRAP_EMAIL and a unique ADMIN_BOOTSTRAP_PASSWORD of at least 16 characters.');
+  name.length < 2 || name.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
+  throw new Error('Set DATABASE_URL, ADMIN_BOOTSTRAP_NAME, ADMIN_BOOTSTRAP_EMAIL and a unique ADMIN_BOOTSTRAP_PASSWORD of at least 8 characters.');
 }
 const db = new DatabaseSync(resolve(process.cwd(), url.slice(5)));
 db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');

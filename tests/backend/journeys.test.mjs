@@ -146,6 +146,60 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
   const otherInstructor = await login('priya-sundaram@instructors.example.invalid');
   assert.equal((await call('/api/auth/me', { cookie: otherLearner })).body.data.role, 'learner');
   assert.equal((await call('/api/auth/me', { cookie: otherInstructor })).body.data.role, 'instructor');
+  await t.test('each account can update only its own display name', async () => {
+    assert.equal((await call('/api/auth/me', { method: 'PATCH', body: { name: 'Anonymous' } })).response.status, 401);
+    assert.equal((await call('/api/auth/me', { method: 'PATCH', cookie: otherLearner, origin: 'https://elsewhere.invalid', body: { name: 'Cross Site' } })).response.status, 403);
+    assert.equal((await call('/api/auth/me', { method: 'PATCH', cookie: otherLearner, body: { name: 'Changed', role: 'admin' } })).response.status, 422);
+    assert.equal((await call('/api/auth/me', { method: 'PATCH', cookie: otherLearner, body: { name: 'A' } })).response.status, 422);
+    const updated = await call('/api/auth/me', { method: 'PATCH', cookie: otherLearner, body: { name: 'Updated Learner' } });
+    assert.equal(updated.response.status, 200);
+    assert.equal(updated.body.data.name, 'Updated Learner');
+    assert.equal(updated.body.data.role, 'learner');
+    assert.equal((await call('/api/auth/me', { cookie: otherLearner })).body.data.name, 'Updated Learner');
+    assert.notEqual((await call('/api/auth/me', { cookie: learner })).body.data.name, 'Updated Learner');
+    assert.equal((await call('/api/auth/me', { method: 'PATCH', cookie: otherInstructor, body: { name: 'Updated Instructor' } })).body.data.name, 'Updated Instructor');
+    assert.equal((await call('/profile', { cookie: otherLearner })).response.status, 200);
+    assert.equal((await call('/profile', { cookie: otherInstructor })).response.status, 200);
+    const signedOutPage = await call('/profile');
+    assert.equal(signedOutPage.response.status, 200); // Partial prerendered shell; redirect is streamed.
+    assert.doesNotMatch(signedOutPage.body.nonJson, /Updated Learner/);
+  });
+  await t.test('profile photos and password changes stay within the signed-in account', async () => {
+    const email = `profile-${randomBytes(5).toString('hex')}@example.invalid`;
+    const registered = await call('/api/auth/register', { method: 'POST', body: { name: 'Profile Tester', email, password } });
+    assert.equal(registered.response.status, 201);
+    const cookie = registered.response.headers.get('set-cookie').split(';')[0];
+    const image = readFileSync(resolve(root, 'public/courses/course-2.jpg'));
+    const upload = (session, bytes, mime = 'image/jpeg', origin = base) => fetch(`${base}/api/auth/me/avatar`, {
+      method: 'POST', headers: { ...(session ? { Cookie: session } : {}), Origin: origin, 'Content-Type': mime }, body: bytes,
+    });
+    assert.equal((await upload(null, image)).status, 401);
+    assert.equal((await upload(cookie, image, 'image/jpeg', 'https://elsewhere.invalid')).status, 403);
+    assert.equal((await upload(cookie, Buffer.from('not an image'))).status, 422);
+    assert.equal((await upload(cookie, image, 'image/svg+xml')).status, 415);
+    const uploaded = await upload(cookie, image);
+    assert.equal(uploaded.status, 201, await uploaded.clone().text());
+    const avatar = (await uploaded.json()).data.avatar;
+    assert.match(avatar, /^\/api\/avatars\/[0-9a-f-]+\.jpg$/);
+    assert.equal((await call('/api/auth/me', { cookie })).body.data.avatar, avatar);
+    assert.notEqual((await call('/api/auth/me', { cookie: otherLearner })).body.data.avatar, avatar);
+    const publicPhoto = await fetch(`${base}${avatar}`);
+    assert.equal(publicPhoto.status, 200);
+    assert.equal(publicPhoto.headers.get('x-content-type-options'), 'nosniff');
+    assert.deepEqual(Buffer.from(await publicPhoto.arrayBuffer()), image);
+    assert.equal((await call('/api/auth/me/avatar', { method: 'DELETE', cookie })).body.data.avatar, null);
+    assert.equal((await call(avatar)).response.status, 404);
+    assert.equal((await call('/api/auth/me', { cookie })).body.data.avatar, null);
+
+    assert.equal((await call('/api/auth/me/password', { method: 'POST', cookie, body: { currentPassword: 'wrong', newPassword: 'New-Password-123' } })).response.status, 401);
+    assert.equal((await call('/api/auth/me/password', { method: 'POST', cookie, body: { currentPassword: password, newPassword: 'short' } })).response.status, 422);
+    assert.equal((await call('/api/auth/me/password', { method: 'POST', cookie, origin: 'https://elsewhere.invalid', body: { currentPassword: password, newPassword: 'New-Password-123' } })).response.status, 403);
+    const changed = await call('/api/auth/me/password', { method: 'POST', cookie, body: { currentPassword: password, newPassword: 'New-Password-123' } });
+    assert.equal(changed.response.status, 200);
+    assert.equal((await call('/api/auth/me', { cookie })).response.status, 401);
+    assert.equal((await call('/api/auth/login', { method: 'POST', body: { email, password } })).response.status, 401);
+    assert.equal((await call('/api/auth/login', { method: 'POST', body: { email, password: 'New-Password-123' } })).response.status, 200);
+  });
   let earnedCertificateId = '';
   await t.test('unauthenticated, role, input and identity boundaries', async () => {
     for (const path of ['/api/me/enrollments', '/api/me/wishlist', '/api/me/certificates', '/api/instructor/students', '/api/admin/users']) {
@@ -371,6 +425,64 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const learnerPlayback = await fetch(`${base}${streamPath}`, { headers: { Cookie: learner, Range: 'bytes=0-3' } });
     assert.equal(learnerPlayback.status, 206);
     assert.deepEqual(Buffer.from(await learnerPlayback.arrayBuffer()), bytes.subarray(0, 4));
+  });
+  await t.test('quiz, assignment and resource lessons persist, publish and enforce submissions', async () => {
+    const slug = `activities-${randomBytes(6).toString('hex')}`;
+    const draft = {
+      id: `local-${randomBytes(6).toString('hex')}`, slug, title: 'Activity course', subtitle: 'Practice the material',
+      description: 'A complete course with interactive lessons.', category: 'Development', level: 'Beginner',
+      language: 'English', price: 0, image: '/courses/course-1.jpg', whatYouWillLearn: ['Apply the lesson'],
+      requirements: [], status: 'Draft', sections: [{ id: 'local-section', title: 'Activities', lessons: [
+        { id: 'local-quiz', title: 'Quiz', type: 'quiz', duration: '1 mins', activity: { kind: 'quiz', passingPercent: 100,
+          questions: [{ prompt: 'Which answer is correct?', options: ['Correct', 'Incorrect'], correctIndex: 0 }] } },
+        { id: 'local-assignment', title: 'Assignment', type: 'project', duration: '1 mins',
+          activity: { kind: 'assignment', instructions: 'Explain your answer in a short paragraph.' } },
+        { id: 'local-resource', title: 'Resource', type: 'reading', duration: '1 mins',
+          activity: { kind: 'resource', label: 'Guide', url: 'https://example.com/guide', description: 'Reference material' } },
+      ] }],
+    };
+    const saved = await call('/api/instructor/courses/save', { method: 'POST', cookie: instructor, body: draft });
+    assert.equal(saved.response.status, 200, JSON.stringify(saved.body));
+    const courseId = saved.body.data.id;
+    const [quizId, assignmentId, resourceId] = saved.body.data.sections[0].lessons.map((lesson) => lesson.id);
+    assert.equal(saved.body.data.sections[0].lessons[0].activity.questions[0].correctIndex, 0);
+    const submitted = await call('/api/instructor/courses/save', { method: 'POST', cookie: instructor,
+      body: { ...draft, id: courseId, sections: [{ ...draft.sections[0], id: saved.body.data.sections[0].id,
+        lessons: draft.sections[0].lessons.map((lesson, index) => ({ ...lesson, id: [quizId, assignmentId, resourceId][index] })) }],
+        status: 'Pending Approval' } });
+    assert.equal(submitted.response.status, 200, JSON.stringify(submitted.body));
+    const adminLogin = await call('/api/admin/auth/login', { method: 'POST', body: { email: 'admin@example.com', password } });
+    const adminCookie = adminLogin.response.headers.get('set-cookie').split(';')[0];
+    assert.equal((await call(`/api/admin/courses/${courseId}/pricing`, { method: 'PUT', cookie: adminCookie,
+      body: { basePriceMinor: 0, minMarginBps: 0, maxMarginBps: 0 } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${courseId}/pricing`, { method: 'POST', cookie: adminCookie,
+      body: { action: 'approve', marginBps: 0 } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${courseId}/review`, { method: 'POST', cookie: adminCookie,
+      body: { action: 'approve' } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${courseId}/review`, { method: 'POST', cookie: adminCookie,
+      body: { action: 'publish' } })).response.status, 200);
+    const publicCourse = await call(`/api/courses/${courseId}`);
+    assert.equal(publicCourse.response.status, 200);
+    assert.equal(JSON.stringify(publicCourse.body).includes('correctIndex'), false);
+    assert.equal((await call(`/api/courses/${courseId}/enroll`, { method: 'POST', cookie: learner })).response.status, 200);
+    assert.equal((await call(`/api/courses/${courseId}/lessons/${quizId}/progress`, { method: 'PUT', cookie: learner,
+      body: { completed: true } })).response.status, 409);
+    const wrong = await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: learner, body: { response: [1] } });
+    assert.equal(wrong.response.status, 200, JSON.stringify(wrong.body));
+    assert.equal(wrong.body.data.passed, false);
+    const correct = await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: learner, body: { response: [0] } });
+    assert.equal(correct.response.status, 200, JSON.stringify(correct.body));
+    assert.equal(correct.body.data.passed, true);
+    assert.equal((await call(`/api/courses/${courseId}/lessons/${assignmentId}/progress`, { method: 'PUT', cookie: learner,
+      body: { completed: true } })).response.status, 409);
+    const assignment = await call(`/api/courses/${courseId}/lessons/${assignmentId}/submit`, { method: 'POST', cookie: learner,
+      body: { response: 'This is my written assignment response.' } });
+    assert.equal(assignment.response.status, 200, JSON.stringify(assignment.body));
+    assert.equal(assignment.body.data.passed, true);
+    assert.equal((await call(`/api/courses/${courseId}/lessons/${resourceId}/progress`, { method: 'PUT', cookie: learner,
+      body: { completed: true } })).response.status, 200);
+    assert.equal((await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: otherLearner,
+      body: { response: [0] } })).response.status, 403);
   });
   await t.test('draft preview media cannot be accessed by another learner', async () => {
     const slug = `media-draft-${randomBytes(5).toString('hex')}`;
@@ -611,7 +723,8 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.ok(unauthorizedPage.status === 307 || unauthorizedHtml.includes('NEXT_REDIRECT'));
     const protectedPages = ['/control-center', '/control-center/courses', '/control-center/courses/approvals', '/control-center/pricing',
       '/control-center/users', '/control-center/orders', '/control-center/categories', '/control-center/settings',
-      '/control-center/operations/live', '/control-center/operations/certificates', '/control-center/profiles'];
+      '/control-center/operations/live', '/control-center/operations/certificates', '/control-center/profiles',
+      '/control-center/my-profile'];
     for (const path of protectedPages) {
       const response = await fetch(`${base}${path}`, { headers: { Cookie: admin }, redirect: 'manual' });
       assert.equal(response.status, 200, path);

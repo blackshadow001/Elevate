@@ -69,6 +69,9 @@ export function updateProgress(courseId: string, lessonId: string, user: Session
       ? verifiedWatch(user.id, lessonId, String(lesson.video_storage_key)) : null;
     if (completed && lesson.type === "video" && !watch?.complete)
       throw new ApiError(409, "WATCH_INCOMPLETE", "Watch at least 90% of the video and reach the end before marking this lesson complete.");
+    if (completed && (lesson.type === "quiz" || lesson.type === "project") && !db.prepare(`SELECT 1 FROM lesson_activity_submissions
+      WHERE user_id=? AND lesson_id=? AND passed=1 LIMIT 1`).get(user.id, lessonId))
+      throw new ApiError(409, "SUBMISSION_REQUIRED", "Submit and pass this activity before completing the lesson.");
     const duration = Number(lesson.duration_seconds);
     const watched = watch ? watch.watchedSeconds : Math.min(watchedInput, duration);
     const now = new Date().toISOString();

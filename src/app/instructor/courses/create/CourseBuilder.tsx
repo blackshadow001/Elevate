@@ -8,6 +8,8 @@ import { mockInstructors } from "@/data/instructors";
 import { InstructorCourse, refreshInstructorCourses, saveInstructorCourse } from "@/lib/instructorCourses";
 import { MAX_VIDEO_SIZE_BYTES } from "@/lib/mediaLimits";
 import { formatVideoDuration, measureVideoDuration } from "@/lib/videoDuration";
+import { type LessonActivity, newLessonActivity } from "@/lib/lessonActivities";
+import { LessonActivityEditor } from "@/components/instructor/LessonActivityEditor";
 import { VideoPlayer } from "@/components/learning/VideoPlayer";
 import { 
   ArrowLeft, 
@@ -42,12 +44,45 @@ interface BuilderLesson {
   videoUrl?: string;
   content?: string;
   videoFileName?: string;
+  activity?: LessonActivity | null;
 }
 
 interface BuilderSection {
   id: string;
   title: string;
   lessons: BuilderLesson[];
+}
+
+function uploadLessonVideo(url: string, file: File, durationSeconds: number,
+  onProgress: (percent: number) => void, onProcessing: () => void): Promise<{ url: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.setRequestHeader("X-Video-Duration-Seconds", String(durationSeconds));
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable && file.size) onProgress(Math.min(100, Math.round(event.loaded / file.size * 100)));
+    });
+    xhr.upload.addEventListener("load", onProcessing);
+    xhr.addEventListener("error", () => reject(new Error("The network connection interrupted the upload. Please try again.")));
+    xhr.addEventListener("abort", () => reject(new Error("Video upload was cancelled.")));
+    xhr.addEventListener("load", () => {
+      let result: { data?: { url?: string }; error?: { message?: string } };
+      try { result = JSON.parse(xhr.responseText); }
+      catch { reject(new Error("The server returned an unreadable upload response.")); return; }
+      if (xhr.status < 200 || xhr.status >= 300 || !result.data?.url) {
+        reject(new Error(result.error?.message || "Video upload failed.")); return;
+      }
+      resolve({ url: result.data.url });
+    });
+    xhr.send(file);
+  });
+}
+
+function isHttpsUrl(value: string): boolean {
+  try { return new URL(value).protocol === "https:"; }
+  catch { return false; }
 }
 
 export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCourse }) {
@@ -82,7 +117,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const [sections, setSections] = useState<BuilderSection[]>(initialCourse ? initialCourse.sections.map((section) => ({
     id: section.id,
     title: section.title,
-    lessons: section.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, duration: lesson.duration, type: (lesson.type === "video" ? "Video" : lesson.type === "quiz" ? "Quiz" : lesson.type === "project" ? "Assignment" : "Text") as LessonType, videoUrl: lesson.videoUrl, content: lesson.content })),
+    lessons: section.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, duration: lesson.duration, type: (lesson.type === "video" ? "Video" : lesson.type === "quiz" ? "Quiz" : lesson.type === "project" ? "Assignment" : lesson.type === "resource" ? "Resource" : "Text") as LessonType, videoUrl: lesson.videoUrl, content: lesson.content, activity: lesson.activity })),
   })) : [
     {
       id: "sec-1",
@@ -136,6 +171,8 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const [previewFileName, setPreviewFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadPercent, setVideoUploadPercent] = useState<number | null>(null);
+  const [videoUploadStage, setVideoUploadStage] = useState<"preparing" | "uploading" | "processing" | null>(null);
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   // Pricing State
@@ -255,6 +292,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
           type: lesson.type === "Video" ? "video" : lesson.type === "Quiz" ? "quiz" : lesson.type === "Assignment" ? "project" : "reading",
           videoUrl: lesson.type === "Video" ? lesson.videoUrl : undefined,
           content: lesson.type === "Text" ? lesson.content?.trim() : undefined,
+          activity: lesson.type === "Quiz" || lesson.type === "Assignment" || lesson.type === "Resource" ? lesson.activity : undefined,
         })),
       })),
       status,
@@ -326,20 +364,23 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     setPreviewFileName(file.name);
     setPreviewUrl(URL.createObjectURL(file));
     setUploadingVideo(true);
+    setVideoUploadPercent(0);
+    setVideoUploadStage("preparing");
     try {
       const durationSeconds = await measureVideoDuration(file);
       const { saved, lessonId } = await saveDraft();
-      const response = await fetch(`/api/instructor/courses/${encodeURIComponent(saved.id)}/lessons/${encodeURIComponent(lessonId)}/media`, {
-        method: "POST", credentials: "same-origin",
-        headers: { "Content-Type": file.type, "X-Video-Duration-Seconds": String(durationSeconds) }, body: file,
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error?.message || "Video upload failed.");
-      const hostedUrl = result.data.url as string;
+      setVideoUploadStage("uploading");
+      const result = await uploadLessonVideo(`/api/instructor/courses/${encodeURIComponent(saved.id)}/lessons/${encodeURIComponent(lessonId)}/media`,
+        file, durationSeconds, setVideoUploadPercent, () => { setVideoUploadPercent(100); setVideoUploadStage("processing"); });
+      const hostedUrl = result.url;
       setSections((previous) => previous.map((section) => ({ ...section, lessons: section.lessons.map((lesson) =>
         lesson.id === lessonId ? { ...lesson, videoUrl: hostedUrl, duration: formatVideoDuration(durationSeconds) } : lesson) })));
+      setVideoUploadPercent(100);
+      setVideoUploadStage(null);
       notify({ type: "success", title: "Video uploaded", message: "The video is saved privately with this lesson. You can now submit the completed course for review." });
     } catch (error) {
+      setVideoUploadPercent(null);
+      setVideoUploadStage(null);
       notify({ type: "error", title: "Video not uploaded", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setUploadingVideo(false);
@@ -359,7 +400,13 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     if (!sections.length || sections.some((section) => !section.title.trim() || !section.lessons.length || section.lessons.some((lesson) => !lesson.title.trim()))) missing.push("complete curriculum");
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Video" && !lesson.videoUrl?.startsWith("/api/media/")))) missing.push("uploaded video for each video lesson");
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Text" && !lesson.content?.trim()))) missing.push("reading lesson content");
-    if (sections.some((section) => section.lessons.some((lesson) => ["Quiz", "Assignment", "Resource"].includes(lesson.type)))) missing.push("quiz, assignment, and resource authoring (not connected)");
+    if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Quiz" &&
+      (lesson.activity?.kind !== "quiz" || !lesson.activity.questions.length || lesson.activity.questions.some((question) =>
+        !question.prompt.trim() || question.options.some((option) => !option.trim()) || question.correctIndex === undefined))))) missing.push("complete quiz questions and answers");
+    if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Assignment" &&
+      (lesson.activity?.kind !== "assignment" || !lesson.activity.instructions.trim())))) missing.push("assignment instructions");
+    if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Resource" &&
+      (lesson.activity?.kind !== "resource" || !lesson.activity.label.trim() || !isHttpsUrl(lesson.activity.url))))) missing.push("resource names and HTTPS links");
     if (!Number.isFinite(proposedPrice) || proposedPrice < 0) missing.push("valid proposed pricing");
     if (basePriceMinor !== null && basePriceMinor !== undefined &&
       (Math.round(marginPercent * 100) < (initialCourse?.pricing?.minMarginBps ?? 0) ||
@@ -741,7 +788,8 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                             setSections((prev) =>
                               prev.map((s) => ({
                                 ...s,
-                                lessons: s.lessons.map((l) => (l.id === les.id ? { ...l, type: t } : l)),
+                                lessons: s.lessons.map((l) => (l.id === les.id ? { ...l, type: t,
+                                  activity: t === "Quiz" || t === "Assignment" || t === "Resource" ? newLessonActivity(t) : null } : l)),
                               }))
                             );
                           }}
@@ -776,7 +824,10 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                       </div>
                     </div>
                     {les.type === "Text" && <textarea value={les.content || ""} onChange={(event) => setSections((previous) => previous.map((section) => ({ ...section, lessons: section.lessons.map((lesson) => lesson.id === les.id ? { ...lesson, content: event.target.value } : lesson) })))} aria-label={`Reading content for ${les.title}`} placeholder="Write the reading lesson content" rows={3} className="w-full rounded-lg border border-[#E5E7EB] bg-[#F7F8FA] p-3 text-xs text-[#172033]" />}
-                    {["Quiz", "Assignment", "Resource"].includes(les.type) && <p className="text-xs text-amber-700">Draft only: authoring and submission for this lesson type are not connected yet.</p>}
+                    {(les.type === "Quiz" || les.type === "Assignment" || les.type === "Resource") &&
+                      <LessonActivityEditor activity={les.activity || newLessonActivity(les.type)}
+                        onChange={(activity) => setSections((previous) => previous.map((section) => ({ ...section,
+                          lessons: section.lessons.map((lesson) => lesson.id === les.id ? { ...lesson, activity } : lesson) })))} />}
                     </div>
                   ))}
                 </div>
@@ -825,6 +876,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                 <label className="block text-xs font-bold uppercase text-[#172033]">Select Lesson to Edit Video</label>
                 <select
                   value={activeUploadLesson}
+                  disabled={uploadingVideo}
                   onChange={(e) => { setActiveUploadLesson(e.target.value); setPreviewFileName(""); setPreviewUrl(""); }}
                   className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#172033]"
                 >
@@ -858,6 +910,13 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                     onChange={handleLocalVideoPreview}
                   />
                 </label>
+                {videoUploadPercent !== null && <div className="pt-1 text-left" role="status" aria-live="polite">
+                  <div className="mb-1 flex justify-between text-[11px] font-bold text-[#172033]">
+                    <span>{videoUploadStage === "preparing" ? "Preparing lesson…" : videoUploadStage === "processing" ? "Upload sent; saving on server…" : videoUploadStage === "uploading" ? "Uploading video…" : "Upload complete"}</span>
+                    <span>{videoUploadPercent}%</span>
+                  </div>
+                  <progress max={100} value={videoUploadPercent} aria-label="Video upload progress" className="h-2 w-full accent-[#FF6B35]" />
+                </div>}
               </div>
 
               {/* A local preview remains distinct from a completed server upload. */}

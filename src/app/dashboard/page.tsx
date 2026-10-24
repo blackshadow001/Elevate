@@ -106,11 +106,8 @@ export default function DashboardPage() {
           <Reveal direction="down">
             <div className="bg-white rounded-3xl border border-[#E5E7EB] p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-5">
-                <img
-                  src={mockUserStats.avatar}
-                  alt={mockUserStats.name}
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-[#FF6B35]"
-                />
+                {mockUserStats.avatar ? <img src={mockUserStats.avatar} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-[#FF6B35]" /> :
+                  <span className="flex w-16 h-16 items-center justify-center rounded-2xl bg-[#FFF0EB] text-xl font-extrabold text-[#E85D2A]" aria-hidden="true">{mockUserStats.name.slice(0, 2).toUpperCase()}</span>}
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
                     Good morning, {mockUserStats.name} 👋

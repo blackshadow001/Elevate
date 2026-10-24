@@ -202,11 +202,8 @@ export function Navbar() {
               aria-label={`${user.name} account menu`}
               className="flex items-center gap-2.5 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none"
             >
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="w-8 h-8 rounded-full object-cover border border-[#E5E7EB]"
-              />
+              {user.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-[#E5E7EB]" /> :
+                <span className="flex w-8 h-8 items-center justify-center rounded-full bg-[#FFF0EB] text-xs font-bold text-[#E85D2A]" aria-hidden="true">{user.name.trim().slice(0, 2).toUpperCase()}</span>}
               <span className="text-xs font-bold text-[#172033] max-w-[100px] truncate">
                 {user.name}
               </span>
@@ -231,6 +228,14 @@ export function Navbar() {
                 </div>
 
                 {/* Nav Links */}
+                <Link
+                  href="/profile"
+                  onClick={() => setProfileDropdownOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#172033] hover:bg-[#F7F8FA] hover:text-[#FF6B35]"
+                >
+                  <UserIcon className="w-4 h-4 text-[#FF6B35]" />
+                  <span>My Profile</span>
+                </Link>
                 {user.role === "instructor" ? (
                   <>
                     <Link
@@ -365,6 +370,7 @@ export function Navbar() {
             {isAuthenticated && <Link href={user.role === "instructor" ? "/instructor" : "/dashboard"} onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]">
               {user.role === "instructor" ? "Instructor Studio" : "My Learning"}
             </Link>}
+            {isAuthenticated && <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]">My Profile</Link>}
             {isAuthenticated && user.role === "learner" && <Link href="/certificates" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]">My Certificates</Link>}
           </div>
 

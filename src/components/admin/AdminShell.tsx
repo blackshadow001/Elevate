@@ -109,7 +109,7 @@ export default function AdminShell({
   adminUser,
 }: {
   children: React.ReactNode;
-  adminUser: { id: string; name: string; email: string; role: string; isSuperAdmin?: boolean };
+  adminUser: { id: string; name: string; email: string; role: string; avatar: string | null; isSuperAdmin?: boolean };
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -212,12 +212,10 @@ export default function AdminShell({
 
             {/* Admin identity pill */}
             <div className="flex items-center gap-3 border-l border-[#E5E7EB] pl-3 sm:pl-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#172033] text-white font-bold text-xs uppercase shadow-xs">
-                {adminUser.name.slice(0, 2)}
-              </div>
+              {adminUser.avatar ? <img src={adminUser.avatar} alt="" className="h-9 w-9 rounded-xl object-cover" /> :
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#172033] text-white font-bold text-xs uppercase shadow-xs">{adminUser.name.slice(0, 2)}</div>}
               <div className="hidden sm:flex flex-col text-left">
-                {adminUser.isSuperAdmin ? <Link href="/control-center/profiles" title="Manage administrator profiles and password" className="text-xs font-bold text-[#172033] leading-none hover:text-[#FF6B35]">{adminUser.name}</Link>
-                  : <span className="text-xs font-bold text-[#172033] leading-none">{adminUser.name}</span>}
+                <Link href="/control-center/my-profile" title="My profile" className="text-xs font-bold text-[#172033] leading-none hover:text-[#FF6B35]">{adminUser.name}</Link>
                 <span className="text-[10px] text-[#64748B] font-medium leading-tight mt-0.5">
                   {adminUser.isSuperAdmin ? "Super Admin" : "Administrator"}
                 </span>
@@ -380,6 +378,10 @@ export default function AdminShell({
                 </div>
 
                 <div className="pt-4 border-t border-[#E5E7EB]">
+                  <Link href="/control-center/my-profile" onClick={() => setMobileOpen(false)} className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#F7F8FA] py-2.5 text-xs font-bold text-[#172033] hover:bg-[#FFF0EB]">
+                    <UserCog className="h-4 w-4" />
+                    <span>My Profile</span>
+                  </Link>
                   <button
                     type="button"
                     onClick={handleSignOut}

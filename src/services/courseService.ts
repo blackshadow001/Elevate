@@ -11,6 +11,7 @@ import { getDb } from "@/server/db";
 import { getCourse, listCourses } from "@/server/courses";
 import { currentUser } from "@/server/auth";
 import { formatVideoDuration } from "@/lib/videoDuration";
+import { publicActivity } from "@/server/lessonActivities";
 
 type ServerCourse = ReturnType<typeof getCourse>;
 
@@ -66,8 +67,9 @@ function mapCourse(source: ServerCourse): Course {
           id: lesson.id, title: lesson.title,
           duration: lesson.mediaAssetId
             ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
-          type: lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
-          content: lesson.description, videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` : seedLesson?.videoUrl,
+          type: lesson.activity?.kind === "resource" ? "resource" : lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
+          content: lesson.description, activity: publicActivity(lesson.activity),
+          videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` : seedLesson?.videoUrl,
         };
       }),
     })),

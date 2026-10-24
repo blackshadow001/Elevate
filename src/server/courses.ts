@@ -4,6 +4,7 @@ import { ApiError, number, optionalText, text } from "@/server/api";
 import { SessionUser } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { markRevision, pricingForCourse, proposal } from "@/server/courseApproval";
+import { readActivity } from "@/server/lessonActivities";
 
 type Row = Record<string, unknown>;
 const courseSelect = `SELECT c.id,c.slug,c.title,c.subtitle,c.description,c.category,c.level,c.language,
@@ -81,10 +82,11 @@ export function getCourse(idOrSlug: string, publishedOnly = true) {
     ...courseDto(row),
     sections: sections.map((section) => ({
       id: String(section.id), title: String(section.title), position: Number(section.position),
-      lessons: db.prepare(`SELECT l.id,l.title,l.description,l.position,l.type,l.duration_seconds,l.is_preview,l.status,
+      lessons: db.prepare(`SELECT l.id,l.title,l.description,l.activity_json,l.position,l.type,l.duration_seconds,l.is_preview,l.status,
         m.id media_asset_id FROM lessons l LEFT JOIN media_assets m ON m.storage_key=l.video_storage_key
         WHERE l.section_id=? ${publishedOnly ? "AND l.status='published'" : ""} ORDER BY l.position`).all(String(section.id)).map((lesson) => ({
           id: String(lesson.id), title: String(lesson.title), description: String(lesson.description),
+          activity: publishedOnly ? null : readActivity(lesson.activity_json),
           position: Number(lesson.position), type: String(lesson.type), durationSeconds: Number(lesson.duration_seconds),
           isPreview: Boolean(lesson.is_preview), status: String(lesson.status),
           mediaAssetId: lesson.media_asset_id ? String(lesson.media_asset_id) : null,
@@ -172,11 +174,11 @@ export function setCourseStatus(id: string, user: SessionUser, status: "draft" |
     const missingMedia = db.prepare(`SELECT 1 FROM lessons l JOIN course_sections s ON s.id=l.section_id
       WHERE s.course_id=? AND l.status='published' AND l.type='video' AND (l.video_storage_key IS NULL OR l.video_storage_key='') LIMIT 1`).get(id);
     if (missingMedia) throw new ApiError(422, "COURSE_MEDIA_INCOMPLETE", "Add hosted media to every video lesson before submitting for review.");
-    const unsupportedLesson = db.prepare(`SELECT 1 FROM lessons l JOIN course_sections s ON s.id=l.section_id
-      WHERE s.course_id=? AND l.status='published' AND l.type IN ('quiz','project') LIMIT 1`).get(id);
-    if (unsupportedLesson) throw new ApiError(422, "COURSE_ACTIVITY_INCOMPLETE", "Interactive quizzes and projects need an authoring and submission workflow before publishing.");
+    const incompleteActivity = db.prepare(`SELECT 1 FROM lessons l JOIN course_sections s ON s.id=l.section_id
+      WHERE s.course_id=? AND l.status='published' AND l.type IN ('quiz','project') AND l.activity_json IS NULL LIMIT 1`).get(id);
+    if (incompleteActivity) throw new ApiError(422, "COURSE_ACTIVITY_INCOMPLETE", "Add quiz questions and assignment instructions before submitting.");
     const emptyReading = db.prepare(`SELECT 1 FROM lessons l JOIN course_sections s ON s.id=l.section_id
-      WHERE s.course_id=? AND l.status='published' AND l.type='reading' AND trim(l.description)='' LIMIT 1`).get(id);
+      WHERE s.course_id=? AND l.status='published' AND l.type='reading' AND trim(l.description)='' AND l.activity_json IS NULL LIMIT 1`).get(id);
     if (emptyReading) throw new ApiError(422, "COURSE_READING_INCOMPLETE", "Add content to every published reading lesson before publishing.");
   }
   if (status === "published") {

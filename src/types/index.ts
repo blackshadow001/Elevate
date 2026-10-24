@@ -1,3 +1,5 @@
+import type { LessonActivity } from "@/lib/lessonActivities";
+
 export interface Instructor {
   id: string;
   name: string;
@@ -13,10 +15,11 @@ export interface Lesson {
   id: string;
   title: string;
   duration: string;
-  type: "video" | "reading" | "quiz" | "project";
+  type: "video" | "reading" | "quiz" | "project" | "resource";
   completed?: boolean;
   videoUrl?: string;
   content?: string;
+  activity?: LessonActivity | null;
   notes?: string;
   resources?: { name: string; size: string; url: string }[];
 }

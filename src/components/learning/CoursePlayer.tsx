@@ -23,6 +23,7 @@ import { VideoPlayer } from "@/components/learning/VideoPlayer";
 import { setLessonCompletion, useLearningState } from "@/lib/learningState";
 import { useAuth } from "@/context/AuthContext";
 import { formatVideoDuration } from "@/lib/videoDuration";
+import { LessonActivityView } from "@/components/learning/LessonActivityView";
 
 interface CoursePlayerProps {
   course: Course;
@@ -93,6 +94,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
 
   const isCompleted = completedLessonIds.includes(currentLesson.id);
   const isMediaUnavailable = currentLesson.type === "video" && !currentLesson.videoUrl;
+  const requiresSubmission = (currentLesson.type === "quiz" || currentLesson.type === "project") && !isCompleted;
   const progressPercent = Math.min(
     100,
     Math.round((completedLessonIds.length / allFlatLessons.length) * 100)
@@ -191,6 +193,18 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                 </button>
               </div>
             </div>
+          ) : (currentLesson.type === "quiz" && currentLesson.activity?.kind === "quiz") ||
+            (currentLesson.type === "project" && currentLesson.activity?.kind === "assignment") ? (
+            <LessonActivityView key={currentLesson.id} activity={currentLesson.activity} courseId={course.id}
+              lessonId={currentLesson.id} title={currentLesson.title} onCompleted={() => toggleCompleted(currentLesson.id)} />
+          ) : currentLesson.type === "resource" && currentLesson.activity?.kind === "resource" ? (
+            <div className="min-h-72 bg-[#172033] px-6 py-12 text-white sm:px-12"><div className="mx-auto max-w-3xl space-y-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#FFB18F]">Learning resource</p>
+              <h2 className="text-2xl font-bold">{currentLesson.title}</h2>
+              <p className="text-sm text-slate-200">{currentLesson.activity.description}</p>
+              <a href={currentLesson.activity.url} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl bg-[#FF6B35] px-5 py-3 text-sm font-bold text-white hover:bg-[#E85D2A]">Open {currentLesson.activity.label} ↗</a>
+              <p className="text-xs text-slate-300">Open the resource, then mark this lesson complete.</p>
+            </div></div>
           ) : currentLesson.type === "reading" ? (
             <div className="min-h-72 bg-[#172033] px-6 py-12 text-white sm:px-12">
               <div className="mx-auto max-w-3xl">
@@ -259,7 +273,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
               <button
                 type="button"
                 onClick={() => { void toggleCompleted(currentLesson.id); }}
-                disabled={savingProgress || isCompleted || isMediaUnavailable}
+                disabled={savingProgress || isCompleted || isMediaUnavailable || requiresSubmission}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all active:scale-95 ${
                   isCompleted
                     ? "bg-emerald-50 text-[#16A34A] border border-emerald-200"
@@ -274,7 +288,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                 <button
                   type="button"
                   onClick={handleMarkCompleteAndNext}
-                  disabled={savingProgress || isMediaUnavailable}
+                  disabled={savingProgress || isMediaUnavailable || requiresSubmission}
                   className="inline-flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#E85D2A] text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-colors active:scale-95"
                 >
                   <span>Next Lesson</span>

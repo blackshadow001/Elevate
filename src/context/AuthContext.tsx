@@ -17,7 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 type ApiUser = { id: string; name: string; email: string; role: User["role"]; avatar: string | null };
 function toUser(user: ApiUser): User {
-  return { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar || mockUsers[0].avatar };
+  return { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar || "" };
 }
 function errorMessage(body: unknown, fallback: string) {
   if (body && typeof body === "object" && "error" in body) {

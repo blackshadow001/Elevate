@@ -6,6 +6,7 @@ import { SessionUser } from "@/server/auth";
 import { createCourse, getCourse, ownedCourse, setCourseStatus, updateCourse } from "@/server/courses";
 import { transaction } from "@/server/db";
 import { deleteLocalMedia } from "@/server/localMedia";
+import { parseActivity } from "@/server/lessonActivities";
 
 type Input = Record<string, unknown>;
 
@@ -47,6 +48,7 @@ export async function saveCourseDraft(user: SessionUser, body: Input) {
   if (image && !image.startsWith("/") && !image.startsWith("https://")) throw new ApiError(422, "INVALID_THUMBNAIL", "Thumbnail must be a site path or HTTPS URL.");
   const outcomes = lines(body.whatYouWillLearn ?? [], "Learning outcomes");
   const requirements = lines(body.requirements ?? [], "Requirements");
+  const status = body.status === "Pending Approval" || body.status === "Published" ? "published" : body.status === "Archived" ? "archived" : "draft";
   if (!Array.isArray(body.sections) || body.sections.length > 100) throw new ApiError(422, "INVALID_CURRICULUM", "Provide up to 100 sections.");
   let lessonCount = 0;
   const sections = body.sections.map((value) => {
@@ -59,12 +61,12 @@ export async function saveCourseDraft(user: SessionUser, body: Input) {
       const type = text(lesson.type, "Lesson type", 1, 20);
       if (!["video", "reading", "quiz", "project"].includes(type)) throw new ApiError(422, "INVALID_TYPE", "Unsupported lesson type.");
       return { id: typeof lesson.id === "string" ? lesson.id : "", title: text(lesson.title, "Lesson title", 1, 200), type,
-        durationSeconds: parseMinutes(lesson.duration), description: text(lesson.content ?? "", "Lesson content", 0, 5000) };
+        durationSeconds: parseMinutes(lesson.duration), description: text(lesson.content ?? "", "Lesson content", 0, 5000),
+        activity: parseActivity(lesson.activity, type, status === "published") };
     });
     return { id: typeof section.id === "string" ? section.id : "", title: sectionTitle, lessons };
   });
   if (lessonCount > 500) throw new ApiError(422, "INVALID_CURRICULUM", "A course supports up to 500 lessons.");
-  const status = body.status === "Pending Approval" || body.status === "Published" ? "published" : body.status === "Archived" ? "archived" : "draft";
   if (status === "published" && (!subtitle || !description || !image || !outcomes.length || lessonCount === 0)) {
     throw new ApiError(422, "COURSE_INCOMPLETE", "Add a subtitle, description, thumbnail, learning outcomes and lessons before publishing.");
   }
@@ -113,8 +115,8 @@ export async function saveCourseDraft(user: SessionUser, body: Input) {
         const lessonId = preserved ? lesson.id : randomUUID();
         if (usedLessonIds.has(lessonId)) throw new ApiError(422, "INVALID_CURRICULUM", "A lesson appears more than once.");
         usedLessonIds.add(lessonId);
-        db.prepare(`INSERT INTO lessons (id,section_id,title,description,position,type,video_storage_key,duration_seconds,is_preview,status)
-          VALUES (?,?,?,?,?,?,?,?,?,?)`).run(lessonId, sectionId, lesson.title, lesson.description,
+        db.prepare(`INSERT INTO lessons (id,section_id,title,description,activity_json,position,type,video_storage_key,duration_seconds,is_preview,status)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(lessonId, sectionId, lesson.title, lesson.description, lesson.activity ? JSON.stringify(lesson.activity) : null,
           lessonPosition, lesson.type, lesson.type === "video" ? preserved?.storageKey || null : null,
           actualDuration, position === 0 && lessonPosition === 0 ? 1 : 0, "published");
       });

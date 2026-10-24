@@ -1,6 +1,6 @@
 # Elevate on AWS Free plan (temporary deployment)
 
-This is a **single-EC2-instance** deployment of Elevate. The existing SQLite database and private course media live on an attached Amazon EBS volume, so no database or media-code migration is required. This is a prepared procedure, **not evidence that an AWS account, EC2 instance, or live site exists**.
+This is a **single-EC2-instance** deployment of Elevate. The existing SQLite database and private course media live on an attached Amazon EBS volume, so no database or media-code migration is required.
 
 ## 1. Account and credit limits
 
@@ -34,7 +34,7 @@ Create a dedicated `elevate` Linux user and give it ownership of the mounted dat
 
 ## 4. Install and configure the app
 
-Follow the shared Linux application steps in [Oracle guide sections 3–7](ORACLE_ALWAYS_FREE.md#3-install-nodejs-and-the-reverse-proxy): install Node.js 24 and Caddy 2.10+, clone the repository, run `npm ci` and the production build, and install the provided systemd, environment, and Caddy templates from [`deploy/oci`](../../deploy/oci). Those three templates contain no Oracle API calls and also work on EC2 with the same `/srv/elevate-data` mount. Replace `lms.example.com` with a DNS name pointing to the instance. Set `NEXT_PUBLIC_SITE_URL` **during build** and in the protected runtime environment. Keep the SQLite file and uploads on the EBS mount.
+Follow the shared Linux application steps in [Oracle guide sections 3–7](ORACLE_ALWAYS_FREE.md#3-install-nodejs-and-the-reverse-proxy): install Node.js 24 and Caddy 2.10+, clone the repository, run `npm ci` and the production build, and install the provided systemd, environment, and Caddy templates from [`deploy/oci`](../../deploy/oci). Those three templates contain no Oracle API calls and also work on EC2 with the same `/srv/elevate-data` mount. Replace `lms.example.com` and `admin.example.com` with DNS names pointing to the instance. Set `NEXT_PUBLIC_SITE_URL` to the learner hostname **during build** and in the protected runtime environment. Keep the SQLite file and uploads on the EBS mount.
 
 `npm run start` applies pending SQLite migrations before the server listens. Bootstrap the first administrator once using private `ADMIN_BOOTSTRAP_*` values. Do not run the development seed on a live instance. Keep the database, media directory, and environment file out of Git.
 
@@ -46,4 +46,4 @@ Before inviting learners, make and **restore-test** an off-instance backup of bo
 
 ## Current status
 
-The AWS signup form has been opened for the account owner. No account, EC2 instance, EBS volume, DNS record, live HTTPS endpoint, or AWS browser acceptance test has been verified as of 24 October 2026. The repository's previous local verification is recorded in the [Oracle guide](ORACLE_ALWAYS_FREE.md#repository-verification-23-october-2026); it is not a live AWS test.
+As of 24 October 2026, the Free plan project has one running Sydney EC2 instance (`i-090796bdf06729709`), with the encrypted data EBS volume mounted at `/srv/elevate-data`. The app and Caddy are active. The first super admin has been bootstrapped. HTTPS health checks pass on the temporary learner hostname `lms.16-178-85-19.sslip.io`; the admin login is served at `admin.16-178-85-19.sslip.io/control-center/login`. The learner host redirects admin pages and blocks admin APIs. The Google OAuth web client is installed in a protected server file and the authorization redirect reaches Google with the intended learner callback. Completing consent and sign-in still requires registering that exact callback in Google Cloud and testing with a learner account. These temporary hostnames depend on the instance's current public IP. A user-owned domain, stable IP, off-instance backup restore test, and authenticated browser acceptance checks are still pending.

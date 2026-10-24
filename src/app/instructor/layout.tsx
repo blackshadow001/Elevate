@@ -105,11 +105,8 @@ function InstructorStudioContent({
 
           {/* Instructor Profile Card */}
           <div className="bg-[#26344D]/70 p-3.5 rounded-2xl border border-white/5 flex items-center gap-3">
-            <img
-              src={user.role === "instructor" ? user.avatar : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200"}
-              alt="Instructor"
-              className="w-10 h-10 rounded-xl object-cover border border-[#FF6B35]/40"
-            />
+            {user.avatar ? <img src={user.avatar} alt="" className="w-10 h-10 rounded-xl object-cover border border-[#FF6B35]/40" /> :
+              <span className="flex w-10 h-10 items-center justify-center rounded-xl bg-[#FFF0EB] text-sm font-bold text-[#E85D2A]" aria-hidden="true">{user.name.trim().slice(0, 2).toUpperCase()}</span>}
             <div className="min-w-0 flex-1">
               <div className="font-bold text-xs text-white truncate">
                 {user.role === "instructor" ? user.name : "John Doe"}

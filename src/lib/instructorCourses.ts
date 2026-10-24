@@ -6,6 +6,7 @@ import { mockCourses } from "@/data/courses";
 import { mockInstructors } from "@/data/instructors";
 import { useAuth } from "@/context/AuthContext";
 import { formatVideoDuration } from "@/lib/videoDuration";
+import { type LessonActivity } from "@/lib/lessonActivities";
 
 export type InstructorCourse = Course & {
   status: "Draft" | "Pending Approval" | "Approved" | "Published" | "Rejected" | "Unpublished" | "Archived";
@@ -25,7 +26,7 @@ type ApiCourse = {
   reviewFeedback?: string | null;
   metadata: { whatYouWillLearn?: string[]; requirements?: string[]; originalPrice?: number };
   sections: Array<{ id: string; title: string; lessons: Array<{
-    id: string; title: string; description: string; type: string; durationSeconds: number; mediaAssetId?: string | null;
+    id: string; title: string; description: string; type: string; durationSeconds: number; mediaAssetId?: string | null; activity?: LessonActivity | null;
   }> }>;
 };
 const EMPTY: InstructorCourse[] = [];
@@ -68,10 +69,10 @@ function toCourse(course: ApiCourse): InstructorCourse {
     whatYouWillLearn: course.metadata?.whatYouWillLearn || [], requirements: course.metadata?.requirements || [],
     sections: course.sections.map((section) => ({ id: section.id, title: section.title,
       lessons: section.lessons.map((lesson) => ({
-        id: lesson.id, title: lesson.title, content: lesson.description,
+        id: lesson.id, title: lesson.title, content: lesson.description, activity: lesson.activity || null,
         duration: lesson.type === "video" && lesson.mediaAssetId
           ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
-        type: lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
+        type: lesson.activity?.kind === "resource" ? "resource" : lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
         videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` :
           fixture?.sections.flatMap((item) => item.lessons).find((item) => item.id === lesson.id)?.videoUrl,
       })),
