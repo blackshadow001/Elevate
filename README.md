@@ -35,6 +35,8 @@ On Render, use a **paid Node Web Service** with build command `npm ci && npm run
 
 For a no-cost, durable **single-VM** option, see the [Oracle Always Free deployment guide](docs/backend/ORACLE_ALWAYS_FREE.md). It keeps SQLite and uploaded media on an attached block volume and includes example systemd and Caddy configurations in `deploy/oci/`. Oracle account setup, a public hostname, disk mounting, and live verification are still required; this repository does not provision a VM automatically.
 
+For a **temporary AWS Free plan deployment**, see the [AWS EC2 and EBS guide](docs/backend/AWS_FREE_TRIAL.md). The AWS Free plan uses time-limited credits and requires an export or paid hosting decision before expiry.
+
 ## Current QA status — 20 October 2026
 
 The Render startup update passed a production build with a deliberately absent runtime database, then `npm run start` applied all 14 migrations to a fresh isolated SQLite file and bound to the configured port. The isolated backend suite passed **34/34**, including `/api/health`; `npm run lint -- --quiet` passed. This verifies local startup behavior, not an actual Render disk or a live provider transaction.
