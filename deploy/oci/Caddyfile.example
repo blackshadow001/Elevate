@@ -1,3 +1,13 @@
+# Allow slow but active large uploads through the reverse proxy. The Node server
+# has a longer request timeout; Caddy still limits bodies to 1 GB per site.
+{
+    servers {
+        timeouts {
+            read_body_idle 5m 32768
+        }
+    }
+}
+
 # Point both hostnames to the VM's public IP. Caddy provisions HTTPS for each.
 # Keep the administrator interface on its own host while retaining server-side
 # role checks in the app. Its session cookie has no Domain attribute, so it is

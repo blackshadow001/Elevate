@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev --webpack -p 4500",
     "build": "next build --webpack",
-    "start": "node scripts/db.mjs && next start -H 0.0.0.0",
+    "start": "node scripts/db.mjs && node scripts/start-server.mjs",
     "lint": "eslint",
     "db:migrate": "node scripts/db.mjs",
     "db:seed": "node scripts/seed.mjs",

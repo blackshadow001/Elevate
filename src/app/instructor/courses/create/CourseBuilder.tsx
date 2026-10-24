@@ -54,8 +54,9 @@ interface BuilderSection {
 }
 
 function uploadLessonVideo(url: string, file: File, durationSeconds: number,
-  onProgress: (percent: number) => void, onProcessing: () => void): Promise<{ url: string }> {
+  onProgress: (percent: number) => void, onProcessing: () => void, signal: AbortSignal): Promise<{ url: string }> {
   return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(new Error("Video upload cancelled.")); return; }
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
     xhr.withCredentials = true;
@@ -65,6 +66,9 @@ function uploadLessonVideo(url: string, file: File, durationSeconds: number,
       if (event.lengthComputable && file.size) onProgress(Math.min(100, Math.round(event.loaded / file.size * 100)));
     });
     xhr.upload.addEventListener("load", onProcessing);
+    const abort = () => xhr.abort();
+    signal.addEventListener("abort", abort, { once: true });
+    xhr.addEventListener("loadend", () => signal.removeEventListener("abort", abort));
     xhr.addEventListener("error", () => reject(new Error("The network connection interrupted the upload. Please try again.")));
     xhr.addEventListener("abort", () => reject(new Error("Video upload was cancelled.")));
     xhr.addEventListener("load", () => {
@@ -173,7 +177,15 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUploadPercent, setVideoUploadPercent] = useState<number | null>(null);
   const [videoUploadStage, setVideoUploadStage] = useState<"preparing" | "uploading" | "processing" | null>(null);
+  const [videoUploadStalled, setVideoUploadStalled] = useState(false);
+  const videoUploadLastProgress = useRef(0);
+  const videoUploadAbort = useRef<AbortController | null>(null);
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+  useEffect(() => {
+    if (videoUploadStage !== "uploading") return;
+    const timer = window.setInterval(() => setVideoUploadStalled(Date.now() - videoUploadLastProgress.current > 60_000), 5000);
+    return () => window.clearInterval(timer);
+  }, [videoUploadStage]);
 
   // Pricing State
   const [pricing, setPricing] = useState({
@@ -366,12 +378,17 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     setUploadingVideo(true);
     setVideoUploadPercent(0);
     setVideoUploadStage("preparing");
+    setVideoUploadStalled(false);
+    const uploadController = new AbortController();
+    videoUploadAbort.current = uploadController;
     try {
       const durationSeconds = await measureVideoDuration(file);
       const { saved, lessonId } = await saveDraft();
+      videoUploadLastProgress.current = Date.now();
       setVideoUploadStage("uploading");
       const result = await uploadLessonVideo(`/api/instructor/courses/${encodeURIComponent(saved.id)}/lessons/${encodeURIComponent(lessonId)}/media`,
-        file, durationSeconds, setVideoUploadPercent, () => { setVideoUploadPercent(100); setVideoUploadStage("processing"); });
+        file, durationSeconds, (percent) => { videoUploadLastProgress.current = Date.now(); setVideoUploadStalled(false); setVideoUploadPercent(percent); },
+        () => { setVideoUploadPercent(100); setVideoUploadStage("processing"); }, uploadController.signal);
       const hostedUrl = result.url;
       setSections((previous) => previous.map((section) => ({ ...section, lessons: section.lessons.map((lesson) =>
         lesson.id === lessonId ? { ...lesson, videoUrl: hostedUrl, duration: formatVideoDuration(durationSeconds) } : lesson) })));
@@ -383,6 +400,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
       setVideoUploadStage(null);
       notify({ type: "error", title: "Video not uploaded", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
+        videoUploadAbort.current = null;
       setUploadingVideo(false);
     }
   };
@@ -916,7 +934,10 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                     <span>{videoUploadPercent}%</span>
                   </div>
                   <progress max={100} value={videoUploadPercent} aria-label="Video upload progress" className="h-2 w-full accent-[#FF6B35]" />
+                  {videoUploadStalled && videoUploadStage === "uploading" && <p className="mt-2 text-xs text-amber-700">No upload progress for over a minute. Check your connection; you can cancel and try again.</p>}
                 </div>}
+                {uploadingVideo && <button type="button" onClick={() => videoUploadAbort.current?.abort()}
+                  className="text-xs font-semibold text-red-600 hover:underline">Cancel upload</button>}
               </div>
 
               {/* A local preview remains distinct from a completed server upload. */}

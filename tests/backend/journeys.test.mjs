@@ -39,8 +39,9 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
   runScript('scripts/seed.mjs');
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
-  let server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', String(port), '-H', '127.0.0.1'],
+  let server = spawn(process.execPath, ['scripts/start-server.mjs'],
     { cwd: root, env: { ...env, NODE_ENV: 'production', GOOGLE_CREDENTIALS_FILE: '',
+      PORT: String(port),
       GOOGLE_CLIENT_ID: 'test-google-client.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'test-secret',
       GOOGLE_REDIRECT_URI: `${base}/api/auth/google/callback` }, stdio: ['ignore', 'pipe', 'pipe'] });
   let serverOutput = '';
