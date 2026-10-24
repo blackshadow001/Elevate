@@ -6,6 +6,8 @@ This is a **single-EC2-instance** deployment of Elevate. The existing SQLite dat
 
 Create an account from [AWS Free Tier](https://aws.amazon.com/free/) and select the **Free plan**. AWS says most new customers can sign up without a card, but it can still request one for identity verification. Complete sign-in and any personal or payment verification yourself; do not share credentials or codes with the repository maintainers.
 
+In AWS's new signup experience, signing in with Google or another provider can create an **AWS Builder ID** before the AWS account/project is provisioned. If the session selector says “You don't have any projects yet,” use **Create your first project** and finish the signup flow. A Builder ID alone cannot host an EC2 instance. AWS explains this distinction in its [new signup guide](https://docs.aws.amazon.com/accounts/latest/reference/sign-in-new.html). Do not use **Add session** unless you are intentionally signing in to another existing AWS account.
+
 The new-account Free plan starts with $100 in credits and may offer more, up to $200 total. It ends after **six months or when credits run out**, whichever happens first. EC2, EBS, and a public IPv4 address consume credits; they are not an indefinitely free hosting arrangement. Monitor the Cost and Usage widget and set billing alerts. Before expiry, export and verify a complete off-AWS backup or choose a paid plan. Do not assume the instance will remain available after the Free plan ends. See [AWS Free Tier](https://aws.amazon.com/free/), [EC2 eligibility](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html), and [public IPv4 pricing](https://aws.amazon.com/vpc/pricing/).
 
 ## 2. Create the instance and durable volume
