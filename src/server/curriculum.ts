@@ -5,6 +5,7 @@ import { SessionUser } from "@/server/auth";
 import { ownedCourse } from "@/server/courses";
 import { getDb, transaction } from "@/server/db";
 import { markRevision } from "@/server/courseApproval";
+import { queueDiscardedVideo } from "@/server/discardedMedia";
 
 function editableCourse(courseId: string, user: SessionUser) {
   const course = ownedCourse(courseId, user);
@@ -70,7 +71,10 @@ export function deleteSection(courseId: string, sectionId: string, user: Session
   sectionForCourse(courseId, sectionId, user);
   blockDestructiveEdit(courseId);
   return transaction((db) => {
+    const keys = db.prepare("SELECT video_storage_key FROM lessons WHERE section_id=? AND video_storage_key IS NOT NULL").all(sectionId)
+      .map((row) => String(row.video_storage_key));
     db.prepare("DELETE FROM course_sections WHERE id=?").run(sectionId);
+    keys.forEach((key) => queueDiscardedVideo(db, key));
     const rows = db.prepare("SELECT id FROM course_sections WHERE course_id=? ORDER BY position").all(courseId);
     db.prepare("UPDATE course_sections SET position=position+100000 WHERE course_id=?").run(courseId);
     rows.forEach((row, index) => db.prepare("UPDATE course_sections SET position=? WHERE id=?").run(index, String(row.id)));
@@ -112,6 +116,7 @@ export function editLesson(courseId: string, lessonId: string, user: SessionUser
   if (body.type !== undefined) {
     if (!["video", "reading", "quiz", "project"].includes(String(body.type))) throw new ApiError(422, "INVALID_TYPE", "Unsupported lesson type.");
     updates.push("type=?"); values.push(String(body.type));
+    if (lesson.type === "video" && body.type !== "video") updates.push("video_storage_key=NULL");
   }
   if (body.isPreview !== undefined) {
     if (typeof body.isPreview !== "boolean") throw new ApiError(422, "INVALID_INPUT", "isPreview must be a boolean.");
@@ -126,6 +131,8 @@ export function editLesson(courseId: string, lessonId: string, user: SessionUser
     if ((body.status !== undefined && body.status !== lesson.status) ||
       (body.type !== undefined && body.type !== lesson.type)) blockProgressChangingEdit(courseId);
     db.prepare(`UPDATE lessons SET ${updates.join(",")} WHERE id=?`).run(...values, lessonId);
+    if (lesson.type === "video" && body.type !== undefined && body.type !== "video" && lesson.video_storage_key)
+      queueDiscardedVideo(db, String(lesson.video_storage_key));
     updateCourseCounts(courseId, user);
     return { id: lessonId, ...db.prepare("SELECT title,description,type,duration_seconds,is_preview,status FROM lessons WHERE id=?").get(lessonId) };
   });
@@ -136,6 +143,7 @@ export function deleteLesson(courseId: string, lessonId: string, user: SessionUs
   blockDestructiveEdit(courseId);
   return transaction((db) => {
     db.prepare("DELETE FROM lessons WHERE id=?").run(lessonId);
+    if (lesson.video_storage_key) queueDiscardedVideo(db, String(lesson.video_storage_key));
     const sectionId = String(lesson.section_id);
     const rows = db.prepare("SELECT id FROM lessons WHERE section_id=? ORDER BY position").all(sectionId);
     db.prepare("UPDATE lessons SET position=position+100000 WHERE section_id=?").run(sectionId);

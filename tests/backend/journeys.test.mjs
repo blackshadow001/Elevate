@@ -427,6 +427,56 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal(learnerPlayback.status, 206);
     assert.deepEqual(Buffer.from(await learnerPlayback.arrayBuffer()), bytes.subarray(0, 4));
   });
+  await t.test('replaced videos are retained briefly then removed by cleanup', async () => {
+    const created = await call('/api/instructor/courses', { method: 'POST', cookie: instructor, body: {
+      title: 'Discarded Video Test', slug: `discard-${randomBytes(5).toString('hex')}`,
+      description: 'A private video lifecycle test.', thumbnail: '/courses/course-1.jpg',
+    } });
+    assert.equal(created.response.status, 201, JSON.stringify(created.body));
+    const courseId = created.body.data.id;
+    const section = await call(`/api/instructor/courses/${courseId}/sections`, { method: 'POST', cookie: instructor,
+      body: { title: 'Video section' } });
+    const lesson = await call(`/api/instructor/courses/${courseId}/sections/${section.body.data.id}/lessons`, {
+      method: 'POST', cookie: instructor, body: { title: 'Replace me', type: 'video', durationSeconds: 60 },
+    });
+    const uploadPath = `/api/instructor/courses/${courseId}/lessons/${lesson.body.data.id}/media`;
+    const bytes = readFileSync(resolve(root, 'public/videos/lesson-demo.webm'));
+    const upload = () => fetch(`${base}${uploadPath}`, { method: 'POST',
+      headers: { Cookie: instructor, Origin: base, 'Content-Type': 'video/webm' }, body: bytes });
+    const first = await upload();
+    assert.equal(first.status, 201, await first.clone().text());
+    const firstId = (await first.json()).data.assetId;
+    const firstLookup = new DatabaseSync(dbPath);
+    const firstKey = firstLookup.prepare('SELECT storage_key FROM media_assets WHERE id=?').get(firstId).storage_key;
+    firstLookup.close();
+    const second = await upload();
+    assert.equal(second.status, 201, await second.clone().text());
+    const secondId = (await second.json()).data.assetId;
+    const db = new DatabaseSync(dbPath);
+    let secondKey;
+    try {
+      assert.ok(db.prepare('SELECT 1 FROM discarded_videos WHERE storage_key=?').get(firstKey));
+      secondKey = db.prepare('SELECT storage_key FROM media_assets WHERE id=?').get(secondId).storage_key;
+      assert.equal(db.prepare('SELECT 1 FROM media_assets WHERE id=?').get(firstId), undefined);
+    } finally { db.close(); }
+    assert.equal(existsSync(resolve(mediaPath, firstKey)), true);
+    runScript('scripts/cleanup-discarded-videos.mjs');
+    assert.equal(existsSync(resolve(mediaPath, firstKey)), true, 'A recently discarded file has a grace period.');
+    const aged = new DatabaseSync(dbPath);
+    try { aged.prepare('UPDATE discarded_videos SET discarded_at_ms=? WHERE storage_key=?').run(Date.now() - 72 * 60 * 60 * 1000, firstKey); }
+    finally { aged.close(); }
+    runScript('scripts/cleanup-discarded-videos.mjs');
+    assert.equal(existsSync(resolve(mediaPath, firstKey)), false);
+    assert.equal(existsSync(resolve(mediaPath, secondKey)), true, 'The active lesson video must remain.');
+    const removed = await call(`/api/instructor/courses/${courseId}/lessons/${lesson.body.data.id}`, {
+      method: 'DELETE', cookie: instructor,
+    });
+    assert.equal(removed.response.status, 200, JSON.stringify(removed.body));
+    const queued = new DatabaseSync(dbPath);
+    try { assert.ok(queued.prepare('SELECT 1 FROM discarded_videos WHERE storage_key=?').get(secondKey)); }
+    finally { queued.close(); }
+    assert.equal(existsSync(resolve(mediaPath, secondKey)), true, 'Removed lesson media stays until cleanup is due.');
+  });
   await t.test('quiz, assignment and resource lessons persist, publish and enforce submissions', async () => {
     const slug = `activities-${randomBytes(6).toString('hex')}`;
     const draft = {
@@ -972,6 +1022,14 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const detail = await call(`/api/admin/courses/${reviewedCourseId}`, { cookie: admin });
     assert.ok(detail.body.data.history.some((event) => event.action === 'rejected' && event.feedback.includes('description')));
     assert.ok(detail.body.data.history.some((event) => event.action === 'unpublished'));
+    assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: learner,
+      body: { action: 'approve' } })).response.status, 403);
+    assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: admin,
+      body: { action: 'approve' } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: admin,
+      body: { action: 'publish' } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: admin,
+      body: { action: 'unpublish' } })).response.status, 200);
     const changedSuperPassword = 'Aa1234!b';
     assert.equal((await call('/api/admin/profiles/me/password', { method: 'POST', cookie: nonSuperCookie,
       body: { currentPassword: password, newPassword: changedSuperPassword } })).response.status, 403);

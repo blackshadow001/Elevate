@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import next from 'next';
 
 const port = Number(process.env.PORT || 3000);
@@ -15,4 +16,17 @@ server.requestTimeout = 3 * 60 * 60 * 1000;
 server.headersTimeout = 60 * 1000;
 server.listen(port, '0.0.0.0', () => {
   console.log(`Elevate listening on port ${port}; request timeout ${server.requestTimeout}ms`);
+  let cleaning = false;
+  const cleanMedia = () => {
+    if (cleaning) return;
+    cleaning = true;
+    const child = spawn(process.execPath, ['scripts/cleanup-discarded-videos.mjs'], { stdio: 'inherit' });
+    child.on('error', (error) => { console.error('Media cleanup failed:', error); cleaning = false; });
+    child.on('close', (code) => {
+      if (code !== 0) console.error(`Media cleanup exited with code ${code}`);
+      cleaning = false;
+    });
+  };
+  cleanMedia();
+  setInterval(cleanMedia, 60 * 60 * 1000).unref();
 });

@@ -24,6 +24,7 @@ const formatRupees = (minor: number | null | undefined) =>
   minor === null || minor === undefined ? "—" : `₹${(minor / 100).toLocaleString("en-IN")}`;
 
 interface AdminCourseDetail {
+  rawStatus: string;
   course: { id: string; title: string; subtitle?: string; description: string; price: number; status: string; reviewStatus: string;
     metadata?: { whatYouWillLearn?: string[] }; sections?: Array<{ title: string; lessons?: Array<{ title: string; type: string }> }> };
   pricing: { status: string; basePriceMinor: number | null; finalPriceMinor: number | null } | null;
@@ -102,6 +103,8 @@ export default function AdminCourseDetailPage() {
 
   const { course, pricing, history } = data;
   const outcomes = course.metadata?.whatYouWillLearn || [];
+  const canReapprove = data.rawStatus === "draft" && (course.reviewStatus === "unpublished" ||
+    (course.reviewStatus === "draft" && history.some((event) => event.action === "published")));
   const publishBlockReason = course.reviewStatus !== "approved"
     ? "Approve the course content before publishing."
     : pricing?.basePriceMinor === null || pricing?.basePriceMinor === undefined
@@ -128,6 +131,16 @@ export default function AdminCourseDetailPage() {
             >
               Back
             </Link>
+            {canReapprove && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleAction("approve")}
+                className="rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                Approve Content
+              </button>
+            )}
             {course.status === "published" ? (
               <button
                 disabled={busy}

@@ -109,11 +109,11 @@ export function adminCourseList(filters: { search?: string; courseId?: string; s
 
 export function adminCourseDetail(courseId: string) {
   const db = getDb();
-  const row = db.prepare("SELECT id FROM courses WHERE id=?").get(courseId);
+  const row = db.prepare("SELECT status FROM courses WHERE id=?").get(courseId);
   if (!row) throw new ApiError(404, "COURSE_NOT_FOUND", "Course not found.");
   const events = db.prepare(`SELECT h.id,h.action,h.feedback,h.change_json,h.created_at,u.name actor_name FROM course_approval_history h
     JOIN users u ON u.id=h.actor_id WHERE h.course_id=? ORDER BY h.created_at DESC`).all(courseId);
-  return { pricing: pricingForCourse(courseId), history: events };
+  return { rawStatus: String(row.status), pricing: pricingForCourse(courseId), history: events };
 }
 
 export function adminSetPricing(courseId: string, admin: SessionUser, body: Record<string, unknown>) {
@@ -194,7 +194,11 @@ export function adminReview(courseId: string, admin: SessionUser, action: Review
     if (!course) throw new ApiError(404, "COURSE_NOT_FOUND", "Course not found.");
     const review = String(course.review_status);
     if (action === "approve" || action === "reject") {
-      if (review !== "pending_approval") throw new ApiError(409, "INVALID_TRANSITION", "Course is not pending review.");
+      const previouslyPublished = Boolean(db.prepare("SELECT 1 FROM course_approval_history WHERE course_id=? AND action='published' LIMIT 1").get(courseId));
+      const adminReapproval = action === "approve" && course.status === "draft" &&
+        (review === "unpublished" || (review === "draft" && previouslyPublished));
+      if (review !== "pending_approval" && !adminReapproval)
+        throw new ApiError(409, "INVALID_TRANSITION", "Course is not awaiting review or eligible for admin reapproval.");
       if (action === "reject" && !feedback.trim()) throw new ApiError(422, "FEEDBACK_REQUIRED", "Provide a rejection reason.");
       db.prepare("UPDATE courses SET review_status=?,updated_at=? WHERE id=?")
         .run(action === "approve" ? "approved" : "rejected", new Date().toISOString(), courseId);

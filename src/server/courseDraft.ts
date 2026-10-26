@@ -5,7 +5,7 @@ import { ApiError, number, text } from "@/server/api";
 import { SessionUser } from "@/server/auth";
 import { createCourse, getCourse, ownedCourse, setCourseStatus, updateCourse } from "@/server/courses";
 import { transaction } from "@/server/db";
-import { deleteLocalMedia } from "@/server/localMedia";
+import { queueDiscardedVideo } from "@/server/discardedMedia";
 import { parseActivity } from "@/server/lessonActivities";
 
 type Input = Record<string, unknown>;
@@ -71,7 +71,7 @@ export async function saveCourseDraft(user: SessionUser, body: Input) {
     throw new ApiError(422, "COURSE_INCOMPLETE", "Add a subtitle, description, thumbnail, learning outcomes and lessons before publishing.");
   }
 
-  const { course, unusedMediaKeys } = transaction((db) => {
+  const course = transaction((db) => {
     const incomingId = typeof body.id === "string" ? body.id : "";
     const existing = incomingId && !incomingId.startsWith("local-") ? ownedCourse(incomingId, user) : null;
     let courseId: string;
@@ -123,15 +123,10 @@ export async function saveCourseDraft(user: SessionUser, body: Input) {
     });
     db.prepare("UPDATE courses SET lesson_count=?,duration_seconds=? WHERE id=?").run(lessonCount, durationSeconds, courseId);
     setCourseStatus(courseId, user, status);
-    const unusedMediaKeys = [...new Set([...existingLessons.values()].map((lesson) => lesson.storageKey).filter((key): key is string => Boolean(key)))].filter((key) => {
-      const stillUsed = db.prepare(`SELECT 1 WHERE EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=?)
-        OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)`).get(key, key);
-      if (stillUsed) return false;
-      db.prepare("DELETE FROM media_assets WHERE storage_key=?").run(key);
-      return true;
-    });
-    return { course: getCourse(courseId, false), unusedMediaKeys };
+    for (const key of new Set([...existingLessons.values()].map((lesson) => lesson.storageKey).filter((key): key is string => Boolean(key)))) {
+      queueDiscardedVideo(db, key);
+    }
+    return getCourse(courseId, false);
   });
-  await Promise.all(unusedMediaKeys.map((key) => deleteLocalMedia(key).catch(() => {})));
   return course;
 }

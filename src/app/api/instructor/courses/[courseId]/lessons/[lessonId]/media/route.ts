@@ -4,6 +4,7 @@ import { requireAnyRole } from "@/server/auth";
 import { ownedCourse } from "@/server/courses";
 import { markRevision } from "@/server/courseApproval";
 import { getDb, transaction } from "@/server/db";
+import { queueDiscardedVideo } from "@/server/discardedMedia";
 import { deleteLocalMedia, storeVideoStream } from "@/server/localMedia";
 
 export async function POST(request: Request, { params }: { params: Promise<{ courseId: string; lessonId: string }> }) {
@@ -31,9 +32,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ cou
       throw new ApiError(422, "INVALID_DURATION", "Video duration must be between 1 second and 24 hours.");
     const stored = await storeVideoStream(request.body, mimeType, declaredSize, request.signal);
     const assetId = randomUUID();
-    let obsoleteKey: string | null = null;
     try {
-      obsoleteKey = transaction((tx) => {
+      transaction((tx) => {
         const current = tx.prepare(`SELECT l.video_storage_key FROM lessons l JOIN course_sections s ON s.id=l.section_id
           WHERE l.id=? AND s.course_id=? AND l.type='video'`).get(lessonId, courseId);
         if (!current) throw new ApiError(409, "LESSON_CHANGED", "The lesson changed during upload. Try again.");
@@ -45,18 +45,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ cou
           FROM lessons l JOIN course_sections s ON s.id=l.section_id WHERE s.course_id=?) WHERE id=?`).run(courseId, courseId);
         markRevision(courseId, user);
         const previous = current.video_storage_key ? String(current.video_storage_key) : null;
-        if (!previous) return null;
-        const stillUsed = tx.prepare(`SELECT 1 WHERE EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=?)
-          OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)`).get(previous, previous);
-        if (stillUsed) return null;
-        tx.prepare("DELETE FROM media_assets WHERE storage_key=?").run(previous);
-        return previous;
+        if (previous) queueDiscardedVideo(tx, previous);
       });
     } catch (error) {
       await deleteLocalMedia(stored.storageKey);
       throw error;
     }
-    if (obsoleteKey) await deleteLocalMedia(obsoleteKey).catch(() => {});
     return json({ assetId, lessonId, sizeBytes: stored.sizeBytes, mimeType, durationSeconds,
       url: `/api/media/${assetId}/stream` }, 201);
   });
