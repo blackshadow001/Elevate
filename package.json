@@ -15,6 +15,7 @@
     "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "admin:reset-password": "node scripts/reset-admin-password.mjs",
     "media:cleanup": "node scripts/cleanup-discarded-videos.mjs",
+    "media:transcode": "node scripts/transcode-videos.mjs",
     "test:backend": "node --test tests/backend/*.test.mjs",
     "test:browser": "playwright test tests/browser"
   },

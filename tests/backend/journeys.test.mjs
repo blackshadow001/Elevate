@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -392,6 +392,23 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal(ranged.status, 206);
     assert.equal(ranged.headers.get('content-range'), `bytes 0-15/${bytes.length}`);
     assert.deepEqual(Buffer.from(await ranged.arrayBuffer()), bytes.subarray(0, 16));
+    const qualitiesPath = `/api/media/${assetId}/qualities`;
+    assert.equal((await call(qualitiesPath, { cookie: otherLearner })).response.status, 403);
+    assert.equal((await call(qualitiesPath, { cookie: instructor })).body.dataSaver, false);
+    const assetDb = new DatabaseSync(dbPath);
+    const storageKey = assetDb.prepare('SELECT storage_key FROM media_assets WHERE id=?').get(assetId).storage_key;
+    assetDb.close();
+    const dataSaverBytes = Buffer.from('data-saver-test-bytes');
+    writeFileSync(join(mediaPath, `${storageKey}.720p.mp4`), dataSaverBytes);
+    assert.equal((await call(qualitiesPath, { cookie: instructor })).body.dataSaver, true);
+    assert.equal((await call(`${streamPath}?quality=720p`, { cookie: otherLearner })).response.status, 403);
+    const smallerStream = await fetch(`${base}${streamPath}?quality=720p`, {
+      headers: { Cookie: instructor, Range: 'bytes=0-3' },
+    });
+    assert.equal(smallerStream.status, 206);
+    assert.equal(smallerStream.headers.get('content-type'), 'video/mp4');
+    assert.equal(smallerStream.headers.get('content-range'), `bytes 0-3/${dataSaverBytes.length}`);
+    assert.deepEqual(Buffer.from(await smallerStream.arrayBuffer()), dataSaverBytes.subarray(0, 4));
     assert.equal((await call(`/api/media/${assetId}/access`, { cookie: instructor })).body.data.url, streamPath);
     const persistedDraft = {
       ...draft, id: courseId, sections: [{ id: created.body.data.sections[0].id, title: 'Module one', lessons: [
@@ -460,13 +477,16 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       assert.equal(db.prepare('SELECT 1 FROM media_assets WHERE id=?').get(firstId), undefined);
     } finally { db.close(); }
     assert.equal(existsSync(resolve(mediaPath, firstKey)), true);
+    writeFileSync(join(mediaPath, `${firstKey}.720p.mp4`), Buffer.from('discarded-variant'));
     runScript('scripts/cleanup-discarded-videos.mjs');
     assert.equal(existsSync(resolve(mediaPath, firstKey)), true, 'A recently discarded file has a grace period.');
+    assert.equal(existsSync(join(mediaPath, `${firstKey}.720p.mp4`)), true);
     const aged = new DatabaseSync(dbPath);
     try { aged.prepare('UPDATE discarded_videos SET discarded_at_ms=? WHERE storage_key=?').run(Date.now() - 72 * 60 * 60 * 1000, firstKey); }
     finally { aged.close(); }
     runScript('scripts/cleanup-discarded-videos.mjs');
     assert.equal(existsSync(resolve(mediaPath, firstKey)), false);
+    assert.equal(existsSync(join(mediaPath, `${firstKey}.720p.mp4`)), false);
     assert.equal(existsSync(resolve(mediaPath, secondKey)), true, 'The active lesson video must remain.');
     const removed = await call(`/api/instructor/courses/${courseId}/lessons/${lesson.body.data.id}`, {
       method: 'DELETE', cookie: instructor,

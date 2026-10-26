@@ -14,6 +14,7 @@ db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
 
 const videoKey = /^[0-9a-f-]{36}\.(mp4|webm)$/;
 const partialKey = /^[0-9a-f-]{36}\.(mp4|webm)\.part$/;
+const variantKey = /^([0-9a-f-]{36}\.(?:mp4|webm))\.720p\.(?:mp4|mp4\.part|failed)$/;
 const used = db.prepare(`SELECT 1 WHERE EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=?)
   OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)
   OR EXISTS(SELECT 1 FROM media_assets WHERE storage_key=?)`);
@@ -41,12 +42,14 @@ try {
       db.prepare('DELETE FROM discarded_videos WHERE storage_key=?').run(key);
       continue;
     }
-    try {
-      await unlink(join(mediaPath, key));
-      deleted++;
-    } catch (error) {
-      if (error.code !== 'ENOENT') { console.error(`Could not remove discarded video ${key}:`, error); continue; }
+    let failed = false;
+    for (const name of [key, `${key}.720p.mp4`, `${key}.720p.mp4.part`, `${key}.720p.failed`]) {
+      try { await unlink(join(mediaPath, name)); if (name === key) deleted++; }
+      catch (error) {
+        if (error.code !== 'ENOENT') { console.error(`Could not remove discarded video ${name}:`, error); failed = true; }
+      }
     }
+    if (failed) continue;
     db.prepare('DELETE FROM discarded_videos WHERE storage_key=?').run(key);
   }
 
@@ -56,14 +59,23 @@ try {
   for (const entry of entries) {
     if (!entry.isFile()) continue;
     const key = entry.name;
-    if (!partialKey.test(key) && !videoKey.test(key)) continue;
+    const variant = variantKey.exec(key);
+    if (!partialKey.test(key) && !videoKey.test(key) && !variant) continue;
     const info = await stat(join(mediaPath, key));
-    if (partialKey.test(key)) {
+    if (partialKey.test(key) || key.endsWith('.720p.mp4.part')) {
       // Request handling is capped at three hours; an idle six-hour partial
-      // cannot belong to an active upload.
-      if (info.mtimeMs <= now - 6 * hour) {
+      // cannot belong to an active upload. Transcoding can take longer, so
+      // its partial files receive a full day before cleanup.
+      const staleAfter = partialKey.test(key) ? 6 * hour : 24 * hour;
+      if (info.mtimeMs <= now - staleAfter) {
         await unlink(join(mediaPath, key));
         partials++;
+      }
+    } else if (variant) {
+      const original = variant[1];
+      if (info.mtimeMs <= now - threeDays && !used.get(original, original, original)) {
+        await unlink(join(mediaPath, key));
+        deleted++;
       }
     } else if (info.mtimeMs <= now - threeDays &&
       !db.prepare('SELECT 1 FROM discarded_videos WHERE storage_key=?').get(key) &&

@@ -1,12 +1,16 @@
 import { ApiError, safe } from "@/server/api";
 import { authorizedMediaAsset } from "@/server/mediaAccess";
-import { localMediaStat, localMediaStream } from "@/server/localMedia";
+import { dataSaverStat, dataSaverStream, localMediaStat, localMediaStream } from "@/server/localMedia";
 
 export async function GET(request: Request, { params }: { params: Promise<{ assetId: string }> }) {
   return safe(async () => {
     const asset = await authorizedMediaAsset((await params).assetId);
+    const quality = new URL(request.url).searchParams.get("quality");
+    if (quality !== null && quality !== "720p")
+      throw new ApiError(400, "INVALID_QUALITY", "Choose Original or Data saver quality.");
+    const dataSaver = quality === "720p";
     let info;
-    try { info = await localMediaStat(asset.storageKey); }
+    try { info = await (dataSaver ? dataSaverStat(asset.storageKey) : localMediaStat(asset.storageKey)); }
     catch { throw new ApiError(404, "MEDIA_NOT_FOUND", "Media file is unavailable."); }
     const total = info.size;
     const range = request.headers.get("range");
@@ -20,10 +24,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
       if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || end >= total)
         throw new ApiError(416, "INVALID_RANGE", "The requested byte range is unavailable.");
     }
-    return new Response(localMediaStream(asset.storageKey, start, end), {
+    return new Response(dataSaver ? dataSaverStream(asset.storageKey, start, end) : localMediaStream(asset.storageKey, start, end), {
       status: range ? 206 : 200,
       headers: {
-        "Content-Type": asset.mimeType,
+        "Content-Type": dataSaver ? "video/mp4" : asset.mimeType,
         "Content-Length": String(end - start + 1),
         "Accept-Ranges": "bytes",
         ...(range ? { "Content-Range": `bytes ${start}-${end}/${total}` } : {}),

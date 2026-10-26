@@ -20,6 +20,10 @@ export function localMediaPath(storageKey: string): string {
   return join(mediaDirectory(), storageKey);
 }
 
+export function dataSaverPath(storageKey: string): string {
+  return `${localMediaPath(storageKey)}.720p.mp4`;
+}
+
 function hasVideoSignature(bytes: Uint8Array, mimeType: string): boolean {
   if (mimeType === "video/webm") return bytes.length >= 4 && bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3;
   return bytes.length >= 12 && String.fromCharCode(...bytes.subarray(4, 8)) === "ftyp";
@@ -74,12 +78,20 @@ export async function storeVideoStream(stream: ReadableStream<Uint8Array> | null
 
 export async function localMediaStat(storageKey: string) { return stat(localMediaPath(storageKey)); }
 
+export async function dataSaverStat(storageKey: string) { return stat(dataSaverPath(storageKey)); }
+
 export function localMediaStream(storageKey: string, start: number, end: number): ReadableStream<Uint8Array> {
   return Readable.toWeb(createReadStream(localMediaPath(storageKey), { start, end })) as ReadableStream<Uint8Array>;
 }
 
+export function dataSaverStream(storageKey: string, start: number, end: number): ReadableStream<Uint8Array> {
+  return Readable.toWeb(createReadStream(dataSaverPath(storageKey), { start, end })) as ReadableStream<Uint8Array>;
+}
+
 export async function deleteLocalMedia(storageKey: string): Promise<void> {
-  await unlink(localMediaPath(storageKey)).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOENT") throw error;
-  });
+  for (const path of [localMediaPath(storageKey), dataSaverPath(storageKey)]) {
+    await unlink(path).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
 }

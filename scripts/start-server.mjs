@@ -29,4 +29,19 @@ server.listen(port, '0.0.0.0', () => {
   };
   cleanMedia();
   setInterval(cleanMedia, 60 * 60 * 1000).unref();
+  let transcoding = false;
+  const transcodeMedia = () => {
+    if (transcoding) return;
+    transcoding = true;
+    const child = spawn(process.execPath, ['scripts/transcode-videos.mjs'], { stdio: 'inherit' });
+    child.on('error', (error) => { console.error('Video transcoding failed:', error); transcoding = false; });
+    child.on('close', (code) => {
+      if (code !== 0) console.error(`Video transcoding exited with code ${code}`);
+      transcoding = false;
+    });
+  };
+  if (process.env.VIDEO_TRANSCODING_ENABLED === '1') {
+    transcodeMedia();
+    setInterval(transcodeMedia, 60 * 60 * 1000).unref();
+  }
 });

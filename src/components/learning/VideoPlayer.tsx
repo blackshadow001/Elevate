@@ -47,6 +47,10 @@ export function VideoPlayer({
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const speedMenuRef = useRef<HTMLDivElement>(null);
+  const qualityMenuRef = useRef<HTMLDivElement>(null);
+  const pendingQualitySwitchRef = useRef<{ position: number; playing: boolean; rate: number } | null>(null);
+  const qualitySwitchingRef = useRef(false);
+  const hasStartedRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -60,6 +64,9 @@ export function VideoPlayer({
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState<number>(0);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [dataSaverAvailable, setDataSaverAvailable] = useState(false);
+  const [quality, setQuality] = useState<"original" | "720p">("original");
   const [playbackError, setPlaybackError] = useState("");
   const [controlMessage, setControlMessage] = useState("");
 
@@ -68,10 +75,27 @@ export function VideoPlayer({
   const lastTrustedTickRef = useRef(0);
   const lastWatchTickRef = useRef(0);
   const watchQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const hostedVideo = /^\/api\/media\/[^/?]+\/stream$/.test(src);
+  const videoSource = quality === "720p" ? `${src}?quality=720p` : src;
+
+  useEffect(() => {
+    if (!hostedVideo) return;
+    let active = true;
+    void fetch(`${src.slice(0, -"/stream".length)}/qualities`, { credentials: "same-origin", cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => {
+        if (!active) return;
+        const available = result?.dataSaver === true;
+        setDataSaverAvailable(available);
+        if (available && !hasStartedRef.current) setQuality("720p");
+      })
+      .catch(() => { if (active) setDataSaverAvailable(false); });
+    return () => { active = false; };
+  }, [hostedVideo, src]);
 
   const queueWatch = useCallback((state: "playing" | "paused" | "seek" | "ended") => {
     const video = videoRef.current;
-    if (!onWatchEvent || allowSeeking || !video || !Number.isFinite(video.duration) || video.duration <= 0)
+    if (qualitySwitchingRef.current || !onWatchEvent || allowSeeking || !video || !Number.isFinite(video.duration) || video.duration <= 0)
       return Promise.resolve();
     const event = { positionSeconds: video.currentTime, durationSeconds: video.duration,
       playbackRate: video.playbackRate, state };
@@ -131,7 +155,7 @@ export function VideoPlayer({
   };
 
   const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || qualitySwitchingRef.current) return;
     const video = videoRef.current;
     const now = performance.now();
     const elapsed = lastTrustedTickRef.current ? Math.max(0, (now - lastTrustedTickRef.current) / 1000) : 0;
@@ -152,13 +176,29 @@ export function VideoPlayer({
 
   const handleSeeking = () => {
     const video = videoRef.current;
-    if (!video || allowSeeking) return;
+    if (!video || allowSeeking || qualitySwitchingRef.current) return;
     if (video.currentTime > furthestWatchedRef.current + 0.35) seekTo(furthestWatchedRef.current);
     void queueWatch("seek").catch(() => {});
   };
 
   const handleLoadedMetadata = () => {
     if (!videoRef.current) return;
+    const pending = pendingQualitySwitchRef.current;
+    if (pending && Number.isFinite(videoRef.current.duration)) {
+      pendingQualitySwitchRef.current = null;
+      const video = videoRef.current;
+      const position = Math.min(pending.position, Math.max(0, video.duration - 0.1));
+      const resume = () => {
+        video.playbackRate = pending.rate;
+        lastTrustedTickRef.current = performance.now();
+        qualitySwitchingRef.current = false;
+        if (pending.playing) void video.play().catch(() => setPlaybackError("Video playback is unavailable at this quality."));
+      };
+      if (position > 0.1) {
+        video.addEventListener("seeked", resume, { once: true });
+        video.currentTime = position;
+      } else resume();
+    }
     setDuration(videoRef.current.duration);
     if (Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0 &&
       reportedDurationRef.current !== videoRef.current.duration) {
@@ -234,6 +274,19 @@ export function VideoPlayer({
     setShowSpeedMenu(false);
   };
 
+  const handleQualitySelect = (nextQuality: "original" | "720p") => {
+    const video = videoRef.current;
+    if (quality === nextQuality || !video) return;
+    pendingQualitySwitchRef.current = {
+      position: video.currentTime,
+      playing: !video.paused,
+      rate: video.playbackRate,
+    };
+    qualitySwitchingRef.current = true;
+    setQuality(nextQuality);
+    setShowQualityMenu(false);
+  };
+
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -293,6 +346,15 @@ export function VideoPlayer({
     return () => { document.removeEventListener("pointerdown", onPointerDown); document.removeEventListener("keydown", onEscape); };
   }, [showSpeedMenu]);
 
+  useEffect(() => {
+    if (!showQualityMenu) return;
+    const onPointerDown = (event: PointerEvent) => { if (!qualityMenuRef.current?.contains(event.target as Node)) setShowQualityMenu(false); };
+    const onEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setShowQualityMenu(false); };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onEscape);
+    return () => { document.removeEventListener("pointerdown", onPointerDown); document.removeEventListener("keydown", onEscape); };
+  }, [showQualityMenu]);
+
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -306,14 +368,23 @@ export function VideoPlayer({
       {/* Video Element */}
       <video
         ref={videoRef}
-        src={src}
+        src={videoSource}
         poster={poster}
         onTimeUpdate={handleTimeUpdate}
         onSeeking={handleSeeking}
         onLoadedMetadata={handleLoadedMetadata}
-        onDurationChange={handleLoadedMetadata}
+        onDurationChange={() => { if (videoRef.current && !qualitySwitchingRef.current) setDuration(videoRef.current.duration || 0); }}
         onEnded={handleEnded}
-        onPlay={() => { setIsPlaying(true); void queueWatch("playing").catch(() => {}); }}
+        onError={() => {
+          qualitySwitchingRef.current = false;
+          pendingQualitySwitchRef.current = null;
+          if (quality === "720p") {
+            setDataSaverAvailable(false);
+            setQuality("original");
+            setControlMessage("Data saver is unavailable. Playing the original video.");
+          } else setPlaybackError("The video could not be loaded. Please try again.");
+        }}
+        onPlay={() => { hasStartedRef.current = true; setIsPlaying(true); void queueWatch("playing").catch(() => {}); }}
         onPause={() => { setIsPlaying(false); void queueWatch("paused").catch(() => {}); }}
         onClick={togglePlay}
         onContextMenu={(event) => event.preventDefault()}
@@ -478,8 +549,29 @@ export function VideoPlayer({
             </div>
           </div>
 
-          {/* Right: Speed and Fullscreen */}
+          {/* Right: Quality, speed and fullscreen */}
           <div className="flex items-center gap-2.5 sm:gap-3.5">
+            {dataSaverAvailable && (
+              <div className="relative" ref={qualityMenuRef}>
+                <button type="button" onClick={() => setShowQualityMenu(!showQualityMenu)}
+                  aria-label="Video quality" aria-expanded={showQualityMenu}
+                  className="px-2 py-0.5 rounded hover:bg-white/10 font-bold text-[11px] text-slate-200">
+                  {quality === "720p" ? "Data saver" : "Original"}
+                </button>
+                {showQualityMenu && (
+                  <div className="absolute bottom-full right-0 mb-2 bg-[#172033] border border-[#26344D] rounded-xl p-1 shadow-xl flex flex-col gap-0.5 z-40 text-xs min-w-[150px]">
+                    <button type="button" onClick={() => handleQualitySelect("720p")}
+                      className={`px-3 py-1.5 text-left rounded-lg ${quality === "720p" ? "bg-[#FF6B35] text-white font-bold" : "hover:bg-slate-700 text-slate-200"}`}>
+                      Data saver · up to 720p
+                    </button>
+                    <button type="button" onClick={() => handleQualitySelect("original")}
+                      className={`px-3 py-1.5 text-left rounded-lg ${quality === "original" ? "bg-[#FF6B35] text-white font-bold" : "hover:bg-slate-700 text-slate-200"}`}>
+                      Original quality
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {/* Playback Speed Menu */}
             <div className="relative" ref={speedMenuRef}>
               <button
