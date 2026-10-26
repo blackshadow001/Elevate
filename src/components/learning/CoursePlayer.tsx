@@ -221,7 +221,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
               title={currentLesson.title}
               lessonId={currentLesson.id}
               isCompleted={isCompleted}
-              onLessonEnded={() => { void toggleCompleted(currentLesson.id); }}
+              onLessonEnded={() => toggleCompleted(currentLesson.id)}
               onWatchEvent={async (event) => {
                 const response = await fetch(`/api/courses/${encodeURIComponent(course.id)}/lessons/${encodeURIComponent(currentLesson.id)}/watch`, {
                   method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
@@ -231,6 +231,8 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                   const result = await response.json();
                   throw new Error(result.error?.message || "Video watch progress could not be saved.");
                 }
+                const result = await response.json();
+                return { canComplete: result.data?.canComplete === true };
               }}
               onDurationKnown={(seconds) => setActualDurations((previous) => ({
                 ...previous, [currentLesson.id]: formatVideoDuration(seconds),

@@ -13,7 +13,7 @@ type WatchRow = {
 };
 
 export const WATCH_COMPLETION_THRESHOLD = 0.9;
-const MAX_GAP_MS = 15_000;
+const MAX_GAP_MS = 60_000;
 
 function segmentsFrom(raw: string): Segment[] {
   const parsed: unknown = JSON.parse(raw);

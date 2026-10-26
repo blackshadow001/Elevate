@@ -358,9 +358,14 @@ test('watched hosted video completes and persists, while a direct end jump does 
   const completePath = `${base}/api/courses/${courseId}/lessons/${lessonId}/complete`;
   expect((await page.request.post(completePath)).status()).toBe(409);
   await page.goto(`${base}/learn/${slug}/${lessonId}`);
+  await page.route('**/api/courses/**/watch', async route => {
+    await new Promise(resolveWait => setTimeout(resolveWait, 1200));
+    await route.continue();
+  });
   const video = page.locator('video').first();
   await expect.poll(() => video.evaluate(element => element.duration)).toBeGreaterThan(2);
   await page.getByRole('button', { name: 'Play video' }).click();
+  await expect(page.getByRole('heading', { name: 'Lesson completed' })).toBeVisible({ timeout: 30000 });
   await expect(page.getByRole('button', { name: 'Completed ✓' })).toBeVisible({ timeout: 25000 });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Completed ✓' })).toBeVisible();

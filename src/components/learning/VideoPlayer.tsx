@@ -20,10 +20,10 @@ interface VideoPlayerProps {
   title: string;
   lessonId: string;
   isCompleted?: boolean;
-  onLessonEnded?: () => void;
+  onLessonEnded?: () => Promise<boolean> | void;
   onDurationKnown?: (seconds: number) => void;
   onWatchEvent?: (event: { positionSeconds: number; durationSeconds: number;
-    playbackRate: number; state: "playing" | "paused" | "seek" | "ended" }) => Promise<void>;
+    playbackRate: number; state: "playing" | "paused" | "seek" | "ended" }) => Promise<{ canComplete: boolean }>;
   onContinueNext?: () => void;
   hasNextLesson?: boolean;
   allowSeeking?: boolean;
@@ -75,6 +75,8 @@ export function VideoPlayer({
   const lastTrustedTickRef = useRef(0);
   const lastWatchTickRef = useRef(0);
   const watchQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const watchBusyRef = useRef(false);
+  const [completionState, setCompletionState] = useState<"saving" | "saved" | "error">("saving");
   const hostedVideo = /^\/api\/media\/[^/?]+\/stream$/.test(src);
   const videoSource = quality === "720p" ? `${src}?quality=720p` : src;
 
@@ -96,11 +98,14 @@ export function VideoPlayer({
   const queueWatch = useCallback((state: "playing" | "paused" | "seek" | "ended") => {
     const video = videoRef.current;
     if (qualitySwitchingRef.current || !onWatchEvent || allowSeeking || !video || !Number.isFinite(video.duration) || video.duration <= 0)
-      return Promise.resolve();
+      return Promise.resolve(null);
     const event = { positionSeconds: video.currentTime, durationSeconds: video.duration,
       playbackRate: video.playbackRate, state };
+    watchBusyRef.current = true;
     const next = watchQueueRef.current.catch(() => {}).then(() => onWatchEvent(event));
-    watchQueueRef.current = next;
+    const settled = next.then(() => {}, () => {});
+    watchQueueRef.current = settled;
+    void settled.then(() => { if (watchQueueRef.current === settled) watchBusyRef.current = false; });
     return next;
   }, [allowSeeking, onWatchEvent]);
 
@@ -168,7 +173,7 @@ export function VideoPlayer({
     lastTrustedTickRef.current = now;
     setCurrentTime(video.currentTime);
     setDuration(video.duration || 0);
-    if (!allowSeeking && !video.paused && !document.hidden && now - lastWatchTickRef.current >= 750) {
+    if (!allowSeeking && !video.paused && !document.hidden && !watchBusyRef.current && now - lastWatchTickRef.current >= 5000) {
       lastWatchTickRef.current = now;
       void queueWatch("playing").catch(() => {});
     }
@@ -210,9 +215,19 @@ export function VideoPlayer({
   const handleEnded = () => {
     setIsPlaying(false);
     setIsEnded(true);
+    setCompletionState("saving");
     setShowControls(true);
-    void queueWatch("ended").then(() => onLessonEnded?.()).catch(() =>
-      setControlMessage("Your final watch update could not be saved. Check your connection and replay the end."));
+    if (allowSeeking || !onWatchEvent) {
+      void Promise.resolve(onLessonEnded?.()).then(() => setCompletionState("saved"), () => setCompletionState("error"));
+      return;
+    }
+    void queueWatch("ended").then(async (result) => {
+      if (!result?.canComplete) {
+        setCompletionState("error");
+        return;
+      }
+      setCompletionState(await onLessonEnded?.() === false ? "error" : "saved");
+    }).catch(() => setCompletionState("error"));
   };
 
   useEffect(() => {
@@ -385,7 +400,7 @@ export function VideoPlayer({
           } else setPlaybackError("The video could not be loaded. Please try again.");
         }}
         onPlay={() => { hasStartedRef.current = true; setIsPlaying(true); void queueWatch("playing").catch(() => {}); }}
-        onPause={() => { setIsPlaying(false); void queueWatch("paused").catch(() => {}); }}
+        onPause={() => { setIsPlaying(false); if (!videoRef.current?.ended) void queueWatch("paused").catch(() => {}); }}
         onClick={togglePlay}
         onContextMenu={(event) => event.preventDefault()}
         className="w-full h-full object-contain cursor-pointer"
@@ -406,10 +421,13 @@ export function VideoPlayer({
             <CheckCircle2 className="w-9 h-9" />
           </div>
           <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-            Video ended
+            {allowSeeking ? "Preview finished" : completionState === "saving" ? "Saving your progress…" : completionState === "saved" ? "Lesson completed" : "Progress could not be confirmed"}
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 max-w-sm mb-6">
-            Playback of &ldquo;{title}&rdquo; finished. Lesson completion is confirmed only after your progress is saved.
+            {allowSeeking ? `Playback of “${title}” finished.` :
+              completionState === "saving" ? `Playback of “${title}” finished. Please wait while your progress is saved.` :
+              completionState === "saved" ? `Your progress for “${title}” has been saved.` :
+                "Your watch progress is incomplete or the connection was interrupted. Replay any unwatched sections, then try again."}
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -428,7 +446,7 @@ export function VideoPlayer({
               <span>Replay Lesson</span>
             </button>
 
-            {hasNextLesson && onContinueNext && (
+            {completionState === "saved" && hasNextLesson && onContinueNext && (
               <button
                 onClick={onContinueNext}
                 className="px-5 py-2.5 rounded-xl bg-[#FF6B35] hover:bg-[#E85D2A] text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-orange-500/25 transition-all"
