@@ -394,14 +394,18 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.deepEqual(Buffer.from(await ranged.arrayBuffer()), bytes.subarray(0, 16));
     const qualitiesPath = `/api/media/${assetId}/qualities`;
     assert.equal((await call(qualitiesPath, { cookie: otherLearner })).response.status, 403);
-    assert.equal((await call(qualitiesPath, { cookie: instructor })).body.dataSaver, false);
+    assert.deepEqual((await call(qualitiesPath, { cookie: instructor })).body.available, []);
     const assetDb = new DatabaseSync(dbPath);
     const storageKey = assetDb.prepare('SELECT storage_key FROM media_assets WHERE id=?').get(assetId).storage_key;
     assetDb.close();
     const dataSaverBytes = Buffer.from('data-saver-test-bytes');
     writeFileSync(join(mediaPath, `${storageKey}.720p.mp4`), dataSaverBytes);
-    assert.equal((await call(qualitiesPath, { cookie: instructor })).body.dataSaver, true);
+    writeFileSync(join(mediaPath, `${storageKey}.360p.mp4`), Buffer.from('360p-video'));
+    writeFileSync(join(mediaPath, `${storageKey}.1080p.mp4`), Buffer.from('1080p-video'));
+    assert.deepEqual((await call(qualitiesPath, { cookie: instructor })).body.available, ['360p', '720p', '1080p']);
     assert.equal((await call(`${streamPath}?quality=720p`, { cookie: otherLearner })).response.status, 403);
+    assert.equal((await call(`${streamPath}?quality=480p`, { cookie: instructor })).response.status, 404);
+    assert.equal((await call(`${streamPath}?quality=1440p`, { cookie: instructor })).response.status, 400);
     const smallerStream = await fetch(`${base}${streamPath}?quality=720p`, {
       headers: { Cookie: instructor, Range: 'bytes=0-3' },
     });
@@ -409,6 +413,14 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal(smallerStream.headers.get('content-type'), 'video/mp4');
     assert.equal(smallerStream.headers.get('content-range'), `bytes 0-3/${dataSaverBytes.length}`);
     assert.deepEqual(Buffer.from(await smallerStream.arrayBuffer()), dataSaverBytes.subarray(0, 4));
+    for (const quality of ['360p', '1080p']) {
+      const variant = await fetch(`${base}${streamPath}?quality=${quality}`, {
+        headers: { Cookie: instructor, Range: 'bytes=0-3' },
+      });
+      assert.equal(variant.status, 206);
+      assert.equal(variant.headers.get('content-type'), 'video/mp4');
+      assert.equal(Buffer.from(await variant.arrayBuffer()).toString(), quality.slice(0, 4));
+    }
     assert.equal((await call(`/api/media/${assetId}/access`, { cookie: instructor })).body.data.url, streamPath);
     const persistedDraft = {
       ...draft, id: courseId, sections: [{ id: created.body.data.sections[0].id, title: 'Module one', lessons: [
@@ -478,6 +490,8 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     } finally { db.close(); }
     assert.equal(existsSync(resolve(mediaPath, firstKey)), true);
     writeFileSync(join(mediaPath, `${firstKey}.720p.mp4`), Buffer.from('discarded-variant'));
+    writeFileSync(join(mediaPath, `${firstKey}.360p.mp4`), Buffer.from('discarded-variant'));
+    writeFileSync(join(mediaPath, `${firstKey}.1080p.mp4`), Buffer.from('discarded-variant'));
     runScript('scripts/cleanup-discarded-videos.mjs');
     assert.equal(existsSync(resolve(mediaPath, firstKey)), true, 'A recently discarded file has a grace period.');
     assert.equal(existsSync(join(mediaPath, `${firstKey}.720p.mp4`)), true);
@@ -487,6 +501,8 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     runScript('scripts/cleanup-discarded-videos.mjs');
     assert.equal(existsSync(resolve(mediaPath, firstKey)), false);
     assert.equal(existsSync(join(mediaPath, `${firstKey}.720p.mp4`)), false);
+    assert.equal(existsSync(join(mediaPath, `${firstKey}.360p.mp4`)), false);
+    assert.equal(existsSync(join(mediaPath, `${firstKey}.1080p.mp4`)), false);
     assert.equal(existsSync(resolve(mediaPath, secondKey)), true, 'The active lesson video must remain.');
     const removed = await call(`/api/instructor/courses/${courseId}/lessons/${lesson.body.data.id}`, {
       method: 'DELETE', cookie: instructor,

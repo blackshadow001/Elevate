@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import { VIDEO_QUALITIES, type VideoQuality } from "@/lib/videoQualities";
 import { 
   Play, 
   Pause, 
@@ -65,8 +66,8 @@ export function VideoPlayer({
   const [hoverPosition, setHoverPosition] = useState<number>(0);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
-  const [dataSaverAvailable, setDataSaverAvailable] = useState(false);
-  const [quality, setQuality] = useState<"original" | "720p">("original");
+  const [availableQualities, setAvailableQualities] = useState<VideoQuality[]>([]);
+  const [quality, setQuality] = useState<"original" | VideoQuality>("original");
   const [playbackError, setPlaybackError] = useState("");
   const [controlMessage, setControlMessage] = useState("");
 
@@ -78,7 +79,7 @@ export function VideoPlayer({
   const watchBusyRef = useRef(false);
   const [completionState, setCompletionState] = useState<"saving" | "saved" | "error">("saving");
   const hostedVideo = /^\/api\/media\/[^/?]+\/stream$/.test(src);
-  const videoSource = quality === "720p" ? `${src}?quality=720p` : src;
+  const videoSource = quality === "original" ? src : `${src}?quality=${quality}`;
 
   useEffect(() => {
     if (!hostedVideo) return;
@@ -87,11 +88,14 @@ export function VideoPlayer({
       .then((response) => response.ok ? response.json() : null)
       .then((result) => {
         if (!active) return;
-        const available = result?.dataSaver === true;
-        setDataSaverAvailable(available);
-        if (available && !hasStartedRef.current) setQuality("720p");
+        const available = VIDEO_QUALITIES.filter((item) => result?.available?.includes(item));
+        setAvailableQualities(available);
+        if (!hasStartedRef.current) {
+          const preferred = (["720p", "480p", "360p", "1080p"] as const).find((item) => available.includes(item));
+          if (preferred) setQuality(preferred);
+        }
       })
-      .catch(() => { if (active) setDataSaverAvailable(false); });
+      .catch(() => { if (active) setAvailableQualities([]); });
     return () => { active = false; };
   }, [hostedVideo, src]);
 
@@ -289,7 +293,7 @@ export function VideoPlayer({
     setShowSpeedMenu(false);
   };
 
-  const handleQualitySelect = (nextQuality: "original" | "720p") => {
+  const handleQualitySelect = (nextQuality: "original" | VideoQuality) => {
     const video = videoRef.current;
     if (quality === nextQuality || !video) return;
     pendingQualitySwitchRef.current = {
@@ -393,10 +397,10 @@ export function VideoPlayer({
         onError={() => {
           qualitySwitchingRef.current = false;
           pendingQualitySwitchRef.current = null;
-          if (quality === "720p") {
-            setDataSaverAvailable(false);
+          if (quality !== "original") {
+            setAvailableQualities((current) => current.filter((item) => item !== quality));
             setQuality("original");
-            setControlMessage("Data saver is unavailable. Playing the original video.");
+            setControlMessage(`${quality} is unavailable. Playing the original video.`);
           } else setPlaybackError("The video could not be loaded. Please try again.");
         }}
         onPlay={() => { hasStartedRef.current = true; setIsPlaying(true); void queueWatch("playing").catch(() => {}); }}
@@ -569,23 +573,26 @@ export function VideoPlayer({
 
           {/* Right: Quality, speed and fullscreen */}
           <div className="flex items-center gap-2.5 sm:gap-3.5">
-            {dataSaverAvailable && (
+            {hostedVideo && (
               <div className="relative" ref={qualityMenuRef}>
                 <button type="button" onClick={() => setShowQualityMenu(!showQualityMenu)}
                   aria-label="Video quality" aria-expanded={showQualityMenu}
                   className="px-2 py-0.5 rounded hover:bg-white/10 font-bold text-[11px] text-slate-200">
-                  {quality === "720p" ? "Data saver" : "Original"}
+                  {quality === "original" ? "Original" : quality}
                 </button>
                 {showQualityMenu && (
                   <div className="absolute bottom-full right-0 mb-2 bg-[#172033] border border-[#26344D] rounded-xl p-1 shadow-xl flex flex-col gap-0.5 z-40 text-xs min-w-[150px]">
-                    <button type="button" onClick={() => handleQualitySelect("720p")}
-                      className={`px-3 py-1.5 text-left rounded-lg ${quality === "720p" ? "bg-[#FF6B35] text-white font-bold" : "hover:bg-slate-700 text-slate-200"}`}>
-                      Data saver · up to 720p
-                    </button>
+                    {VIDEO_QUALITIES.filter((item) => availableQualities.includes(item)).map((item) => (
+                      <button key={item} type="button" onClick={() => handleQualitySelect(item)}
+                        className={`px-3 py-1.5 text-left rounded-lg ${quality === item ? "bg-[#FF6B35] text-white font-bold" : "hover:bg-slate-700 text-slate-200"}`}>
+                        {item}
+                      </button>
+                    ))}
                     <button type="button" onClick={() => handleQualitySelect("original")}
                       className={`px-3 py-1.5 text-left rounded-lg ${quality === "original" ? "bg-[#FF6B35] text-white font-bold" : "hover:bg-slate-700 text-slate-200"}`}>
                       Original quality
                     </button>
+                    {availableQualities.length === 0 && <span className="px-3 py-1.5 text-slate-400">Other qualities are processing</span>}
                   </div>
                 )}
               </div>

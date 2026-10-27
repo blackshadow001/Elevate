@@ -7,6 +7,8 @@ import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { ApiError } from "@/server/api";
 import { MAX_VIDEO_SIZE_BYTES } from "@/lib/mediaLimits";
+import type { VideoQuality } from "@/lib/videoQualities";
+import { VIDEO_QUALITIES } from "@/lib/videoQualities";
 
 const keyPattern = /^[0-9a-f-]{36}\.(mp4|webm)$/;
 
@@ -20,8 +22,8 @@ export function localMediaPath(storageKey: string): string {
   return join(mediaDirectory(), storageKey);
 }
 
-export function dataSaverPath(storageKey: string): string {
-  return `${localMediaPath(storageKey)}.720p.mp4`;
+export function videoVariantPath(storageKey: string, quality: VideoQuality): string {
+  return `${localMediaPath(storageKey)}.${quality}.mp4`;
 }
 
 function hasVideoSignature(bytes: Uint8Array, mimeType: string): boolean {
@@ -78,18 +80,18 @@ export async function storeVideoStream(stream: ReadableStream<Uint8Array> | null
 
 export async function localMediaStat(storageKey: string) { return stat(localMediaPath(storageKey)); }
 
-export async function dataSaverStat(storageKey: string) { return stat(dataSaverPath(storageKey)); }
+export async function videoVariantStat(storageKey: string, quality: VideoQuality) { return stat(videoVariantPath(storageKey, quality)); }
 
 export function localMediaStream(storageKey: string, start: number, end: number): ReadableStream<Uint8Array> {
   return Readable.toWeb(createReadStream(localMediaPath(storageKey), { start, end })) as ReadableStream<Uint8Array>;
 }
 
-export function dataSaverStream(storageKey: string, start: number, end: number): ReadableStream<Uint8Array> {
-  return Readable.toWeb(createReadStream(dataSaverPath(storageKey), { start, end })) as ReadableStream<Uint8Array>;
+export function videoVariantStream(storageKey: string, quality: VideoQuality, start: number, end: number): ReadableStream<Uint8Array> {
+  return Readable.toWeb(createReadStream(videoVariantPath(storageKey, quality), { start, end })) as ReadableStream<Uint8Array>;
 }
 
 export async function deleteLocalMedia(storageKey: string): Promise<void> {
-  for (const path of [localMediaPath(storageKey), dataSaverPath(storageKey)]) {
+  for (const path of [localMediaPath(storageKey), ...VIDEO_QUALITIES.map((quality) => videoVariantPath(storageKey, quality))]) {
     await unlink(path).catch((error: NodeJS.ErrnoException) => {
       if (error.code !== "ENOENT") throw error;
     });

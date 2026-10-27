@@ -957,6 +957,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
               </span>
               <div className="rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-xl bg-black">
                 <VideoPlayer
+                  key={previewUrl || selectedVideo?.videoUrl || "lesson-demo"}
                   allowSeeking
                   src={previewUrl || selectedVideo?.videoUrl || "/videos/lesson-demo.webm"}
                   title="Lesson Preview Mode"

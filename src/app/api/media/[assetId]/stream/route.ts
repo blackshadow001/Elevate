@@ -1,16 +1,16 @@
 import { ApiError, safe } from "@/server/api";
 import { authorizedMediaAsset } from "@/server/mediaAccess";
-import { dataSaverStat, dataSaverStream, localMediaStat, localMediaStream } from "@/server/localMedia";
+import { localMediaStat, localMediaStream, videoVariantStat, videoVariantStream } from "@/server/localMedia";
+import { isVideoQuality } from "@/lib/videoQualities";
 
 export async function GET(request: Request, { params }: { params: Promise<{ assetId: string }> }) {
   return safe(async () => {
     const asset = await authorizedMediaAsset((await params).assetId);
     const quality = new URL(request.url).searchParams.get("quality");
-    if (quality !== null && quality !== "720p")
-      throw new ApiError(400, "INVALID_QUALITY", "Choose Original or Data saver quality.");
-    const dataSaver = quality === "720p";
+    if (quality !== null && !isVideoQuality(quality))
+      throw new ApiError(400, "INVALID_QUALITY", "Choose Original, 360p, 480p, 720p, or 1080p quality.");
     let info;
-    try { info = await (dataSaver ? dataSaverStat(asset.storageKey) : localMediaStat(asset.storageKey)); }
+    try { info = await (quality ? videoVariantStat(asset.storageKey, quality) : localMediaStat(asset.storageKey)); }
     catch { throw new ApiError(404, "MEDIA_NOT_FOUND", "Media file is unavailable."); }
     const total = info.size;
     const range = request.headers.get("range");
@@ -24,10 +24,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
       if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || end >= total)
         throw new ApiError(416, "INVALID_RANGE", "The requested byte range is unavailable.");
     }
-    return new Response(dataSaver ? dataSaverStream(asset.storageKey, start, end) : localMediaStream(asset.storageKey, start, end), {
+    return new Response(quality ? videoVariantStream(asset.storageKey, quality, start, end) : localMediaStream(asset.storageKey, start, end), {
       status: range ? 206 : 200,
       headers: {
-        "Content-Type": dataSaver ? "video/mp4" : asset.mimeType,
+        "Content-Type": quality ? "video/mp4" : asset.mimeType,
         "Content-Length": String(end - start + 1),
         "Accept-Ranges": "bytes",
         ...(range ? { "Content-Range": `bytes ${start}-${end}/${total}` } : {}),

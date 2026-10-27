@@ -14,7 +14,8 @@ db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
 
 const videoKey = /^[0-9a-f-]{36}\.(mp4|webm)$/;
 const partialKey = /^[0-9a-f-]{36}\.(mp4|webm)\.part$/;
-const variantKey = /^([0-9a-f-]{36}\.(?:mp4|webm))\.720p\.(?:mp4|mp4\.part|failed)$/;
+const qualities = ['360p', '480p', '720p', '1080p'];
+const variantKey = /^([0-9a-f-]{36}\.(?:mp4|webm))\.(?:360p|480p|720p|1080p)\.(?:mp4|mp4\.part|failed)$/;
 const used = db.prepare(`SELECT 1 WHERE EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=?)
   OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)
   OR EXISTS(SELECT 1 FROM media_assets WHERE storage_key=?)`);
@@ -43,7 +44,8 @@ try {
       continue;
     }
     let failed = false;
-    for (const name of [key, `${key}.720p.mp4`, `${key}.720p.mp4.part`, `${key}.720p.failed`]) {
+    for (const name of [key, ...qualities.flatMap((quality) =>
+      [`${key}.${quality}.mp4`, `${key}.${quality}.mp4.part`, `${key}.${quality}.failed`])]) {
       try { await unlink(join(mediaPath, name)); if (name === key) deleted++; }
       catch (error) {
         if (error.code !== 'ENOENT') { console.error(`Could not remove discarded video ${name}:`, error); failed = true; }
@@ -62,7 +64,7 @@ try {
     const variant = variantKey.exec(key);
     if (!partialKey.test(key) && !videoKey.test(key) && !variant) continue;
     const info = await stat(join(mediaPath, key));
-    if (partialKey.test(key) || key.endsWith('.720p.mp4.part')) {
+    if (partialKey.test(key) || (variant && key.endsWith('.mp4.part'))) {
       // Request handling is capped at three hours; an idle six-hour partial
       // cannot belong to an active upload. Transcoding can take longer, so
       // its partial files receive a full day before cleanup.

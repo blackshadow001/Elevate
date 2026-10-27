@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { AccessibilityWidget } from "@/components/layout/AccessibilityWidget";
 import { brand } from "@/lib/brand";
 
 const inter = Inter({
@@ -35,6 +36,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <AccessibilityWidget siteUrl={process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:4500"} />
       </body>
     </html>
   );
