@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LiveClass } from "@/data/liveClasses";
-import { Participant, mockParticipants } from "@/data/participants";
-import { LiveChatMessage, mockInitialChatMessages } from "@/data/chatMessages";
-import { LivePoll, mockInitialPolls } from "@/data/polls";
+import { Participant } from "@/data/participants";
+import { LiveChatMessage } from "@/data/chatMessages";
+import { LivePoll } from "@/data/polls";
 import { LiveVideo } from "@/components/live/LiveVideo";
 import { InstructorControls } from "./InstructorControls";
 import { ParticipantManager } from "./ParticipantManager";
@@ -16,7 +16,6 @@ import { Whiteboard } from "@/components/live/Whiteboard";
 import { LiveChat } from "@/components/live/LiveChat";
 import { LiveResources } from "@/components/live/LiveResources";
 import { LiveAnalytics } from "./LiveAnalytics";
-import { mockLiveResources } from "@/data/liveResources";
 import { liveService } from "@/services/liveService";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { 
@@ -51,9 +50,9 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
   const [isClassEnded, setIsClassEnded] = useState(liveClass.status === "completed");
 
   // State
-  const [participants, setParticipants] = useState<Participant[]>(mockParticipants);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [chatMessages, setChatMessages] = useState<LiveChatMessage[]>([]);
-  const [polls, setPolls] = useState<LivePoll[]>(mockInitialPolls);
+  const [polls, setPolls] = useState<LivePoll[]>([]);
 
   // Load participants & polls
   useEffect(() => {
@@ -230,7 +229,7 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
             )}
 
             {activePanel === "resources" && (
-              <LiveResources resources={mockLiveResources} />
+              <LiveResources resources={[]} />
             )}
           </div>
         )}

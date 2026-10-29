@@ -4,8 +4,6 @@ import { Hero } from "@/components/home/Hero";
 import { Stats } from "@/components/home/Stats";
 import { Categories } from "@/components/home/Categories";
 import { PopularCourses } from "@/components/home/PopularCourses";
-import { CareerPaths } from "@/components/home/CareerPaths";
-import { Testimonials } from "@/components/home/Testimonials";
 import { CTA } from "@/components/home/CTA";
 import { courseService } from "@/services/courseService";
 
@@ -19,11 +17,9 @@ export default async function HomePage() {
       <Navbar />
       <main className="flex-1">
         <Hero />
-        <Stats />
-        <Categories />
+        <Stats courseCount={courses.length} />
+        <Categories courses={courses} />
         <PopularCourses courses={courses} />
-        <CareerPaths />
-        <Testimonials />
         <CTA />
       </main>
       <Footer />

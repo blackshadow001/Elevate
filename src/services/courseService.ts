@@ -2,10 +2,6 @@ import "server-only";
 
 import { connection } from "next/server";
 import { Course, Category, CareerPath, Instructor, Lesson } from "@/types";
-import { mockCourses } from "@/data/courses";
-import { mockCategories } from "@/data/categories";
-import { mockCareerPaths } from "@/data/careerPaths";
-import { mockInstructors } from "@/data/instructors";
 import { ApiError } from "@/server/api";
 import { getDb } from "@/server/db";
 import { getCourse, listCourses } from "@/server/courses";
@@ -32,8 +28,6 @@ function duration(seconds: number): string {
 
 function mapCourse(source: ServerCourse): Course {
   const metadata = metadataFor(source.id);
-  const fixture = mockCourses.find((item) => item.id === source.id);
-  const fixtureInstructor = mockInstructors.find((item) => item.name === source.instructor.name);
   const counts = getDb().prepare(`SELECT
     (SELECT COUNT(*) FROM enrollments WHERE course_id=?) learners,
     (SELECT COUNT(*) FROM reviews WHERE course_id=?) reviews`).get(source.id, source.id);
@@ -41,9 +35,9 @@ function mapCourse(source: ServerCourse): Course {
     (SELECT COUNT(*) FROM courses WHERE instructor_id=? AND status='published') courses,
     (SELECT COUNT(*) FROM enrollments e JOIN courses c ON c.id=e.course_id WHERE c.instructor_id=?) learners`).get(source.instructor.id, source.instructor.id);
   const instructor: Instructor = {
-    id: source.instructor.id, name: source.instructor.name, role: fixtureInstructor?.role || "Instructor",
-    avatar: source.instructor.avatar || fixtureInstructor?.avatar || "",
-    bio: fixtureInstructor?.bio || "Course instructor",
+    id: source.instructor.id, name: source.instructor.name, role: "Instructor",
+    avatar: source.instructor.avatar || "",
+    bio: "",
     rating: 0, studentsCount: Number(instructorCounts?.learners || 0),
     coursesCount: Number(instructorCounts?.courses || 0),
   };
@@ -61,17 +55,14 @@ function mapCourse(source: ServerCourse): Course {
     whatYouWillLearn: strings(metadata.whatYouWillLearn), requirements: strings(metadata.requirements),
     sections: source.sections.map((section) => ({
       id: section.id, title: section.title,
-      lessons: section.lessons.map((lesson): Lesson => {
-        const seedLesson = fixture?.sections.flatMap((item) => item.lessons).find((item) => item.id === lesson.id);
-        return {
+      lessons: section.lessons.map((lesson): Lesson => ({
           id: lesson.id, title: lesson.title,
           duration: lesson.mediaAssetId
             ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
           type: lesson.activity?.kind === "resource" ? "resource" : lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
           content: lesson.description, activity: publicActivity(lesson.activity),
-          videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` : seedLesson?.videoUrl,
-        };
-      }),
+          videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` : undefined,
+        })),
     })),
   };
 }
@@ -99,8 +90,8 @@ export const courseService = {
     const courses = await courseService.getAllCourses();
     return (category && category !== "All" ? courses.filter((course) => course.category.toLowerCase() === category.toLowerCase()) : courses).slice(0, 8);
   },
-  getCategories: async (): Promise<Category[]> => [...mockCategories],
-  getCareerPaths: async (): Promise<CareerPath[]> => [...mockCareerPaths],
-  getCareerPathBySlug: async (slug: string): Promise<CareerPath | undefined> => mockCareerPaths.find((path) => path.slug === slug),
-  getInstructors: async (): Promise<Instructor[]> => [...mockInstructors],
+  getCategories: async (): Promise<Category[]> => [],
+  getCareerPaths: async (): Promise<CareerPath[]> => [],
+  getCareerPathBySlug: async (_slug: string): Promise<CareerPath | undefined> => undefined,
+  getInstructors: async (): Promise<Instructor[]> => [],
 };

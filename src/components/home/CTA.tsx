@@ -19,7 +19,7 @@ export function CTA() {
         </h2>
 
         <p className="text-base sm:text-lg text-[#94A3B8] max-w-2xl mx-auto mb-10 leading-relaxed">
-          Join thousands of learners and build skills that move your career forward. Get unlimited access to top-rated courses and industry mentors.
+          Explore the available courses and build skills at your own pace.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

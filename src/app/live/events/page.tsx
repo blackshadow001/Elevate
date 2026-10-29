@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { LiveEvent, mockEvents } from "@/data/events";
+import { LiveEvent } from "@/data/events";
 import { liveService } from "@/services/liveService";
 import { EventCard } from "@/components/live/EventCard";
 import { Sparkles, ArrowLeft, Calendar, Users } from "lucide-react";

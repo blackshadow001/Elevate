@@ -434,7 +434,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                 </div>
 
                 <div className="space-y-3 pt-2">
-                  {questions.length ? questions.map((question, index) => <div key={`${question}-${index}`} className="rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] p-4 text-xs text-[#172033]"><strong>{user.name}</strong><p className="mt-2">{question}</p></div>) : <p className="text-xs text-[#64748B]">No questions yet. Ask the first question for this demo session.</p>}
+                  {questions.length ? questions.map((question, index) => <div key={`${question}-${index}`} className="rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] p-4 text-xs text-[#172033]"><strong>{user.name}</strong><p className="mt-2">{question}</p></div>) : <p className="text-xs text-[#64748B]">No questions yet.</p>}
                 </div>
               </div>
             )}

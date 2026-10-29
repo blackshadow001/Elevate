@@ -2,8 +2,6 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { Course, Instructor } from "@/types";
-import { mockCourses } from "@/data/courses";
-import { mockInstructors } from "@/data/instructors";
 import { useAuth } from "@/context/AuthContext";
 import { formatVideoDuration } from "@/lib/videoDuration";
 import { type LessonActivity } from "@/lib/lessonActivities";
@@ -50,11 +48,9 @@ async function request(path: string, init?: RequestInit) {
 
 function duration(seconds: number) { return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h ${Math.ceil(seconds % 3600 / 60)}m` : `${Math.max(1, Math.ceil(seconds / 60))} mins`; }
 function toCourse(course: ApiCourse): InstructorCourse {
-  const fixture = mockCourses.find((item) => item.id === course.id);
-  const fixtureInstructor = mockInstructors.find((item) => item.name === course.instructor.name);
   const instructor: Instructor = { id: course.instructor.id, name: course.instructor.name,
-    avatar: course.instructor.avatar || fixtureInstructor?.avatar || "", bio: fixtureInstructor?.bio || "Course instructor",
-    role: fixtureInstructor?.role || "Instructor", rating: 0, studentsCount: 0, coursesCount: 0 };
+    avatar: course.instructor.avatar || "", bio: "",
+    role: "Instructor", rating: 0, studentsCount: 0, coursesCount: 0 };
   return {
     id: course.id, slug: course.slug, title: course.title, subtitle: course.subtitle,
     description: course.description, category: course.category,
@@ -73,8 +69,7 @@ function toCourse(course: ApiCourse): InstructorCourse {
         duration: lesson.type === "video" && lesson.mediaAssetId
           ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
         type: lesson.activity?.kind === "resource" ? "resource" : lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
-        videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` :
-          fixture?.sections.flatMap((item) => item.lessons).find((item) => item.id === lesson.id)?.videoUrl,
+        videoUrl: lesson.mediaAssetId ? `/api/media/${lesson.mediaAssetId}/stream` : undefined,
       })),
     })),
     status: course.status === "published" ? "Published" : course.status === "archived" ? "Archived" :

@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNotification } from "@/components/notifications/NotificationProvider";
-import { mockInstructors } from "@/data/instructors";
+import { useAuth } from "@/context/AuthContext";
 import { InstructorCourse, refreshInstructorCourses, saveInstructorCourse } from "@/lib/instructorCourses";
 import { MAX_VIDEO_SIZE_BYTES } from "@/lib/mediaLimits";
 import { formatVideoDuration, measureVideoDuration } from "@/lib/videoDuration";
@@ -92,6 +92,7 @@ function isHttpsUrl(value: string): boolean {
 export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCourse }) {
   const router = useRouter();
   const { notify } = useNotification();
+  const { user } = useAuth();
   const courseId = useRef(initialCourse?.id || `local-${crypto.randomUUID()}`);
   const courseSlug = useRef(initialCourse?.slug || "");
 
@@ -100,20 +101,20 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
 
   // Form State
   const [basicInfo, setBasicInfo] = useState({
-    title: initialCourse?.title || "Next.js 15 & AI Agents Masterclass",
-    shortDescription: initialCourse?.subtitle || "Learn to build production-grade web applications with React 19, Turbopack, and autonomous RAG agents.",
-    fullDescription: initialCourse?.description || "A comprehensive journey through modern full-stack web architecture. Master server actions, caching strategies, and agentic workflows.",
+    title: initialCourse?.title || "",
+    shortDescription: initialCourse?.subtitle || "",
+    fullDescription: initialCourse?.description || "",
     category: initialCourse?.category || "Development",
-    subcategory: "Full Stack & AI",
+    subcategory: "",
     level: initialCourse?.level || "Intermediate",
     language: initialCourse?.language || "English",
-    requirements: initialCourse?.requirements.join("\n") || "Basic JavaScript and React fundamentals",
-    whatYouWillLearn: initialCourse?.whatYouWillLearn.join("\n") || "Build scalable Next.js apps\nImplement RAG vectors with LangChain\nDeploy with CI/CD",
+    requirements: initialCourse?.requirements.join("\n") || "",
+    whatYouWillLearn: initialCourse?.whatYouWillLearn.join("\n") || "",
   });
 
   // Thumbnail State
-  const [thumbnailPreview, setThumbnailPreview] = useState<string>(initialCourse?.image || "/courses/course-1.jpg");
-  const persistedThumbnail = useRef(initialCourse?.image || "/courses/course-1.jpg");
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>(initialCourse?.image || "");
+  const persistedThumbnail = useRef(initialCourse?.image || "");
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   useEffect(() => () => { if (thumbnailPreview.startsWith("blob:")) URL.revokeObjectURL(thumbnailPreview); }, [thumbnailPreview]);
 
@@ -122,55 +123,11 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     id: section.id,
     title: section.title,
     lessons: section.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, duration: lesson.duration, type: (lesson.type === "video" ? "Video" : lesson.type === "quiz" ? "Quiz" : lesson.type === "project" ? "Assignment" : lesson.type === "resource" ? "Resource" : "Text") as LessonType, videoUrl: lesson.videoUrl, content: lesson.content, activity: lesson.activity })),
-  })) : [
-    {
-      id: "sec-1",
-      title: "01. Fundamentals & Project Setup",
-      lessons: [
-        {
-          id: "les-1",
-          title: "Introduction to Next.js 15 & App Architecture",
-          duration: "14 mins",
-          type: "Video",
-          videoUrl: "/videos/lesson-demo.webm",
-          videoFileName: "NextJS15_Intro.mp4",
-        },
-        {
-          id: "les-2",
-          title: "Server Actions and Optimistic Mutations",
-          duration: "25 mins",
-          type: "Video",
-          videoUrl: "/videos/lesson-demo.webm",
-          videoFileName: "ServerActions_DeepDive.mp4",
-        },
-      ],
-    },
-    {
-      id: "sec-2",
-      title: "02. AI Agents & Vector Retrieval",
-      lessons: [
-        {
-          id: "les-3",
-          title: "Building an Autonomous Coding Agent",
-          duration: "38 mins",
-          type: "Video",
-          videoUrl: "/videos/lesson-demo.webm",
-          videoFileName: "AgenticRAG.mp4",
-        },
-        {
-          id: "les-4",
-          title: "Section Quiz: Core Architectural Patterns",
-          duration: "10 mins",
-          type: "Quiz",
-        },
-      ],
-    },
-  ]);
+  })) : []);
 
   // A selected file is previewed locally while it streams to private server storage.
   const [activeUploadLesson, setActiveUploadLesson] = useState<string>(
-    initialCourse?.sections.flatMap((section) => section.lessons).find((lesson) => lesson.type === "video")?.id ||
-    (initialCourse ? "" : "les-1")
+    initialCourse?.sections.flatMap((section) => section.lessons).find((lesson) => lesson.type === "video")?.id || ""
   );
   const [previewFileName, setPreviewFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
@@ -189,9 +146,9 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
 
   // Pricing State
   const [pricing, setPricing] = useState({
-    price: initialCourse?.price ?? 1499,
-    originalPrice: initialCourse?.originalPrice ?? 2499,
-    isFree: initialCourse?.isFree ?? false,
+    price: initialCourse?.price ?? 0,
+    originalPrice: initialCourse?.originalPrice ?? 0,
+    isFree: initialCourse?.isFree ?? true,
   });
   const [marginPercent, setMarginPercent] = useState(initialCourse?.marginBps === undefined ? 20 : initialCourse.marginBps / 100);
   const basePriceMinor = initialCourse?.pricing?.basePriceMinor;
@@ -202,20 +159,11 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const handleAddSection = () => {
     const newSection: BuilderSection = {
       id: `sec-new-${crypto.randomUUID()}`,
-      title: `0${sections.length + 1}. New Curriculum Module`,
-      lessons: [
-        {
-          id: `les-new-${crypto.randomUUID()}`,
-          title: "Lesson 1: Overview",
-          duration: "15 mins",
-          type: "Video",
-          videoUrl: "/videos/lesson-demo.webm",
-          videoFileName: "sample_lesson.mp4",
-        },
-      ],
+      title: "",
+      lessons: [],
     };
     setSections((prev) => [...prev, newSection]);
-    notify({ type: "info", title: "Section Added", message: "New module added to curriculum." });
+    notify({ type: "info", title: "Section Added", message: "Enter a section title to continue." });
   };
 
   const handleDeleteSection = (sectionId: string) => {
@@ -225,11 +173,9 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const handleAddLesson = (sectionId: string) => {
     const newLesson: BuilderLesson = {
       id: `les-new-${crypto.randomUUID()}`,
-      title: "New Practical Lesson",
-      duration: "20 mins",
+      title: "",
+      duration: "0 mins",
       type: "Video",
-      videoUrl: "/videos/lesson-demo.webm",
-      videoFileName: "lesson_preview.mp4",
     };
     setSections((prev) =>
       prev.map((s) => (s.id === sectionId ? { ...s, lessons: [...s.lessons, newLesson] } : s))
@@ -290,7 +236,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
       duration: minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} mins`,
       totalLessons: lessons.length,
       image: thumbnailPreview.startsWith("blob:") ? persistedThumbnail.current : thumbnailPreview,
-      instructor: initialCourse?.instructor || mockInstructors[0],
+      instructor: initialCourse?.instructor || { id: user.id, name: user.name, avatar: user.avatar, role: "Instructor", bio: "", rating: 0, studentsCount: 0, coursesCount: 0 },
       updatedAt: new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
       whatYouWillLearn: basicInfo.whatYouWillLearn.split("\n").map((item) => item.trim()).filter(Boolean),
       requirements: basicInfo.requirements.split("\n").map((item) => item.trim()).filter(Boolean),
@@ -956,15 +902,15 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                 Instructor Quality & Timeline Verification
               </span>
               <div className="rounded-2xl overflow-hidden border border-[#E5E7EB] shadow-xl bg-black">
-                <VideoPlayer
-                  key={previewUrl || selectedVideo?.videoUrl || "lesson-demo"}
+                {previewUrl || selectedVideo?.videoUrl ? <VideoPlayer
+                  key={previewUrl || selectedVideo?.videoUrl || "no-video"}
                   allowSeeking
-                  src={previewUrl || selectedVideo?.videoUrl || "/videos/lesson-demo.webm"}
+                  src={previewUrl || selectedVideo?.videoUrl}
                   title="Lesson Preview Mode"
                   lessonId="preview-lesson"
                   poster={thumbnailPreview}
                   onLessonEnded={() => notify({ type: "info", title: "Preview Complete", message: "Video timeline reached end." })}
-                />
+                /> : <div className="flex aspect-video items-center justify-center text-sm text-white">Upload a lesson video to preview it.</div>}
               </div>
               <p className="text-[11px] text-[#64748B] italic pt-1">
                 Verify seeking, playback speeds (1x–1.5x), and audio before publishing this lecture. Captions require a configured provider or uploaded subtitle track.

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Bootcamp, mockBootcamps } from "@/data/bootcamps";
+import { Bootcamp } from "@/data/bootcamps";
 import { liveService } from "@/services/liveService";
 import { BootcampCard } from "@/components/live/BootcampCard";
 import { Flame, ArrowLeft, Calendar, Video, CheckCircle2 } from "lucide-react";

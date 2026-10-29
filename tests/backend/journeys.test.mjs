@@ -1145,8 +1145,8 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
   await t.test('page route smoke', async () => {
     const paths = [
       '/', '/courses', '/courses/full-stack-web-development',
-      '/career-paths', '/career-paths/full-stack-developer', '/programs/beginner',
-      '/blog', '/blog/modern-react-compiler-nextjs-15',
+      '/career-paths', '/programs/beginner',
+      '/blog',
       '/live', '/live-classes', '/live-classes/live-1', '/live/classes/live-1',
       '/live/bootcamps', '/live/bootcamps/7-day-full-stack-bootcamp',
       '/live/events', '/live/events/ai-engineering-masterclass',
@@ -1161,10 +1161,14 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       '/instructor/bootcamps', '/instructor/bootcamps/create', '/instructor/students',
       '/instructor/analytics', '/instructor/messages', '/instructor/settings',
     ];
-    assert.equal(paths.length, 47);
+    assert.equal(paths.length, 45);
     for (const path of paths) {
       const response = await fetch(`${base}${path}`, { redirect: 'manual' });
       assert.ok(response.status < 400, `${path} returned ${response.status}`);
+    }
+    for (const path of ['/career-paths/full-stack-developer', '/blog/modern-react-compiler-nextjs-15']) {
+      const response = await fetch(`${base}${path}`, { redirect: 'manual' });
+      assert.equal(response.status, 404, `${path} should not show sample content`);
     }
   });
 });

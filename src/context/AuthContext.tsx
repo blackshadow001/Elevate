@@ -1,7 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { User, mockUsers } from "@/data/users";
+import { User } from "@/data/users";
+
+const anonymousUser: User = { id: "", name: "Guest", email: "", role: "learner", avatar: "" };
 
 interface AuthResult { success: boolean; user?: User; error?: string; }
 interface AuthContextType {
@@ -112,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user: sessionUser || mockUsers[0], isAuthenticated: Boolean(sessionUser), isReady, login, signup, logout, refresh }}>
+    <AuthContext.Provider value={{ user: sessionUser || anonymousUser, isAuthenticated: Boolean(sessionUser), isReady, login, signup, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

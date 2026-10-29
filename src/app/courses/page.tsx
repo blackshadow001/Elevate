@@ -8,7 +8,7 @@ export const instant = false;
 
 export const metadata = {
   title: "All Courses — Elevate",
-  description: "Browse top-rated courses in software development, data science, design, AI, and cloud.",
+  description: "Browse courses currently published on Elevate.",
 };
 
 export default async function CoursesPage() {

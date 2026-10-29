@@ -191,7 +191,7 @@ export default function InstructorLiveClassesListPage() {
                 <div className="bg-red-50/70 border border-red-200/60 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs text-red-800 font-bold">
                   <div className="flex items-center gap-1.5">
                     <Radio className="w-3.5 h-3.5 text-red-600 animate-pulse" />
-                    <span>{item.attendeesCount} in demo room</span>
+                    <span>{item.attendeesCount} participants</span>
                   </div>
                   <span>Streaming pending</span>
                 </div>
@@ -272,7 +272,7 @@ export default function InstructorLiveClassesListPage() {
       {editingClass && <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/60" onClick={() => setEditingClass(null)} />
         <form role="dialog" aria-modal="true" aria-label="Edit live class" onSubmit={handleSaveClass} className="relative z-10 max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
-          <h2 className="text-xl font-bold text-[#172033]">Edit demo live class</h2>
+          <h2 className="text-xl font-bold text-[#172033]">Edit live class</h2>
           <label className="block text-xs font-bold text-[#172033]">Title<input required value={editingClass.title} onChange={(event) => setEditingClass({ ...editingClass, title: event.target.value })} className="mt-1 w-full rounded-xl border p-3 text-sm" /></label>
           <label className="block text-xs font-bold text-[#172033]">Description<textarea required value={editingClass.description} onChange={(event) => setEditingClass({ ...editingClass, description: event.target.value })} className="mt-1 w-full rounded-xl border p-3 text-sm" /></label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -286,7 +286,7 @@ export default function InstructorLiveClassesListPage() {
       {cancellingClass && <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/60" onClick={() => setCancellingClass(null)} />
         <div role="dialog" aria-modal="true" aria-label="Cancel live class" className="relative z-10 w-full max-w-md space-y-4 rounded-3xl bg-white p-6 shadow-2xl">
-          <h2 className="text-xl font-bold text-[#172033]">Cancel this demo class?</h2>
+          <h2 className="text-xl font-bold text-[#172033]">Cancel this class?</h2>
           <p className="text-sm text-[#64748B]">{cancellingClass.title} will move to Cancelled. You can reschedule it later.</p>
           <div className="flex justify-end gap-3"><button type="button" onClick={() => setCancellingClass(null)} className="rounded-xl border px-4 py-2 text-xs font-bold">Keep Class</button><button type="button" onClick={() => handleCancelClass(cancellingClass)} className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white">Cancel Class</button></div>
         </div>

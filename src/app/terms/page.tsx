@@ -40,7 +40,7 @@ export default function TermsOfServicePage() {
           <section className="space-y-2">
             <h2 className="text-lg font-bold text-[#172033]">3. Intellectual Property Rights</h2>
             <p className="text-[#64748B]">
-              Course content and sample certificates are included to demonstrate the learning experience. Content rights and distribution terms require review before a production launch.
+              Course content is provided by instructors. Contact the platform operator for questions about content rights and distribution.
             </p>
           </section>
 

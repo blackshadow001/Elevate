@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LiveClass } from "@/data/liveClasses";
 import { LiveChatMessage, LiveQuestion } from "@/data/chatMessages";
 import { LivePoll } from "@/data/polls";
-import { LiveResource, mockLiveResources } from "@/data/liveResources";
+import { LiveResource } from "@/data/liveResources";
 import { liveService } from "@/services/liveService";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/components/notifications/NotificationProvider";
@@ -300,7 +300,7 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
             )}
 
             {activeTab === "resources" && (
-              <LiveResources resources={mockLiveResources} />
+              <LiveResources resources={[]} />
             )}
           </div>
         </div>

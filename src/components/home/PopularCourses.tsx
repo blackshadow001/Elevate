@@ -11,17 +11,9 @@ interface PopularCoursesProps {
   courses: Course[];
 }
 
-const filterTabs = [
-  "All",
-  "Development",
-  "Data Science",
-  "Design",
-  "Cloud & DevOps",
-  "AI & ML",
-];
-
 export function PopularCourses({ courses }: PopularCoursesProps) {
   const [activeTab, setActiveTab] = useState("All");
+  const filterTabs = ["All", ...new Set(courses.map((course) => course.category).filter(Boolean))];
 
   const filteredCourses = courses.filter((c) => {
     if (activeTab === "All") return true;
@@ -36,10 +28,10 @@ export function PopularCourses({ courses }: PopularCoursesProps) {
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8">
             <div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172033] tracking-tight">
-                Popular courses
+                Available courses
               </h2>
               <p className="mt-2 text-base text-[#64748B]">
-                Learn from the most popular and trending courses curated by specialists.
+                Browse courses currently published on Elevate.
               </p>
             </div>
             <Link

@@ -1,19 +1,17 @@
-import { LiveClass, mockLiveClasses } from "@/data/liveClasses";
-import { mockCourses } from "@/data/courses";
-import { mockInstructors } from "@/data/instructors";
-import { Bootcamp, mockBootcamps } from "@/data/bootcamps";
-import { LiveEvent, mockEvents } from "@/data/events";
-import { Participant, mockParticipants } from "@/data/participants";
-import { LiveChatMessage, LiveQuestion, mockInitialChatMessages, mockInitialQuestions } from "@/data/chatMessages";
-import { LivePoll, mockInitialPolls } from "@/data/polls";
-import { LiveResource, mockLiveResources } from "@/data/liveResources";
+import { LiveClass } from "@/data/liveClasses";
+import { Bootcamp } from "@/data/bootcamps";
+import { LiveEvent } from "@/data/events";
+import { Participant } from "@/data/participants";
+import { LiveChatMessage, LiveQuestion } from "@/data/chatMessages";
+import { LivePoll } from "@/data/polls";
+import { LiveResource } from "@/data/liveResources";
 
 // Non-authoritative classroom preview state. Scheduling and registration use the API.
-let participantsStore: Participant[] = [...mockParticipants];
-let chatMessagesStore: LiveChatMessage[] = [...mockInitialChatMessages];
-let questionsStore: LiveQuestion[] = [...mockInitialQuestions];
-let pollsStore: LivePoll[] = [...mockInitialPolls];
-let resourcesStore: LiveResource[] = [...mockLiveResources];
+let participantsStore: Participant[] = [];
+let chatMessagesStore: LiveChatMessage[] = [];
+let questionsStore: LiveQuestion[] = [];
+let pollsStore: LivePoll[] = [];
+let resourcesStore: LiveResource[] = [];
 
 type ApiLive = { id: string; courseId: string | null; courseTitle: string | null; activeParticipants: number;
   instructor: { id: string; name: string }; title: string;
@@ -28,37 +26,33 @@ function jsonBody(data: unknown): Pick<RequestInit, "headers" | "body"> {
   return { headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) };
 }
 function toLive(item: ApiLive): LiveClass {
-  const fixture = mockLiveClasses.find((entry) => entry.id === item.id);
   const scheduled = new Date(item.scheduledAt);
-  const course = mockCourses.find((entry) => entry.id === item.courseId);
-  const instructor = mockInstructors.find((entry) => entry.name === item.instructor.name);
   return {
-    id: item.id, title: item.title, courseId: item.courseId || "", courseTitle: item.courseTitle || course?.title || fixture?.courseTitle || "Open class",
+    id: item.id, title: item.title, courseId: item.courseId || "", courseTitle: item.courseTitle || "Open class",
     instructorId: item.instructor.id, instructorName: item.instructor.name,
-    instructorRole: fixture?.instructorRole || instructor?.role || "Instructor",
-    instructorAvatar: fixture?.instructorAvatar || instructor?.avatar || "",
+    instructorRole: "Instructor",
+    instructorAvatar: "",
     scheduledAt: scheduled.toLocaleDateString("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Kolkata" }),
     startTime: scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }),
     duration: item.durationMinutes, status: item.status === "ended" ? "completed" : item.status as LiveClass["status"],
     description: item.description, attendeesCount: item.activeParticipants, registeredCount: item.activeParticipants,
-    tags: fixture?.tags || [], provider: "custom", platform: "custom",
+    tags: [], provider: "custom", platform: "custom",
   };
 }
 type ApiEvent = { id: string; slug: string; title: string; description: string; eventType: string;
   scheduledAt: string; price: number; registeredCount: number; speaker: { id: string; name: string } | null };
 function toEvent(item: ApiEvent): LiveEvent {
-  const fixture = mockEvents.find((event) => event.id === item.id);
   const date = new Date(item.scheduledAt);
   return {
     id: item.id, slug: item.slug, title: item.title, description: item.description,
-    speaker: item.speaker?.name || fixture?.speaker || "Elevate instructor",
-    speakerRole: fixture?.speakerRole || "Instructor", speakerCompany: fixture?.speakerCompany || "Elevate",
-    speakerAvatar: fixture?.speakerAvatar || "", date: date.toLocaleDateString("en-IN", { dateStyle: "full", timeZone: "Asia/Kolkata" }),
+    speaker: item.speaker?.name || "Elevate instructor",
+    speakerRole: "Instructor", speakerCompany: "",
+    speakerAvatar: "", date: date.toLocaleDateString("en-IN", { dateStyle: "full", timeZone: "Asia/Kolkata" }),
     time: date.toLocaleTimeString("en-IN", { timeStyle: "short", timeZone: "Asia/Kolkata" }) + " IST",
-    duration: fixture?.duration || 60, detailedAgenda: fixture?.detailedAgenda || [],
+    duration: 60, detailedAgenda: [],
     registeredCount: item.registeredCount, isPaid: item.price > 0, price: item.price, currency: "INR",
     category: (["workshop", "masterclass", "qa", "hackathon", "industry"].includes(item.eventType) ? item.eventType : "workshop") as LiveEvent["category"],
-    tags: fixture?.tags || [], coverImage: fixture?.coverImage || "", isRegistered: false,
+    tags: [], coverImage: "", isRegistered: false,
   };
 }
 type ApiBootcamp = { id: string; slug: string; title: string; description: string; status: string;
@@ -72,25 +66,22 @@ export function sessionDateInput(value: string): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 function toBootcamp(item: ApiBootcamp): Bootcamp {
-  const fixture = mockBootcamps.find((b) => b.id === item.id);
-  const instructor = mockInstructors.find((entry) => entry.name === item.instructor.name);
   const fmt = (value: string) => new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
   return {
     id: item.id, slug: item.slug, title: item.title, description: item.description,
-    tagline: fixture?.tagline || item.description,
+    tagline: item.description,
     dateRange: `${fmt(item.startDate)} – ${fmt(item.endDate)}`,
     totalDays: item.sessions.length, liveSessionsCount: item.sessions.length,
-    projectsCount: fixture?.projectsCount || 0, enrolledLearners: item.registeredCount,
-    instructorName: item.instructor.name, instructorRole: fixture?.instructorRole || instructor?.role || "Instructor",
-    instructorAvatar: fixture?.instructorAvatar || instructor?.avatar || "", coverImage: fixture?.coverImage || "",
-    tags: fixture?.tags || [], userProgressPercent: 0,
+    projectsCount: 0, enrolledLearners: item.registeredCount,
+    instructorName: item.instructor.name, instructorRole: "Instructor",
+    instructorAvatar: "", coverImage: "",
+    tags: [], userProgressPercent: 0,
     sessions: item.sessions.map((session, index) => {
       const date = new Date(session.sessionDate);
-      const sample = fixture?.sessions[index];
-      return { dayNumber: index + 1, title: session.title, description: session.description || sample?.description || "",
+      return { dayNumber: index + 1, title: session.title, description: session.description || "",
         date: fmt(session.sessionDate), time: date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) + " IST",
         duration: session.durationMinutes, status: session.liveClassStatus === "live" ? "live" : date < new Date() ? "completed" : "upcoming",
-        liveClassId: session.liveClassId || undefined, assignmentTitle: session.assignmentTitle || sample?.assignmentTitle,
+        liveClassId: session.liveClassId || undefined, assignmentTitle: session.assignmentTitle || undefined,
         resourcesCount: 0 };
     }),
   };
@@ -116,7 +107,7 @@ export const liveService = {
   },
 
   async getCompletedClasses(): Promise<LiveClass[]> {
-    return [];
+    return (await this.getLiveClasses()).filter((c) => c.status === "completed");
   },
 
   async getInstructorLiveClasses(instructorId?: string): Promise<LiveClass[]> {
@@ -330,7 +321,7 @@ export const liveService = {
     return [...questionsStore];
   },
 
-  async askQuestion(questionText: string, authorName = "Alex Johnson"): Promise<LiveQuestion> {
+  async askQuestion(questionText: string, authorName = "Learner"): Promise<LiveQuestion> {
     const date = new Date();
     const timeStr = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     const newQ: LiveQuestion = {

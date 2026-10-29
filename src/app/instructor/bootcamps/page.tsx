@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Bootcamp, mockBootcamps } from "@/data/bootcamps";
+import { Bootcamp } from "@/data/bootcamps";
 import { liveService } from "@/services/liveService";
 import { 
   Flame, 

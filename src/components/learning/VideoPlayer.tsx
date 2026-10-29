@@ -31,7 +31,7 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({
-  src = "/videos/lesson-demo.webm",
+  src = "",
   poster,
   title,
   lessonId,
