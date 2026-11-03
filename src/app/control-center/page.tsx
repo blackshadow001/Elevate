@@ -10,5 +10,5 @@ export default async function AdminPage() {
   const user = await currentUser();
   if (!user) redirect("/control-center/login");
   if (user.role !== "admin") redirect("/control-center/login");
-  return <AdminOverviewDashboard adminName={user.name} />;
+  return <AdminOverviewDashboard adminName={user.name} isSuperAdmin={user.isSuperAdmin === true} />;
 }

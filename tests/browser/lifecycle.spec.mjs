@@ -68,6 +68,35 @@ test.afterAll(async () => {
   rmSync(mediaPath, { recursive: true, force: true });
 });
 
+test('my learning lists and archived courses use the learner account', async ({ page }) => {
+  await page.goto(`${base}/login`);
+  await page.getByLabel('Email', { exact: true }).fill('samira@example.invalid');
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard(?:\?|$)/);
+  const enrolled = await page.request.post(`${base}/api/courses/course-free-foundations/enroll`);
+  expect(enrolled.ok()).toBeTruthy();
+  await page.reload();
+  const library = page.locator('section[aria-label="My learning library"]');
+  await expect(library.getByRole('heading', { name: 'My learning' })).toBeVisible();
+  await expect(library.getByRole('heading', { name: 'Web Foundations: Free Starter' })).toBeVisible();
+  await library.getByRole('button', { name: 'My Lists' }).click();
+  await library.getByLabel('New list name').fill('Study plan');
+  await library.getByRole('button', { name: 'Create list' }).click();
+  await expect(library.getByRole('button', { name: 'Study plan (0)' })).toBeVisible();
+  await library.getByRole('button', { name: 'All courses' }).click();
+  await library.getByLabel('Add Web Foundations: Free Starter to a list').selectOption({ label: 'Study plan' });
+  await library.getByRole('button', { name: 'My Lists' }).click();
+  await expect(library.getByRole('button', { name: 'Study plan (1)' })).toBeVisible();
+  await expect(library.getByRole('heading', { name: 'Web Foundations: Free Starter' })).toBeVisible();
+  await library.getByRole('button', { name: 'All courses' }).click();
+  await library.getByRole('button', { name: 'Archive', exact: true }).click();
+  await library.getByRole('button', { name: 'Archived', exact: true }).click();
+  await expect(library.getByRole('heading', { name: 'Web Foundations: Free Starter' })).toBeVisible();
+  await library.getByRole('button', { name: 'Restore' }).click();
+  await expect(library.getByText('No archived courses.')).toBeVisible();
+});
+
 test('wishlist shows only saved courses and removal restores the empty state', async ({ page }) => {
   await page.goto(`${base}/wishlist`);
   await expect(page).toHaveURL(/\/login/);

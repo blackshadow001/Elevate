@@ -147,6 +147,36 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
   const otherInstructor = await login('priya-sundaram@instructors.example.invalid');
   assert.equal((await call('/api/auth/me', { cookie: otherLearner })).body.data.role, 'learner');
   assert.equal((await call('/api/auth/me', { cookie: otherInstructor })).body.data.role, 'instructor');
+  await t.test('learner tutor application reaches admin review and approval grants tutor access', async () => {
+    const email = `new-tutor-${randomBytes(5).toString('hex')}@example.invalid`;
+    const created = await call('/api/auth/register', { method: 'POST', body: { name: 'Future Tutor', email, password } });
+    assert.equal(created.response.status, 201);
+    const applicant = await login(email);
+    assert.equal((await call('/api/me/tutor-application', { cookie: applicant })).body.data, null);
+    const form = { subject: 'Web development', experience: 'I have built production web applications for several years.',
+      coursePlan: 'I will teach beginners to build and deploy a complete application in short lessons.' };
+    assert.equal((await call('/api/me/tutor-application', { method: 'POST', cookie: applicant, origin: 'https://elsewhere.invalid', body: form })).response.status, 403);
+    assert.equal((await call('/api/me/tutor-application', { method: 'POST', cookie: otherInstructor, body: form })).response.status, 403);
+    const submitted = await call('/api/me/tutor-application', { method: 'POST', cookie: applicant, body: form });
+    assert.equal(submitted.response.status, 201, JSON.stringify(submitted.body));
+    assert.equal((await call('/api/me/tutor-application', { method: 'POST', cookie: applicant, body: form })).response.status, 409);
+    assert.equal((await call('/api/admin/tutor-applications', { cookie: applicant })).response.status, 403);
+    const adminLogin = await call('/api/admin/auth/login', { method: 'POST', body: { email: 'admin@example.com', password } });
+    assert.equal(adminLogin.response.status, 200);
+    const adminCookie = adminLogin.response.headers.get('set-cookie').split(';')[0];
+    const pending = await call('/api/admin/tutor-applications', { cookie: adminCookie });
+    assert.equal(pending.response.status, 200);
+    assert.ok(pending.body.data.some((item) => item.id === submitted.body.data.id && item.applicant.email === email));
+    assert.equal((await call(`/api/admin/tutor-applications/${submitted.body.data.id}`, { method: 'PATCH', cookie: applicant,
+      body: { action: 'approve', note: 'Good proposal' } })).response.status, 403);
+    assert.equal((await call(`/api/admin/tutor-applications/${submitted.body.data.id}`, { method: 'PATCH', cookie: adminCookie,
+      body: { action: 'approve', note: 'Good proposal' } })).response.status, 200);
+    assert.equal((await call('/api/auth/me', { cookie: applicant })).response.status, 401);
+    const tutorLogin = await call('/api/auth/login', { method: 'POST', body: { email, password } });
+    assert.equal(tutorLogin.body.data.role, 'instructor');
+    assert.equal((await call(`/api/admin/tutor-applications/${submitted.body.data.id}`, { method: 'PATCH', cookie: adminCookie,
+      body: { action: 'approve', note: 'Repeated approval' } })).response.status, 409);
+  });
   await t.test('each account can update only its own display name', async () => {
     assert.equal((await call('/api/auth/me', { method: 'PATCH', body: { name: 'Anonymous' } })).response.status, 401);
     assert.equal((await call('/api/auth/me', { method: 'PATCH', cookie: otherLearner, origin: 'https://elsewhere.invalid', body: { name: 'Cross Site' } })).response.status, 403);
@@ -312,6 +342,24 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
   });
 
   const instructor = await login('john@example.com');
+  await t.test('learner lists and archives are private and preserve enrollments', async () => {
+    assert.equal((await call('/api/me/library')).response.status, 401);
+    const created = await call('/api/me/library', { method: 'POST', cookie: learner, body: { action: 'create-list', name: 'My plan' } });
+    assert.equal(created.response.status, 200, JSON.stringify(created.body));
+    const listId = created.body.data.listId;
+    assert.equal((await call('/api/me/library', { method: 'POST', cookie: learner, origin: 'https://elsewhere.invalid', body: { action: 'archive', courseId: 'course-free-foundations' } })).response.status, 403);
+    assert.equal((await call('/api/me/library', { method: 'POST', cookie: learner, body: { action: 'add-to-list', listId, courseId: 'course-1' } })).response.status, 404);
+    assert.equal((await call('/api/me/library', { method: 'POST', cookie: otherLearner, body: { action: 'delete-list', listId } })).response.status, 404);
+    assert.equal((await call('/api/me/library', { method: 'POST', cookie: learner, body: { action: 'add-to-list', listId, courseId: 'course-free-foundations' } })).response.status, 200);
+    assert.equal((await call('/api/me/library', { method: 'POST', cookie: learner, body: { action: 'archive', courseId: 'course-free-foundations' } })).response.status, 200);
+    const own = (await call('/api/me/library', { cookie: learner })).body.data;
+    assert.deepEqual(own.lists[0].courseIds, ['course-free-foundations']);
+    assert.deepEqual(own.archivedCourseIds, ['course-free-foundations']);
+    assert.equal((await call('/api/me/library', { cookie: otherLearner })).body.data.lists.length, 0);
+    assert.equal((await call('/api/me/enrollments', { cookie: learner })).body.data.some((enrollment) => enrollment.courseId === 'course-free-foundations'), true);
+    assert.equal((await call('/api/me/library', { method: 'POST', cookie: learner, body: { action: 'unarchive', courseId: 'course-free-foundations' } })).response.status, 200);
+    assert.equal((await call('/api/me/library', { method: 'POST', cookie: learner, body: { action: 'delete-list', listId } })).response.status, 200);
+  });
   await t.test('enrolled course curriculum cannot invalidate progress or certificates', async () => {
     const add = await call('/api/instructor/courses/course-free-foundations/sections/section-free-foundations/lessons', {
       method: 'POST', cookie: instructor, body: { title: 'Late Required Lesson', type: 'reading', durationSeconds: 300, status: 'published' },

@@ -171,6 +171,7 @@ export function Navbar() {
           </Link>
 
           {isAuthenticated ? <>
+          {user.role === "learner" && <Link href="/instructor/apply" className="rounded-lg bg-[#FFF3EE] px-3 py-2 text-xs font-bold text-[#E85D2A] hover:bg-orange-100">Teach on Elevate</Link>}
           {/* Conditional Role Links */}
           {user.role === "instructor" ? (
             <Link
@@ -372,6 +373,7 @@ export function Navbar() {
             </Link>}
             {isAuthenticated && <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]">My Profile</Link>}
             {isAuthenticated && user.role === "learner" && <Link href="/certificates" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]">My Certificates</Link>}
+            {isAuthenticated && user.role === "learner" && <Link href="/instructor/apply" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]">Teach on Elevate</Link>}
           </div>
 
           <div className="pt-4 flex flex-col gap-2.5">

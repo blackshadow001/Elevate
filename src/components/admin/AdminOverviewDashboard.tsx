@@ -30,7 +30,7 @@ import type { AdminOverviewData } from "@/server/adminOverview";
 const formatRupees = (minor: number) =>
   `₹${(minor / 100).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
-export default function AdminOverviewDashboard({ adminName }: { adminName: string }) {
+export default function AdminOverviewDashboard({ adminName, isSuperAdmin }: { adminName: string; isSuperAdmin: boolean }) {
   const [data, setData] = useState<AdminOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -83,6 +83,7 @@ export default function AdminOverviewDashboard({ adminName }: { adminName: strin
 
   return (
     <div className="space-y-8">
+      {isSuperAdmin && <Link href="/control-center/tutor-applications" className="inline-flex items-center gap-2 rounded-xl border border-[#FF6B35] bg-orange-50 px-4 py-3 text-sm font-bold text-[#E85D2A]">Review tutor applications <ArrowRight className="h-4 w-4" /></Link>}
       {/* Page Header */}
       <PageHeader
         title="Super Admin Control Center"

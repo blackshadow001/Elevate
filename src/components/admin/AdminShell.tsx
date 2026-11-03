@@ -60,6 +60,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "All Users", href: "/control-center/users", icon: Users },
       { label: "Tutors", href: "/control-center/users?role=instructor", icon: GraduationCap },
+      { label: "Tutor Applications", href: "/control-center/tutor-applications", icon: ClipboardCheck },
       { label: "Learners", href: "/control-center/users?role=learner", icon: ShieldCheck },
       { label: "Admin Profiles", href: "/control-center/profiles", icon: UserCog },
     ],

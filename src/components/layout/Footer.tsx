@@ -82,7 +82,7 @@ export function Footer() {
                 <Link href="/about" className="hover:text-white transition-colors">About {brand.name}</Link>
               </li>
               <li>
-                <Link href="/careers" className="hover:text-white transition-colors">Careers <span className="text-[10px] bg-[#FF6B35] text-white px-1.5 py-0.5 rounded font-bold ml-1">HIRING</span></Link>
+                <Link href="/careers" className="hover:text-white transition-colors">Careers</Link>
               </li>
               <li>
                 <Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link>

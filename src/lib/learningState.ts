@@ -9,6 +9,7 @@ export interface LearningState {
   enrolledCourseIds: string[];
   enrolledCourses: Array<{
     courseId: string; courseSlug: string; courseTitle: string; courseImage: string;
+    category: string; instructorName: string; enrolledAt: string;
     lastLessonId: string; lastLessonTitle: string; totalLessons: number;
     completedLessons: number; progressPercent: number;
   }>;
@@ -34,9 +35,9 @@ async function api(path: string, init?: RequestInit) {
   return body.data;
 }
 
-type ApiEnrollment = { courseId: string; course: { slug: string; title: string; thumbnail: string | null } };
+type ApiEnrollment = { courseId: string; enrolledAt: string; course: { slug: string; title: string; thumbnail: string | null } };
 type ApiProgress = { lessons: Array<{ lessonId: string; completed: boolean }> };
-type ApiCourse = { sections: Array<{ lessons: Array<{ id: string; title: string }> }> };
+type ApiCourse = { category: string; instructor: { name: string }; sections: Array<{ lessons: Array<{ id: string; title: string }> }> };
 type ApiCertificate = {
   id: string; certificateNumber: string; courseId: string; courseSlug: string; courseName: string;
   studentName: string; instructorName: string; completedAt: string; skills: unknown[];
@@ -68,6 +69,7 @@ export async function refreshLearningState(userId = activeUserId, force = false)
           summary: {
             courseId: enrollment.courseId, courseSlug: enrollment.course.slug, courseTitle: enrollment.course.title,
             courseImage: enrollment.course.thumbnail || "", lastLessonId: next?.id || "",
+            category: course.category, instructorName: course.instructor.name, enrolledAt: enrollment.enrolledAt,
             lastLessonTitle: next?.title || "No lessons available", totalLessons: lessons.length,
             completedLessons: completed.length, progressPercent: lessons.length ? Math.round(completed.length / lessons.length * 100) : 0,
           },

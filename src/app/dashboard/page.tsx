@@ -11,25 +11,11 @@ import { liveService } from "@/services/liveService";
 import { useLearningState } from "@/lib/learningState";
 import { useAuth } from "@/context/AuthContext";
 import { CourseCard } from "@/components/courses/CourseCard";
-import { CourseThumbnail } from "@/components/courses/CourseThumbnail";
-import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
-import { Reveal } from "@/components/ui/Reveal";
-import { 
-  Play, 
-  Award, 
-  Clock, 
-  Flame, 
-  BookCheck, 
-  ArrowRight,
-  Video,
-  Calendar,
-  CheckCircle2,
-  ExternalLink,
-  Sparkles
-} from "lucide-react";
+import { MyLearningLibrary } from "@/components/learning/MyLearningLibrary";
+import { Award, ArrowRight, Calendar } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated } = useAuth();
   const router = useRouter();
   const learningState = useLearningState();
   const [upcomingClasses, setUpcomingClasses] = useState<LiveClass[]>([]);
@@ -81,15 +67,7 @@ export default function DashboardPage() {
       .catch(() => { if (active) setRecommendationError(true); });
     return () => { active = false; };
   }, [isAuthenticated]);
-  const mockEnrolledCourses = learningState.enrolledCourses;
-  const mockUserStats = {
-    name: user.name.split(" ")[0],
-    avatar: user.avatar,
-    coursesCompleted: mockEnrolledCourses.filter((course) => course.progressPercent === 100).length,
-    learningHours: 0,
-    certificates: learningState.certificates.length,
-    currentStreak: 0,
-  };
+
   const myCertificates = learningState.certificates;
 
   if (!isReady || !isAuthenticated) {
@@ -99,187 +77,10 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#F7F8FA]">
       <Navbar />
+      <MyLearningLibrary />
 
-      <main className="flex-1 py-10">
+      <main id="learning-tools" className="flex-1 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-          {/* Welcome Banner */}
-          <Reveal direction="down">
-            <div className="bg-white rounded-3xl border border-[#E5E7EB] p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                {mockUserStats.avatar ? <img src={mockUserStats.avatar} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-[#FF6B35]" /> :
-                  <span className="flex w-16 h-16 items-center justify-center rounded-2xl bg-[#FFF0EB] text-xl font-extrabold text-[#E85D2A]" aria-hidden="true">{mockUserStats.name.slice(0, 2).toUpperCase()}</span>}
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
-                    Good morning, {mockUserStats.name} 👋
-                  </h1>
-                  <p className="text-sm text-[#64748B] mt-1">
-                    Continue learning and keep building your skills. Your progress is saved to your account.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/live-classes"
-                  className="inline-flex items-center gap-2 bg-[#172033] hover:bg-[#26344D] text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-all"
-                >
-                  <Video className="w-4 h-4 text-red-500" />
-                  <span>Live Classes</span>
-                </Link>
-                <Link
-                  href="/courses"
-                  className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#E85D2A] text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-all active:scale-97"
-                >
-                  <span>Browse Courses</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </Reveal>
-
-          {/* Learning Statistics Bar with Animated Numbers */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            <Reveal direction="up" delay={0.05}>
-              <div className="bg-white p-6 rounded-2xl border border-[#E5E7EB] shadow-xs flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 text-[#FF6B35] flex items-center justify-center shrink-0">
-                  <BookCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-[#172033]">
-                    <AnimatedNumber value={mockUserStats.coursesCompleted} duration={1500} />
-                  </div>
-                  <div className="text-xs font-semibold text-[#64748B]">
-                    Courses Completed
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal direction="up" delay={0.1}>
-              <div className="bg-white p-6 rounded-2xl border border-[#E5E7EB] shadow-xs flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#3B82F6] flex items-center justify-center shrink-0">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-[#172033]">
-                    <AnimatedNumber value={mockUserStats.learningHours} suffix=" hrs" duration={1800} />
-                  </div>
-                  <div className="text-xs font-semibold text-[#64748B]">
-                    Learning Hours
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal direction="up" delay={0.15}>
-              <div className="bg-white p-6 rounded-2xl border border-[#E5E7EB] shadow-xs flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#10B981] flex items-center justify-center shrink-0">
-                  <Award className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-[#172033]">
-                    <AnimatedNumber value={mockUserStats.certificates} duration={1400} />
-                  </div>
-                  <div className="text-xs font-semibold text-[#64748B]">
-                    Certificates Earned
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal direction="up" delay={0.2}>
-              <div className="bg-white p-6 rounded-2xl border border-[#E5E7EB] shadow-xs flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-50 text-[#F59E0B] flex items-center justify-center shrink-0">
-                  <Flame className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-[#172033]">
-                    <AnimatedNumber value={mockUserStats.currentStreak} suffix=" Days" duration={1600} />
-                  </div>
-                  <div className="text-xs font-semibold text-[#64748B]">
-                    Current Streak 🔥
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-
-          {/* Continue Learning Section */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[#172033]">Continue Learning</h2>
-              <span className="text-xs font-semibold text-[#64748B]">
-                {mockEnrolledCourses.length} enrolled
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockEnrolledCourses.map((enrolled, idx) => (
-                <Reveal key={enrolled.courseId} direction="up" delay={0.1 * idx}>
-                  <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col justify-between h-full">
-                    <div>
-                      <div className="relative aspect-video bg-slate-100 group overflow-hidden">
-                        <CourseThumbnail
-                          category="Development"
-                          title={enrolled.courseTitle}
-                          imageUrl={enrolled.courseImage}
-                        />
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Link
-                            href={`/learn/${enrolled.courseSlug}/${enrolled.lastLessonId}`}
-                            className="w-12 h-12 rounded-full bg-[#FF6B35] text-white flex items-center justify-center shadow-md transform hover:scale-110 transition-transform"
-                          >
-                            <Play className="w-5 h-5 ml-0.5 fill-white" />
-                          </Link>
-                        </div>
-                      </div>
-
-                      <div className="p-5 space-y-3">
-                        <h3 className="font-bold text-[#172033] text-sm leading-snug line-clamp-1">
-                          {enrolled.courseTitle}
-                        </h3>
-                        <p className="text-xs text-[#64748B]">
-                          Current: <strong className="text-[#172033]">{enrolled.lastLessonTitle}</strong>
-                        </p>
-
-                        {/* Animated Progress Bar */}
-                        <div className="space-y-1.5 pt-2">
-                          <div className="flex items-center justify-between text-xs font-semibold">
-                            <span className="text-[#64748B]">
-                              Lesson {enrolled.completedLessons} of {enrolled.totalLessons}
-                            </span>
-                            <span className="text-[#FF6B35]">{enrolled.progressPercent}%</span>
-                          </div>
-                          <div className="w-full bg-[#F1F5F9] h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-[#FF6B35] h-full rounded-full transition-all duration-700 ease-out"
-                              style={{ width: `${enrolled.progressPercent}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-5 pt-0">
-                      <Link
-                        href={`/learn/${enrolled.courseSlug}/${enrolled.lastLessonId}`}
-                        className="w-full inline-flex items-center justify-center gap-2 bg-[#172033] hover:bg-[#FF6B35] text-white text-xs font-bold py-2.5 rounded-xl transition-colors active:scale-98"
-                      >
-                        <span>Continue Lesson →</span>
-                      </Link>
-                    </div>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-            {mockEnrolledCourses.length === 0 && (
-              <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8 text-center text-sm text-[#64748B]">
-                <p>No courses enrolled yet. Choose a course to start your learning journey.</p>
-                <Link href="/courses" className="inline-block mt-3 font-bold text-[#FF6B35]">Browse courses →</Link>
-              </div>
-            )}
-          </div>
-
           {/* Upcoming Live Classes (Requirement 6) */}
           <div className="space-y-6 pt-2">
             <div className="flex items-center justify-between">
@@ -288,7 +89,7 @@ export default function DashboardPage() {
                   <span>Upcoming Live Classes</span>
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
                 </h2>
-                <p className="text-xs text-[#64748B] mt-0.5">Interactive live sessions led by industry architects</p>
+                <p className="text-xs text-[#64748B] mt-0.5">Live sessions scheduled on Elevate</p>
               </div>
               <Link href="/live" className="text-xs font-bold text-[#FF6B35] hover:underline">
                 Explore Live Learning Hub →
@@ -391,7 +192,7 @@ export default function DashboardPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF6B35] bg-orange-50 px-2.5 py-1 rounded-md">
-                        Demo Certificate
+                        Certificate
                       </span>
                       <span className="font-mono text-xs font-semibold text-[#64748B]">
                         {cert.certificateId}
