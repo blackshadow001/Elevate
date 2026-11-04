@@ -34,7 +34,9 @@ export function WishlistGrid({ initialCourses }: { initialCourses: SavedCourse[]
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {courses.map((course) => <article key={course.id} className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-xs">
         <div className="relative aspect-video bg-slate-100">
-          <CourseThumbnail category={course.category} title={course.title} imageUrl={course.thumbnail || ""} />
+          {course.available ? <Link href={`/courses/${course.slug}`} aria-label={`View details for ${course.title}`}>
+            <CourseThumbnail category={course.category} title={course.title} imageUrl={course.thumbnail || ""} />
+          </Link> : <CourseThumbnail category={course.category} title={course.title} imageUrl={course.thumbnail || ""} />}
           <button type="button" disabled={Boolean(pendingId)} onClick={() => void remove(course)}
             aria-label={`Remove ${course.title} from wishlist`}
             className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#FF6B35] shadow-sm hover:bg-orange-50 disabled:opacity-50">
@@ -43,7 +45,7 @@ export function WishlistGrid({ initialCourses }: { initialCourses: SavedCourse[]
         </div>
         <div className="space-y-2 p-5">
           <p className="text-xs font-bold uppercase text-[#FF6B35]">{course.category}</p>
-          <h2 className="text-base font-bold text-[#172033]">{course.title}</h2>
+          <h2 className="text-base font-bold text-[#172033]">{course.available ? <Link href={`/courses/${course.slug}`} className="hover:text-[#E85D2A]">{course.title}</Link> : course.title}</h2>
           <p className="text-xs text-[#64748B]">By {course.instructorName}</p>
           <div className="flex items-center justify-between gap-3 pt-3">
             <span className="font-bold text-[#172033]">{course.priceMinor === 0 ? "Free" :
