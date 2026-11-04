@@ -1,5 +1,6 @@
 import { safe } from "@/server/api";
 import { getDb } from "@/server/db";
+import { personalPlanCheckoutAvailable } from "@/server/personalPlan";
 
 export async function GET() {
   return safe(async () => {
@@ -13,6 +14,6 @@ export async function GET() {
     return { currency: "INR", monthlyPriceMinor: settings?.monthly_price_minor ?? null,
       annualPriceMinor: settings?.annual_price_minor ?? null, includedCourses: selectedCourses,
       includedCourseCount: selectedCourses.length,
-      checkoutAvailable: false };
+      checkoutAvailable: personalPlanCheckoutAvailable() && selectedCourses.length > 0 };
   });
 }

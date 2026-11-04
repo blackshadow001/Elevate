@@ -1,5 +1,6 @@
 import { ApiError, safe } from "@/server/api";
 import { processPaymentWebhook } from "@/server/payments";
+import { processPersonalPlanWebhook } from "@/server/personalPlan";
 import { verifyWebhookSignature } from "@/server/razorpayGateway";
 
 export async function POST(request: Request) {
@@ -17,7 +18,9 @@ export async function POST(request: Request) {
     if (!payload || typeof payload !== "object" || Array.isArray(payload) ||
       typeof (payload as Record<string, unknown>).event !== "string")
       throw new ApiError(422, "INVALID_WEBHOOK", "Webhook event is invalid.");
-    return processPaymentWebhook(eventId, (payload as Record<string, unknown>).event as string,
-      payload as Record<string, unknown>);
+    const eventType = (payload as Record<string, unknown>).event as string;
+    if (eventType.startsWith("subscription."))
+      return processPersonalPlanWebhook(eventId, eventType, payload as Record<string, unknown>);
+    return processPaymentWebhook(eventId, eventType, payload as Record<string, unknown>);
   });
 }

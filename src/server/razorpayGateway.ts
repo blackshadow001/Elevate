@@ -69,6 +69,57 @@ export function verifyCheckoutSignature(gatewayOrderId: string, paymentId: strin
   return validHmac(`${gatewayOrderId}|${paymentId}`, signature, credentials().keySecret);
 }
 
+export function verifySubscriptionCheckoutSignature(gatewaySubscriptionId: string, paymentId: string, signature: string): boolean {
+  return validHmac(`${paymentId}|${gatewaySubscriptionId}`, signature, credentials().keySecret);
+}
+
+export interface GatewaySubscription {
+  id: string; planId: string; status: string; currentEnd: number | null; paidCount: number;
+  totalCount: number; nextChargeAt: number | null; cancelAtCycleEnd: boolean;
+}
+
+function subscriptionResult(value: { id: string; plan_id: string; status: string; current_end?: number | null;
+  charge_at?: number | null; paid_count?: number; total_count: number; has_scheduled_changes?: boolean }): GatewaySubscription {
+  return { id: String(value.id), planId: String(value.plan_id), status: String(value.status),
+    currentEnd: typeof value.current_end === "number" ? value.current_end : null,
+    nextChargeAt: typeof value.charge_at === "number" ? value.charge_at : null,
+    paidCount: Number(value.paid_count || 0), totalCount: Number(value.total_count),
+    cancelAtCycleEnd: Boolean(value.has_scheduled_changes) };
+}
+
+export async function createGatewayPlan(term: "monthly" | "annual", priceMinor: number): Promise<string> {
+  try {
+    const result = await client().plans.create({ period: term === "annual" ? "yearly" : "monthly", interval: 1,
+      item: { name: `Elevate Personal Plan — ${term}`, amount: priceMinor, currency: "INR" } });
+    if (!/^plan_[A-Za-z0-9_-]+$/.test(String(result.id)) || Number(result.item.amount) !== priceMinor ||
+      result.item.currency !== "INR" || result.period !== (term === "annual" ? "yearly" : "monthly"))
+      throw new ApiError(502, "GATEWAY_PLAN_MISMATCH", "The payment provider returned an inconsistent plan.");
+    return String(result.id);
+  } catch (error) { return providerError(error); }
+}
+
+export async function createGatewaySubscription(planId: string, term: "monthly" | "annual", reference: string): Promise<GatewaySubscription> {
+  try {
+    const result = await client().subscriptions.create({ plan_id: planId, total_count: term === "monthly" ? 120 : 10,
+      quantity: 1, customer_notify: true, notes: { elevateSubscriptionId: reference } });
+    const subscription = subscriptionResult(result);
+    if (!/^sub_[A-Za-z0-9_-]+$/.test(subscription.id) || subscription.planId !== planId ||
+      subscription.totalCount !== (term === "monthly" ? 120 : 10) || subscription.status !== "created")
+      throw new ApiError(502, "GATEWAY_SUBSCRIPTION_MISMATCH", "The payment provider returned an inconsistent subscription.");
+    return subscription;
+  } catch (error) { return providerError(error); }
+}
+
+export async function fetchGatewaySubscription(subscriptionId: string): Promise<GatewaySubscription> {
+  try { return subscriptionResult(await client().subscriptions.fetch(subscriptionId)); }
+  catch (error) { return providerError(error); }
+}
+
+export async function cancelGatewaySubscription(subscriptionId: string, atCycleEnd: boolean): Promise<GatewaySubscription> {
+  try { return subscriptionResult(await client().subscriptions.cancel(subscriptionId, atCycleEnd)); }
+  catch (error) { return providerError(error); }
+}
+
 export function verifyWebhookSignature(rawBody: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET?.trim();
   if (!secret) throw new ApiError(503, "WEBHOOK_NOT_CONFIGURED", "Payment webhook is not configured.");

@@ -2,9 +2,48 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node preload must use CommonJS before Next starts.
 const Module = require('node:module');
 const orders = new Map();
+const plans = new Map();
+const subscriptions = new Map();
 
 class MockRazorpay {
   constructor() {
+    this.plans = {
+      create: async (input) => {
+        const id = `plan_mock_${plans.size + 1}`;
+        const plan = { id, period: input.period, interval: input.interval, item: input.item };
+        plans.set(id, plan);
+        return plan;
+      },
+    };
+    this.subscriptions = {
+      create: async (input) => {
+        const id = `sub_mock_${subscriptions.size + 1}`;
+        const value = { id, plan_id: input.plan_id, status: 'created', paid_count: 0,
+          total_count: input.total_count, current_end: null, charge_at: null,
+          has_scheduled_changes: false };
+        subscriptions.set(id, value);
+        return value;
+      },
+      fetch: async (id) => {
+        const value = subscriptions.get(id);
+        if (!value) throw new Error('Unknown test subscription');
+        return { ...value, status: value.status === 'created' ? 'active' : value.status,
+          paid_count: value.status === 'created' ? 1 : value.paid_count,
+          current_end: value.current_end || Math.floor(Date.now() / 1000) + 30 * 86400,
+          charge_at: value.charge_at || Math.floor(Date.now() / 1000) + 30 * 86400 };
+      },
+      cancel: async (id, atCycleEnd) => {
+        const value = subscriptions.get(id);
+        if (!value) throw new Error('Unknown test subscription');
+        value.status = 'cancelled';
+        if (atCycleEnd) {
+          value.paid_count = 1;
+          value.current_end = Math.floor(Date.now() / 1000) + 30 * 86400;
+        }
+        value.has_scheduled_changes = Boolean(atCycleEnd);
+        return value;
+      },
+    };
     this.orders = {
       create: async (input) => {
         const id = `order_${String(input.receipt).replace(/-/g, '')}`;

@@ -3,6 +3,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { cookies } from "next/headers";
 import { ApiError } from "@/server/api";
 import { getDb, transaction } from "@/server/db";
+import { syncPersonalPlanAccess } from "@/server/personalPlan";
 
 export type Role = "learner" | "instructor" | "admin";
 export interface SessionUser { id: string; name: string; email: string; role: Role; avatar: string | null; isSuperAdmin?: boolean; }
@@ -55,7 +56,10 @@ export async function currentUser(): Promise<SessionUser | null> {
   const row = getDb().prepare(`SELECT u.id,u.name,u.email,u.role,u.avatar,u.is_super_admin FROM sessions s
     JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.revoked_at IS NULL
     AND s.expires_at>? AND u.status='active'`).get(createHash("sha256").update(token).digest("hex"), new Date().toISOString());
-  return row ? publicUser(row) : null;
+  if (!row) return null;
+  const user = publicUser(row);
+  if (user.role === "learner") syncPersonalPlanAccess(user.id);
+  return user;
 }
 
 export async function requireAuth(): Promise<SessionUser> {

@@ -44,4 +44,16 @@ server.listen(port, '0.0.0.0', () => {
     transcodeMedia();
     setInterval(transcodeMedia, 60 * 60 * 1000).unref();
   }
+  if (process.env.PERSONAL_PLAN_ENABLED === '1' && process.env.EMAIL_PROVIDER === 'resend') {
+    let reminding = false;
+    const sendReminders = () => {
+      if (reminding) return;
+      reminding = true;
+      const child = spawn(process.execPath, ['scripts/send-plan-renewal-reminders.mjs'], { stdio: 'inherit' });
+      child.on('error', (error) => { console.error('Renewal reminders failed:', error); reminding = false; });
+      child.on('close', (code) => { if (code !== 0) console.error(`Renewal reminders exited with code ${code}`); reminding = false; });
+    };
+    sendReminders();
+    setInterval(sendReminders, 6 * 60 * 60 * 1000).unref();
+  }
 });

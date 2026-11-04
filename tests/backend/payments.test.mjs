@@ -15,6 +15,8 @@ const keySecret = `test-${randomBytes(16).toString('hex')}`;
 const webhookSecret = `webhook-${randomBytes(16).toString('hex')}`;
 const env = { ...process.env, DATABASE_URL: `file:./data/${dbName}`, DEV_SEED_PASSWORD: password,
   RAZORPAY_KEY_ID: 'rzp_test_isolated', RAZORPAY_KEY_SECRET: keySecret, RAZORPAY_WEBHOOK_SECRET: webhookSecret,
+  PERSONAL_PLAN_ENABLED: '1', EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 'test-only',
+  EMAIL_FROM: 'Elevate <billing@example.invalid>', SITE_URL: 'https://elevate.example.invalid',
   GOOGLE_CREDENTIALS_FILE: '', GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '' };
 
 function run(script) {
@@ -185,5 +187,54 @@ test('Razorpay payment contracts, ownership and idempotency', { timeout: 90000 }
       body: { paymentId, gatewayOrderId, signature } })).body.data.status, 'paid');
     assert.equal(db.prepare('SELECT COUNT(*) n FROM payments WHERE order_id=?').get(orderId).n, 1);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM enrollments WHERE user_id=? AND course_id=?').get('usr_001', 'course-3').n, 1);
+  });
+
+  await t.test('Personal Plan grants only selected courses after verified payment and expires access', async () => {
+    const config = await call('/api/admin/personal-plan', { method: 'PUT', cookie: admin,
+      body: { monthlyPriceMinor: 49900, annualPriceMinor: 499900, courseIds: ['course-2'] } });
+    assert.equal(config.status, 200, JSON.stringify(config.body));
+    const started = await call('/api/personal-plan/subscriptions', { method: 'POST', cookie: learner,
+      body: { term: 'monthly' } });
+    assert.equal(started.status, 200, JSON.stringify(started.body));
+    const subscription = started.body.data;
+    assert.ok(subscription.gatewaySubscriptionId.startsWith('sub_'));
+    assert.equal((await call('/api/me/enrollments', { cookie: learner })).body.data.some(row => row.courseId === 'course-2'), false);
+    const paymentId = 'pay_mock_plan_1';
+    assert.equal((await call('/api/personal-plan/subscriptions/verify', { method: 'POST', cookie: learner,
+      body: { subscriptionId: subscription.id, paymentId, signature: '0'.repeat(64) } })).status, 403);
+    assert.equal((await call('/api/personal-plan/subscriptions/verify', { method: 'POST', cookie: other,
+      body: { subscriptionId: subscription.id, paymentId, signature: '0'.repeat(64) } })).status, 404);
+    const signature = createHmac('sha256', keySecret).update(`${paymentId}|${subscription.gatewaySubscriptionId}`).digest('hex');
+    const verified = await call('/api/personal-plan/subscriptions/verify', { method: 'POST', cookie: learner,
+      body: { subscriptionId: subscription.id, paymentId, signature } });
+    assert.equal(verified.status, 200, JSON.stringify(verified.body));
+    assert.equal(verified.body.data.status, 'active');
+    assert.equal((await call('/api/me/enrollments', { cookie: learner })).body.data.some(row => row.courseId === 'course-2'), true);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM personal_plan_grants WHERE user_id=?').get('usr_seed_learner_2').n, 1);
+    const event = { event: 'subscription.charged', payload: { subscription: { entity: { id: subscription.gatewaySubscriptionId } } } };
+    const raw = JSON.stringify(event);
+    const webhookSignature = createHmac('sha256', webhookSecret).update(raw).digest('hex');
+    const webhook = () => fetch(`${base}/api/payments/razorpay/webhook`, { method: 'POST',
+      headers: { 'x-razorpay-signature': webhookSignature, 'x-razorpay-event-id': 'evt_plan_paid_1' }, body: raw });
+    assert.equal((await webhook()).status, 200);
+    assert.equal((await webhook()).status, 200);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM personal_plan_webhook_events WHERE event_id=?').get('evt_plan_paid_1').n, 1);
+    const cancelled = await call('/api/personal-plan/subscriptions/cancel', { method: 'POST', cookie: learner });
+    assert.equal(cancelled.status, 200, JSON.stringify(cancelled.body));
+    assert.equal(cancelled.body.data.cancelAtCycleEnd, true);
+    assert.equal((await call('/api/me/enrollments', { cookie: learner })).body.data.some(row => row.courseId === 'course-2'), true);
+    assert.equal((await call('/api/personal-plan/subscriptions', { method: 'POST', cookie: learner,
+      body: { term: 'annual' } })).status, 409);
+    db.prepare('UPDATE personal_plan_subscriptions SET current_end=? WHERE id=?')
+      .run(Math.floor(Date.now() / 1000) - 1, subscription.id);
+    assert.equal((await call('/api/me/enrollments', { cookie: learner })).body.data.some(row => row.courseId === 'course-2'), false);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM personal_plan_grants WHERE user_id=?').get('usr_seed_learner_2').n, 0);
+    const pending = await call('/api/personal-plan/subscriptions', { method: 'POST', cookie: other,
+      body: { term: 'annual' } });
+    assert.equal(pending.status, 200, JSON.stringify(pending.body));
+    const pendingCancelled = await call('/api/personal-plan/subscriptions/cancel', { method: 'POST', cookie: other });
+    assert.equal(pendingCancelled.status, 200, JSON.stringify(pendingCancelled.body));
+    assert.equal(pendingCancelled.body.data.cancelAtCycleEnd, false);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM personal_plan_grants WHERE user_id=?').get('usr_001').n, 0);
   });
 });

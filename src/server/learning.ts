@@ -28,7 +28,8 @@ export function enrollFreeCourse(courseId: string, user: SessionUser) {
 
 export function getOwnEnrollments(user: SessionUser) {
   return getDb().prepare(`SELECT e.*,c.slug,c.title,c.thumbnail,c.lesson_count FROM enrollments e
-    JOIN courses c ON c.id=e.course_id WHERE e.user_id=? ORDER BY e.enrolled_at DESC`).all(user.id).map((row) => ({
+    JOIN courses c ON c.id=e.course_id WHERE e.user_id=? AND e.status IN ('active','completed')
+    ORDER BY e.enrolled_at DESC`).all(user.id).map((row) => ({
       ...enrollmentDto(row), course: { slug: String(row.slug), title: String(row.title), thumbnail: row.thumbnail ? String(row.thumbnail) : null, lessonCount: Number(row.lesson_count) },
     }));
 }

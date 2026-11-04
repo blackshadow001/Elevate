@@ -41,7 +41,7 @@ export function PersonalPlanPricing() {
         body: JSON.stringify({ monthlyPriceMinor: minor(monthly), annualPriceMinor: minor(annual), courseIds: selectedIds }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error?.message || "Unable to save plan settings.");
-      setMessage("Plan settings saved. Subscription checkout remains unavailable until recurring billing is configured.");
+      setMessage("Plan settings saved. Subscription checkout requires configured billing and email delivery.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to save plan settings."); }
     finally { setBusy(false); }
   }
@@ -54,6 +54,6 @@ export function PersonalPlanPricing() {
       <button disabled={busy} className="rounded-xl bg-[#172033] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? "Saving…" : "Save plan settings"}</button>
     </form>}
     {message && <p role="status" className="mt-3 text-sm text-green-700">{message}</p>}{error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
-    <p className="mt-4 text-xs text-[#64748B]">These settings define the proposed plan. Recurring payment, cancellation, and subscription access are not active yet.</p>
+    <p className="mt-4 text-xs text-[#64748B]">Recurring checkout is available once billing and a verified email sender are configured on the server.</p>
   </section>;
 }
