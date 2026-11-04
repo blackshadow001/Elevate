@@ -34,10 +34,11 @@ function mapCourse(source: ServerCourse): Course {
   const instructorCounts = getDb().prepare(`SELECT
     (SELECT COUNT(*) FROM courses WHERE instructor_id=? AND status='published') courses,
     (SELECT COUNT(*) FROM enrollments e JOIN courses c ON c.id=e.course_id WHERE c.instructor_id=?) learners`).get(source.instructor.id, source.instructor.id);
+  const instructorProfile = getDb().prepare("SELECT headline,bio FROM instructor_profiles WHERE user_id=?").get(source.instructor.id);
   const instructor: Instructor = {
     id: source.instructor.id, name: source.instructor.name, role: "Instructor",
     avatar: source.instructor.avatar || "",
-    bio: "",
+    headline: String(instructorProfile?.headline || ""), bio: String(instructorProfile?.bio || ""),
     rating: 0, studentsCount: Number(instructorCounts?.learners || 0),
     coursesCount: Number(instructorCounts?.courses || 0),
   };

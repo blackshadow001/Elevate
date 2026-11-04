@@ -31,6 +31,7 @@ import { useAuth } from "@/context/AuthContext";
 import { formatVideoDuration } from "@/lib/videoDuration";
 import { LessonActivityView } from "@/components/learning/LessonActivityView";
 import { LearningScheduleCard } from "@/components/learning/LearningScheduleCard";
+import { CourseReviews } from "@/components/courses/CourseReviews";
 
 interface CoursePlayerProps {
   course: Course;
@@ -58,7 +59,8 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
 
   const completedLessonIds = learningState.completedLessonIds[course.id] || [];
 
-  const [activeTab, setActiveTab] = useState<"overview" | "notes" | "resources" | "qa">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "notes" | "resources" | "qa">("overview");
+  const [reviewsRefreshKey, setReviewsRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [savedNotes, setSavedNotes] = useState("");
   const [notesByLesson, setNotesByLesson] = useState<Record<string, string[]>>({});
@@ -137,6 +139,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error?.message || "Your rating could not be saved.");
       setRatingSummary({ average: body.data.averageRating, count: body.data.ratingCount });
+      setReviewsRefreshKey((value) => value + 1);
       setRatingOpen(false);
       notify({ type: "success", title: "Rating saved", message: "Thanks for sharing your experience with this course." });
     } catch (error) {
@@ -326,7 +329,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
 
           {/* Interactive Lesson Tabs */}
           <div className="p-4 sm:p-6 space-y-6 flex-1">
-            <div className="flex items-center gap-6 border-b border-[#E5E7EB] text-sm font-semibold text-[#64748B]">
+            <div className="flex items-center gap-6 overflow-x-auto border-b border-[#E5E7EB] text-sm font-semibold text-[#64748B]">
               <button
                 type="button"
                 onClick={() => setActiveTab("overview")}
@@ -338,6 +341,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
               >
                 Overview
               </button>
+              <button type="button" onClick={() => setActiveTab("reviews")} className={`shrink-0 pb-3 transition-colors ${activeTab === "reviews" ? "border-b-2 border-[#FF6B35] text-[#FF6B35]" : "hover:text-[#172033]"}`}>Reviews ({ratingSummary.count})</button>
               <button
                 type="button"
                 onClick={() => setActiveTab("notes")}
@@ -384,6 +388,7 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                 </div>
                 {course.description && <p className="whitespace-pre-line text-[#475569]">{course.description}</p>}
                 <LearningScheduleCard courseId={course.id} courseSlug={course.slug} courseTitle={course.title} userId={user.id} />
+                <section className="border-t border-[#E5E7EB] pt-5"><h3 className="font-bold">Your instructor</h3><div className="mt-3 flex items-start gap-4">{course.instructor.avatar ? <img src={course.instructor.avatar} alt="" className="h-14 w-14 rounded-full object-cover" /> : <span aria-hidden="true" className="grid h-14 w-14 place-items-center rounded-full bg-orange-100 font-bold text-[#C96114]">{course.instructor.name.charAt(0)}</span>}<div><p className="font-bold">{course.instructor.name}</p>{course.instructor.headline && <p className="text-sm text-[#64748B]">{course.instructor.headline}</p>}{course.instructor.bio && <p className="mt-2 whitespace-pre-line text-sm text-[#475569]">{course.instructor.bio}</p>}</div></div></section>
                 <div className="grid gap-4 border-t border-[#E5E7EB] pt-5 sm:grid-cols-2 lg:grid-cols-4">
                   <div><p className="text-xs font-bold uppercase text-[#94A3B8]">Level</p><p className="mt-1 font-semibold">{course.level}</p></div>
                   <div><p className="text-xs font-bold uppercase text-[#94A3B8]">Curriculum</p><p className="mt-1 font-semibold">{course.totalLessons} {course.totalLessons === 1 ? "lesson" : "lessons"} · {course.sections.length} {course.sections.length === 1 ? "section" : "sections"}</p></div>
@@ -394,6 +399,8 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                 {course.whatYouWillLearn.length > 0 && <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] p-4"><h4 className="text-xs font-bold uppercase text-[#64748B]">What you will learn</h4><ul className="mt-2 list-inside list-disc space-y-1 text-xs">{course.whatYouWillLearn.slice(0, 4).map((item) => <li key={item}>{item}</li>)}</ul></div>}
               </div>
             )}
+
+            {activeTab === "reviews" && <CourseReviews courseId={course.id} refreshKey={reviewsRefreshKey} />}
 
             {/* Tab: Notes */}
             {activeTab === "notes" && (

@@ -1,135 +1,51 @@
 "use client";
 
-import React, { useState } from "react";
-import { useNotification } from "@/components/notifications/NotificationProvider";
-import { Settings, User, CreditCard, Bell, Shield, CheckCircle2 } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { CheckCircle2, UserRound } from "lucide-react";
+
+type Profile = { name: string; email: string; avatar: string | null; headline: string; bio: string };
 
 export default function InstructorSettingsPage() {
-  const { notify } = useNotification();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [headline, setHeadline] = useState("");
+  const [bio, setBio] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john@example.com",
-    headline: "Senior Software Architect & Lead Instructor",
-    bio: "Ex-Google architect with 12+ years of engineering experience specializing in distributed systems, React, and cloud scalability.",
-    bankAccount: "HDFC0001234 — **** 8912",
-    payoutSchedule: "Monthly (1st of each month)",
-  });
+  useEffect(() => {
+    let active = true;
+    fetch("/api/instructor/profile", { cache: "no-store" }).then(async (response) => {
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error?.message || "Could not load your tutor profile.");
+      if (active) { setProfile(body.data); setHeadline(body.data.headline); setBio(body.data.bio); }
+    }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Could not load your tutor profile."); });
+    return () => { active = false; };
+  }, []);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    notify({
-      type: "success",
-      title: "Settings Saved",
-      message: "Your instructor profile and payout details have been updated.",
-    });
-  };
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true); setMessage(""); setError("");
+    try {
+      const response = await fetch("/api/instructor/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ headline, bio }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error?.message || "Could not save your profile.");
+      setHeadline(body.data.headline); setBio(body.data.bio);
+      setMessage("Your public tutor profile has been saved.");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save your profile."); }
+    finally { setBusy(false); }
+  }
 
-  return (
-    <div className="space-y-8 max-w-4xl">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#172033] tracking-tight">
-          Instructor Studio Settings
-        </h1>
-        <p className="text-xs sm:text-sm text-[#64748B] mt-1">
-          Configure your public instructor profile, bio, banking payout channels, and notifications.
-        </p>
-      </div>
-
-      <div className="bg-white rounded-3xl border border-[#E5E7EB] p-6 sm:p-8 shadow-xs">
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-[#172033] uppercase tracking-wider flex items-center gap-2">
-              <User className="w-4 h-4 text-[#FF6B35]" />
-              <span>Public Profile Details</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase text-[#172033]">Display Name</label>
-                <input
-                  type="text"
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                  className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs text-[#172033] focus:bg-white focus:outline-none focus:border-[#FF6B35]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase text-[#172033]">Email Address</label>
-                <input
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                  className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs text-[#172033] focus:bg-white focus:outline-none focus:border-[#FF6B35]"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase text-[#172033]">Professional Headline</label>
-              <input
-                type="text"
-                value={profile.headline}
-                onChange={(e) => setProfile({ ...profile, headline: e.target.value })}
-                className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs text-[#172033] focus:bg-white focus:outline-none focus:border-[#FF6B35]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase text-[#172033]">Instructor Biography</label>
-              <textarea
-                rows={3}
-                value={profile.bio}
-                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl p-3.5 text-xs text-[#172033] focus:bg-white focus:outline-none focus:border-[#FF6B35]"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4 pt-4 border-t border-[#E5E7EB]">
-            <h3 className="text-sm font-bold text-[#172033] uppercase tracking-wider flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-[#16A34A]" />
-              <span>Revenue Payout Preferences</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase text-[#172033]">Linked Bank Account (NEFT / IMPS)</label>
-                <input
-                  type="text"
-                  value={profile.bankAccount}
-                  onChange={(e) => setProfile({ ...profile, bankAccount: e.target.value })}
-                  className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs text-[#172033] focus:bg-white focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase text-[#172033]">Payout Frequency</label>
-                <select
-                  value={profile.payoutSchedule}
-                  onChange={(e) => setProfile({ ...profile, payoutSchedule: e.target.value })}
-                  className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs text-[#172033] focus:bg-white focus:outline-none"
-                >
-                  <option>Monthly (1st of each month)</option>
-                  <option>Bi-weekly</option>
-                  <option>Instant (on threshold ₹50,000)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-4 border-t border-[#E5E7EB]">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#FF6B35] hover:bg-[#E85D2A] text-white text-xs font-bold shadow-xs cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Save Changes</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+  return <div className="mx-auto max-w-3xl space-y-7">
+    <div><p className="text-xs font-bold uppercase tracking-widest text-[#FF6B35]">Instructor Studio</p><h1 className="mt-2 text-3xl font-extrabold text-[#172033]">Public tutor profile</h1><p className="mt-2 text-sm text-[#64748B]">Introduce yourself to learners. Your headline and biography appear with your published courses.</p></div>
+    {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+    {message && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">{message}</p>}
+    {!profile ? <p role="status" className="text-sm text-[#64748B]">Loading profile…</p> : <form onSubmit={save} className="space-y-6 rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
+      <div className="flex items-center gap-4 border-b border-[#E5E7EB] pb-5">{profile.avatar ? <img src={profile.avatar} alt="" className="h-16 w-16 rounded-full object-cover" /> : <span className="grid h-16 w-16 place-items-center rounded-full bg-orange-50 text-[#E85D2A]"><UserRound className="h-8 w-8" /></span>}<div><p className="font-bold text-[#172033]">{profile.name}</p><p className="text-sm text-[#64748B]">{profile.email}</p><Link href="/profile" className="mt-1 inline-block text-xs font-bold text-[#E85D2A]">Change name or photo →</Link></div></div>
+      <div><label htmlFor="instructor-headline" className="block text-sm font-bold text-[#172033]">Professional headline</label><p className="mt-1 text-xs text-[#64748B]">A short description of what you teach.</p><input id="instructor-headline" value={headline} onChange={(event) => setHeadline(event.target.value)} maxLength={120} className="mt-2 w-full rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 text-sm" placeholder="For example, Software engineer and practical web tutor" /></div>
+      <div><label htmlFor="instructor-bio" className="block text-sm font-bold text-[#172033]">Biography</label><p className="mt-1 text-xs text-[#64748B]">Share your experience, areas of expertise, and teaching approach.</p><textarea id="instructor-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={2000} rows={7} className="mt-2 w-full rounded-xl border border-[#CBD5E1] bg-white p-4 text-sm" placeholder="Tell learners about your work and why you enjoy teaching…" /></div>
+      <div className="flex justify-end border-t border-[#E5E7EB] pt-5"><button disabled={busy} type="submit" className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3 text-sm font-bold text-white disabled:opacity-50"><CheckCircle2 className="h-4 w-4" />{busy ? "Saving…" : "Save profile"}</button></div>
+    </form>}
+  </div>;
 }

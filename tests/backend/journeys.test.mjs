@@ -307,6 +307,11 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const publicCourse = await call('/api/courses/course-free-foundations');
     assert.equal(publicCourse.body.data.rating, 3);
     assert.equal(publicCourse.body.data.ratingCount, 1);
+    const summary = await call('/api/courses/course-free-foundations/review-summary');
+    assert.equal(summary.response.status, 200);
+    assert.equal(summary.body.data.total, 1);
+    assert.equal(summary.body.data.average, 3);
+    assert.deepEqual(summary.body.data.distribution, [0, 0, 1, 0, 0]);
   });
   await t.test('concurrent retries, foreign keys and cross-user records', async () => {
     const enrollments = await Promise.all(Array.from({ length: 8 }, () => call('/api/courses/course-free-foundations/enroll', { method: 'POST', cookie: otherLearner })));
@@ -357,6 +362,15 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
   });
 
   const instructor = await login('john@example.com');
+  await t.test('tutor public profile saves without exposing learner access', async () => {
+    assert.equal((await call('/api/instructor/profile', { cookie: learner })).response.status, 403);
+    const saved = await call('/api/instructor/profile', { method: 'PATCH', cookie: instructor,
+      body: { headline: 'Practical web tutor', bio: 'I teach hands-on web development.' } });
+    assert.equal(saved.response.status, 200, JSON.stringify(saved.body));
+    assert.equal((await call('/api/instructor/profile', { cookie: instructor })).body.data.headline, 'Practical web tutor');
+    assert.equal((await call('/api/instructor/profile', { method: 'PATCH', cookie: instructor,
+      body: { headline: 'Invalid', payoutAccount: '123' } })).response.status, 422);
+  });
   await t.test('learner lists and archives are private and preserve enrollments', async () => {
     assert.equal((await call('/api/me/library')).response.status, 401);
     const created = await call('/api/me/library', { method: 'POST', cookie: learner, body: { action: 'create-list', name: 'My plan' } });
@@ -865,6 +879,17 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const adminResponse = await call('/api/admin/auth/login', { method: 'POST', body: { email: 'admin@example.com', password } });
     assert.equal(adminResponse.response.status, 200, JSON.stringify(adminResponse.body));
     const admin = adminResponse.response.headers.get('set-cookie').split(';')[0];
+    const initialPlan = await call('/api/personal-plan');
+    assert.equal(initialPlan.body.data.monthlyPriceMinor, null);
+    assert.equal(initialPlan.body.data.checkoutAvailable, false);
+    assert.equal((await call('/api/admin/personal-plan', { method: 'PUT', cookie: learner,
+      body: { monthlyPriceMinor: 29900, annualPriceMinor: 299900 } })).response.status, 403);
+    assert.equal((await call('/api/admin/personal-plan', { method: 'PUT', cookie: admin,
+      body: { monthlyPriceMinor: 0, annualPriceMinor: null } })).response.status, 422);
+    const savedPlan = await call('/api/admin/personal-plan', { method: 'PUT', cookie: admin,
+      body: { monthlyPriceMinor: 29900, annualPriceMinor: 299900 } });
+    assert.equal(savedPlan.response.status, 200, JSON.stringify(savedPlan.body));
+    assert.equal((await call('/api/personal-plan')).body.data.annualPriceMinor, 299900);
     const loginPage = await fetch(`${base}/control-center/login`);
     assert.equal(loginPage.status, 200);
     assert.match(await loginPage.text(), /Administrator sign in/);

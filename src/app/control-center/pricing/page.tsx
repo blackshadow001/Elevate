@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
+import { PersonalPlanPricing } from "@/components/admin/PersonalPlanPricing";
 import { useActionDialog } from "@/components/ui/ActionDialogProvider";
 
 interface CourseRow {
@@ -166,6 +167,7 @@ export default function AdminPricingPage() {
         subtitle="Operational economics console. Base price floors, instructor margin bands (bps), price ceiling caps, and final checkout rate authority."
         breadcrumbs={[{ label: "Commerce" }, { label: "Pricing & Margins" }]}
       />
+      <PersonalPlanPricing />
 
       {error && (
         <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-700">

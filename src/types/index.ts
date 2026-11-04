@@ -6,6 +6,7 @@ export interface Instructor {
   role: string;
   avatar: string;
   bio: string;
+  headline?: string;
   rating: number;
   studentsCount: number;
   coursesCount: number;

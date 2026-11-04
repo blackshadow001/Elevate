@@ -116,6 +116,10 @@ test('course player shows real course facts and saves a rating and study plan', 
   await dialog.getByRole('button', { name: 'Save rating' }).click();
   await expect(dialog).not.toBeVisible();
   await expect(page.getByText('1 rating')).toBeVisible();
+  await page.getByRole('button', { name: 'Reviews (1)' }).click();
+  await expect(page.getByText('Learner reviews')).toBeVisible();
+  await expect(page.getByText('Useful introduction.')).toBeVisible();
+  await page.getByRole('button', { name: 'Overview' }).click();
   const course = await page.request.get(`${base}/api/courses/course-free-foundations`);
   expect((await course.json()).data.rating).toBe(4);
   await page.getByRole('button', { name: 'Plan a study session' }).click();
@@ -126,6 +130,15 @@ test('course player shows real course facts and saves a rating and study plan', 
   const calendar = await downloadPromise;
   expect(calendar.suggestedFilename()).toMatch(/\.ics$/);
   expect(readFileSync(await calendar.path(), 'utf8')).toContain('RRULE:FREQ=WEEKLY;BYDAY=TU');
+});
+
+test('personal plan shows administrator pricing state without starting a charge', async ({ page }) => {
+  await page.goto(`${base}/personal-plan`);
+  await expect(page.getByRole('heading', { name: 'Make room for your next skill.' })).toBeVisible();
+  await expect(page.getByText('Price coming soon')).toHaveCount(2);
+  await page.getByRole('link', { name: 'View plan details' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Review your plan' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Subscriptions coming soon' })).toBeDisabled();
 });
 
 test('wishlist shows only saved courses and removal restores the empty state', async ({ page }) => {

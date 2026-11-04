@@ -335,17 +335,12 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
             <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8 shadow-xs">
               <h2 className="text-xl font-bold text-[#172033] mb-6">Instructor</h2>
               <div className="flex flex-col sm:flex-row gap-6">
-                <img
-                  src={course.instructor.avatar}
-                  alt={course.instructor.name}
-                  className="w-24 h-24 rounded-2xl object-cover border border-[#E5E7EB]"
-                />
+                {course.instructor.avatar ? <img src={course.instructor.avatar} alt="" className="w-24 h-24 rounded-2xl object-cover border border-[#E5E7EB]" /> : <span aria-hidden="true" className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl bg-orange-100 text-3xl font-bold text-[#C96114]">{course.instructor.name.charAt(0)}</span>}
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-[#172033]">{course.instructor.name}</h3>
                   <p className="text-xs text-[#FF6B35] font-semibold">{course.instructor.role}</p>
-                  <p className="text-sm text-[#64748B] leading-relaxed pt-1">
-                    {course.instructor.bio}
-                  </p>
+                  {course.instructor.headline && <p className="text-sm font-semibold text-[#475569]">{course.instructor.headline}</p>}
+                  {course.instructor.bio && <p className="whitespace-pre-line pt-1 text-sm leading-relaxed text-[#64748B]">{course.instructor.bio}</p>}
                   <div className="flex items-center gap-5 pt-2 text-xs font-semibold text-[#172033]">
                     {course.instructor.rating > 0 && <span>⭐ {course.instructor.rating} Rating</span>}
                     <span>👥 {course.instructor.studentsCount.toLocaleString()} Students</span>

@@ -15,7 +15,7 @@ import { MyLearningLibrary } from "@/components/learning/MyLearningLibrary";
 import { Award, ArrowRight, Calendar } from "lucide-react";
 
 export default function DashboardPage() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated, user } = useAuth();
   const router = useRouter();
   const learningState = useLearningState();
   const [upcomingClasses, setUpcomingClasses] = useState<LiveClass[]>([]);
@@ -35,7 +35,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     let active = true;
-    fetch("/api/courses?sort=popular&pageSize=4", { cache: "no-store" })
+    fetch("/api/courses?sort=popular&pageSize=16", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Catalog unavailable");
         return response.json();
@@ -69,6 +69,8 @@ export default function DashboardPage() {
   }, [isAuthenticated]);
 
   const myCertificates = learningState.certificates;
+  const continueCourses = learningState.enrolledCourses.filter((course) => course.lastLessonId && course.progressPercent < 100).slice(0, 3);
+  const suggestedCourses = recommendedCourses.filter((course) => !learningState.enrolledCourseIds.includes(course.id)).slice(0, 4);
 
   if (!isReady || !isAuthenticated) {
     return <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center text-sm text-[#64748B]">Loading your dashboard…</div>;
@@ -81,6 +83,7 @@ export default function DashboardPage() {
 
       <main id="learning-tools" className="flex-1 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <section className="space-y-5"><div><p className="text-xs font-bold uppercase tracking-widest text-[#E85D2A]">Your learning space</p><h2 className="mt-1 text-2xl font-extrabold text-[#172033]">Welcome back, {user.name.split(" ")[0]}</h2></div>{continueCourses.length > 0 && <><h3 className="text-lg font-bold text-[#172033]">Pick up where you left off</h3><div className="grid gap-4 md:grid-cols-3">{continueCourses.map((course) => <Link key={course.courseId} href={`/learn/${course.courseSlug}/${course.lastLessonId}`} className="group flex overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm hover:border-[#FF6B35]"><div className="h-32 w-24 shrink-0 bg-[#172033]">{course.courseImage && <img src={course.courseImage} alt="" className="h-full w-full object-cover" />}</div><div className="min-w-0 flex-1 p-4"><p className="line-clamp-2 text-sm font-bold text-[#172033]">{course.courseTitle}</p><p className="mt-2 line-clamp-1 text-xs text-[#64748B]">Next: {course.lastLessonTitle}</p><div className="mt-3 h-1.5 rounded-full bg-[#E5E7EB]"><div className="h-full rounded-full bg-[#FF6B35]" style={{ width: `${course.progressPercent}%` }} /></div><p className="mt-1 text-xs font-semibold text-[#E85D2A]">{course.progressPercent}% complete · Continue →</p></div></Link>)}</div></>}</section>
           {/* Upcoming Live Classes (Requirement 6) */}
           <div className="space-y-6 pt-2">
             <div className="flex items-center justify-between">
@@ -250,11 +253,12 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recommendedCourses.map((c) => (
+              {suggestedCourses.map((c) => (
                 <CourseCard key={c.id} course={c} />
               ))}
             </div>
             {recommendationError && <p className="text-sm text-[#64748B]">Unable to load more courses right now. Use Explore all courses to browse the catalog.</p>}
+            {!recommendationError && suggestedCourses.length === 0 && <p className="text-sm text-[#64748B]">You have already enrolled in the available courses. Check the catalog for new releases.</p>}
           </div>
         </div>
       </main>

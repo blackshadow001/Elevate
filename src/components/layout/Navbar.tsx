@@ -74,6 +74,7 @@ export function Navbar() {
             >
               Career Paths
             </Link>
+            <Link href="/personal-plan" className={`py-1 transition-colors hover:text-[#FF6B35] ${pathname.startsWith("/personal-plan") ? "font-semibold text-[#FF6B35]" : "text-[#172033]"}`}>Personal Plan</Link>
 
             {/* Live Learning */}
             <Link
@@ -354,6 +355,7 @@ export function Navbar() {
             >
               Career Paths
             </Link>
+            <Link href="/personal-plan" onClick={() => setMobileMenuOpen(false)} className="border-b border-[#F7F8FA] py-2 hover:text-[#FF6B35]">Personal Plan</Link>
             <Link
               href="/live"
               onClick={() => setMobileMenuOpen(false)}
