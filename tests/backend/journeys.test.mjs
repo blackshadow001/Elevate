@@ -293,6 +293,21 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal((await call(`/api/certificates/verify/${number}`)).body.data.valid, true);
     assert.equal((await call('/api/certificates/verify/UNKNOWN')).body.data.valid, false);
   });
+
+  await t.test('course ratings update the published average without duplicating a learner review', async () => {
+    const path = '/api/courses/course-free-foundations/reviews';
+    const first = await call(path, { method: 'POST', cookie: learner, body: { rating: 5, comment: 'Clear lessons.' } });
+    assert.equal(first.response.status, 201, JSON.stringify(first.body));
+    assert.equal(first.body.data.averageRating, 5);
+    assert.equal(first.body.data.ratingCount, 1);
+    const updated = await call(path, { method: 'POST', cookie: learner, body: { rating: 3, comment: 'Updated feedback.' } });
+    assert.equal(updated.response.status, 201, JSON.stringify(updated.body));
+    assert.equal(updated.body.data.averageRating, 3);
+    assert.equal(updated.body.data.ratingCount, 1);
+    const publicCourse = await call('/api/courses/course-free-foundations');
+    assert.equal(publicCourse.body.data.rating, 3);
+    assert.equal(publicCourse.body.data.ratingCount, 1);
+  });
   await t.test('concurrent retries, foreign keys and cross-user records', async () => {
     const enrollments = await Promise.all(Array.from({ length: 8 }, () => call('/api/courses/course-free-foundations/enroll', { method: 'POST', cookie: otherLearner })));
     assert.ok(enrollments.every((r) => r.response.status === 200), JSON.stringify(enrollments.map((r) => r.body)));

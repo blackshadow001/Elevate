@@ -15,7 +15,13 @@ import {
   X,
   Sparkles,
   Trophy,
-  RotateCcw
+  RotateCcw,
+  Share2,
+  Star,
+  ChevronDown,
+  CalendarDays,
+  Globe2,
+  Users
 } from "lucide-react";
 import { Course, Lesson } from "@/types";
 import { useNotification } from "@/components/notifications/NotificationProvider";
@@ -24,6 +30,7 @@ import { setLessonCompletion, useLearningState } from "@/lib/learningState";
 import { useAuth } from "@/context/AuthContext";
 import { formatVideoDuration } from "@/lib/videoDuration";
 import { LessonActivityView } from "@/components/learning/LessonActivityView";
+import { LearningScheduleCard } from "@/components/learning/LearningScheduleCard";
 
 interface CoursePlayerProps {
   course: Course;
@@ -59,6 +66,12 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
   const [questionsByLesson, setQuestionsByLesson] = useState<Record<string, string[]>>({});
   const [savingProgress, setSavingProgress] = useState(false);
   const [actualDurations, setActualDurations] = useState<Record<string, string>>({});
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [ratingSummary, setRatingSummary] = useState({ average: course.rating, count: course.ratingCount });
 
   const currentLesson = allFlatLessons.find((l) => l.id === currentLessonId) || allFlatLessons[0];
   const notesList = notesByLesson[currentLesson.id] || [];
@@ -102,6 +115,34 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
 
   const isCourseFullyCompleted = progressPercent === 100;
   const earnedCertificate = learningState.certificates.find((certificate) => certificate.courseId === course.id);
+  const nextUnfinishedLesson = allFlatLessons.find((lesson) => !completedLessonIds.includes(lesson.id));
+
+  const shareCourse = async () => {
+    try {
+      await navigator.clipboard.writeText(new URL(`/courses/${course.slug}`, window.location.origin).toString());
+      notify({ type: "success", title: "Course link copied", message: "Share this course with a friend." });
+    } catch {
+      notify({ type: "error", title: "Could not copy link", message: "Please copy the course URL from its details page." });
+    }
+  };
+
+  const submitRating = async () => {
+    if (!ratingValue || reviewBusy) return;
+    setReviewBusy(true);
+    try {
+      const response = await fetch(`/api/courses/${encodeURIComponent(course.id)}/reviews`, {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: ratingValue, comment: ratingComment.trim() }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error?.message || "Your rating could not be saved.");
+      setRatingSummary({ average: body.data.averageRating, count: body.data.ratingCount });
+      setRatingOpen(false);
+      notify({ type: "success", title: "Rating saved", message: "Thanks for sharing your experience with this course." });
+    } catch (error) {
+      notify({ type: "error", title: "Rating not saved", message: error instanceof Error ? error.message : "Please try again." });
+    } finally { setReviewBusy(false); }
+  };
 
   const handleSaveNote = () => {
     if (savedNotes.trim()) {
@@ -122,44 +163,27 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] flex flex-col font-sans">
-      {/* Top Learning App Bar */}
-      <header className="h-16 bg-[#172033] text-white flex items-center justify-between px-4 sm:px-6 z-30 shrink-0">
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
-          <Link
-            href="/dashboard"
-            className="text-[#94A3B8] hover:text-white flex items-center gap-1 text-xs font-semibold"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
+      {/* Learning workspace header */}
+      <header className="relative z-30 shrink-0 border-b border-white/10 bg-[#172033] px-4 py-3 text-white sm:px-6">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-5">
+          <Link href="/dashboard" aria-label="Back to My learning" className="flex items-center gap-2 font-extrabold tracking-tight">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#FF6B35] text-lg">E</span>
+            <span className="hidden sm:inline">Elevate</span>
           </Link>
-          <div className="h-4 w-px bg-[#26344D] hidden sm:block" />
-          <h1 className="min-w-0 truncate text-sm font-bold text-white">
-            {course.title}
-          </h1>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-          {/* Progress Indicator */}
-          <div className="hidden md:flex items-center gap-3 text-xs">
-            <span className="text-[#94A3B8]">Progress:</span>
-            <div className="w-32 bg-[#26344D] h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-[#FF6B35] h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
+          <div className="hidden h-6 w-px bg-white/20 sm:block" />
+          <div className="min-w-0 flex-1 basis-40"><p className="text-[10px] font-semibold uppercase tracking-widest text-[#FFB18F]">Learning workspace</p><h1 className="truncate text-sm font-bold">{course.title}</h1></div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => setRatingOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold hover:bg-white/10" aria-label="Rate this course"><Star className="h-4 w-4 text-[#FFB18F]" /><span className="hidden md:inline">Rate course</span></button>
+            <div className="relative">
+              <button type="button" onClick={() => setProgressOpen((open) => !open)} aria-expanded={progressOpen} aria-label="Your course progress" className="flex items-center gap-2 rounded-lg border border-white/20 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/10">
+                <span className="grid h-7 w-7 place-items-center rounded-full" style={{ background: `conic-gradient(#FF6B35 ${progressPercent}%, #41506A 0)` }}><span className="grid h-5 w-5 place-items-center rounded-full bg-[#172033] text-[9px]">{progressPercent}</span></span>
+                <span className="hidden lg:inline">Your progress</span><ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {progressOpen && <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#E5E7EB] bg-white p-4 text-[#172033] shadow-xl"><p className="text-sm font-bold">{completedLessonIds.length} of {allFlatLessons.length} lessons complete</p><div className="mt-3 h-2 rounded-full bg-[#E5E7EB]"><div className="h-full rounded-full bg-[#FF6B35]" style={{ width: `${progressPercent}%` }} /></div><p className="mt-2 text-xs text-[#64748B]">{progressPercent}% of this course completed</p>{nextUnfinishedLesson && <button type="button" onClick={() => { setProgressOpen(false); router.push(`/learn/${course.slug}/${nextUnfinishedLesson.id}`); }} className="mt-4 text-xs font-bold text-[#E85D2A]">Continue: {nextUnfinishedLesson.title} →</button>}</div>}
             </div>
-            <span className="text-white font-bold">{progressPercent}%</span>
+            <button type="button" onClick={() => void shareCourse()} className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 px-2.5 py-2 text-xs font-semibold hover:bg-white/10" aria-label="Share this course"><Share2 className="h-4 w-4" /><span className="hidden md:inline">Share</span></button>
+            <button type="button" onClick={() => setSidebarOpen(!sidebarOpen)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#26344D] px-2.5 py-2 text-xs font-semibold hover:bg-[#324566]" aria-label={sidebarOpen ? "Hide course content" : "Show course content"}>{sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}<span className="hidden xl:inline">{sidebarOpen ? "Hide content" : "Course content"}</span></button>
           </div>
-
-          {/* Toggle Sidebar Button */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg bg-[#26344D] hover:bg-[#324566] text-white text-xs font-medium flex items-center gap-1.5 active:scale-95 transition-all"
-            aria-label="Toggle curriculum navigation"
-          >
-            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            <span className="hidden sm:inline">{sidebarOpen ? "Hide Content" : "Curriculum"}</span>
-          </button>
         </div>
       </header>
 
@@ -351,17 +375,23 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
 
             {/* Tab: Overview */}
             {activeTab === "overview" && (
-              <div className="space-y-4 max-w-3xl text-sm leading-relaxed text-[#172033]">
-                <h3 className="text-base font-bold text-[#172033]">About this lecture</h3>
-                <p className="text-[#64748B]">
-                  {currentLesson.content || `This lesson covers ${currentLesson.title.toLowerCase()} in ${course.title}.`}
-                </p>
-                <div className="bg-[#F7F8FA] p-4 rounded-xl border border-[#E5E7EB] space-y-2">
-                  <h4 className="font-bold text-xs uppercase text-[#64748B]">Key takeaways:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-xs text-[#172033]">
-                    {course.whatYouWillLearn.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
-                  </ul>
+              <div className="max-w-4xl space-y-7 text-sm leading-relaxed text-[#172033]">
+                <div><p className="text-xs font-bold uppercase tracking-widest text-[#E85D2A]">Course overview</p><h3 className="mt-2 text-2xl font-extrabold leading-tight">{course.title}</h3>{course.subtitle && <p className="mt-2 text-base text-[#475569]">{course.subtitle}</p>}</div>
+                <div className="flex flex-wrap gap-x-6 gap-y-3 rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] p-4">
+                  <div className="flex items-center gap-2"><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong>{ratingSummary.count ? ratingSummary.average.toFixed(1) : "New"}</strong><span className="text-[#64748B]">{ratingSummary.count ? `${ratingSummary.count.toLocaleString()} ${ratingSummary.count === 1 ? "rating" : "ratings"}` : "No ratings yet"}</span></div>
+                  <div className="flex items-center gap-2"><Users className="h-4 w-4 text-[#E85D2A]" /><strong>{course.studentsCount.toLocaleString()}</strong><span className="text-[#64748B]">learners</span></div>
+                  <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-[#E85D2A]" /><strong>{course.duration}</strong><span className="text-[#64748B]">of lessons</span></div>
                 </div>
+                {course.description && <p className="whitespace-pre-line text-[#475569]">{course.description}</p>}
+                <LearningScheduleCard courseId={course.id} courseSlug={course.slug} courseTitle={course.title} userId={user.id} />
+                <div className="grid gap-4 border-t border-[#E5E7EB] pt-5 sm:grid-cols-2 lg:grid-cols-4">
+                  <div><p className="text-xs font-bold uppercase text-[#94A3B8]">Level</p><p className="mt-1 font-semibold">{course.level}</p></div>
+                  <div><p className="text-xs font-bold uppercase text-[#94A3B8]">Curriculum</p><p className="mt-1 font-semibold">{course.totalLessons} {course.totalLessons === 1 ? "lesson" : "lessons"} · {course.sections.length} {course.sections.length === 1 ? "section" : "sections"}</p></div>
+                  <div><p className="text-xs font-bold uppercase text-[#94A3B8]">Language</p><p className="mt-1 flex items-center gap-1.5 font-semibold"><Globe2 className="h-4 w-4 text-[#E85D2A]" />{course.language}</p></div>
+                  <div><p className="text-xs font-bold uppercase text-[#94A3B8]">Last updated</p><p className="mt-1 font-semibold">{course.updatedAt}</p></div>
+                </div>
+                <div className="border-t border-[#E5E7EB] pt-5"><h3 className="font-bold">About this lesson</h3><p className="mt-2 text-[#64748B]">{currentLesson.content || `Learn about ${currentLesson.title} in this course.`}</p></div>
+                {course.whatYouWillLearn.length > 0 && <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] p-4"><h4 className="text-xs font-bold uppercase text-[#64748B]">What you will learn</h4><ul className="mt-2 list-inside list-disc space-y-1 text-xs">{course.whatYouWillLearn.slice(0, 4).map((item) => <li key={item}>{item}</li>)}</ul></div>}
               </div>
             )}
 
@@ -518,6 +548,15 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
           </aside>
         )}
       </div>
+      {ratingOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-[#0F172A]/70 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setRatingOpen(false); }}>
+        <div role="dialog" aria-modal="true" aria-label="Rate this course" className="w-full max-w-md rounded-2xl bg-white p-6 text-[#172033] shadow-2xl">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-[#E85D2A]">Course feedback</p><h2 className="mt-1 text-xl font-bold">How was your learning experience?</h2></div><button type="button" onClick={() => setRatingOpen(false)} aria-label="Close rating" className="rounded-lg p-1 hover:bg-[#F1F5F9]"><X className="h-5 w-5" /></button></div>
+          <p className="mt-3 text-sm text-[#64748B]">Your rating helps other learners choose a course. You can update it later.</p>
+          <div role="group" aria-label="Rating" className="mt-5 flex gap-2">{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" onClick={() => setRatingValue(value)} aria-label={`${value} ${value === 1 ? "star" : "stars"}`} aria-pressed={ratingValue === value} className="rounded-lg p-1 hover:bg-amber-50"><Star className={`h-8 w-8 ${value <= ratingValue ? "fill-amber-400 text-amber-400" : "text-[#CBD5E1]"}`} /></button>)}</div>
+          <label htmlFor="course-rating-comment" className="mt-5 block text-sm font-semibold">Review (optional)</label><textarea id="course-rating-comment" value={ratingComment} onChange={(event) => setRatingComment(event.target.value)} maxLength={2000} rows={4} className="mt-2 w-full rounded-xl border border-[#CBD5E1] p-3 text-sm" placeholder="What helped you learn?" />
+          <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setRatingOpen(false)} className="rounded-lg px-4 py-2 text-sm font-semibold">Cancel</button><button type="button" onClick={() => void submitRating()} disabled={!ratingValue || reviewBusy} className="rounded-lg bg-[#FF6B35] px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{reviewBusy ? "Saving…" : "Save rating"}</button></div>
+        </div>
+      </div>}
     </div>
   );
 }

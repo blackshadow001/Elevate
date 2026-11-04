@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ApiError, id, json, number, optionalText, readJson, safe } from "@/server/api";
 import { requireAuth } from "@/server/auth";
-import { getDb } from "@/server/db";
+import { getDb, transaction } from "@/server/db";
 type Context = { params: Promise<{ courseId: string }> };
 export async function GET(_request: Request, { params }: Context) {
   return safe(async () => {
@@ -23,10 +23,15 @@ export async function POST(request: Request, { params }: Context) {
     const comment = optionalText(body.comment, "Comment", 2000) || "";
     if (!getDb().prepare("SELECT 1 FROM enrollments WHERE user_id=? AND course_id=? AND status IN ('active','completed')")
       .get(user.id, courseId)) throw new ApiError(403, "NOT_ENROLLED", "Enroll before reviewing this course.");
-    getDb().prepare(`INSERT INTO reviews (id,user_id,course_id,rating,comment) VALUES (?,?,?,?,?)
-      ON CONFLICT(user_id,course_id) DO UPDATE SET rating=excluded.rating,comment=excluded.comment,updated_at=?`)
-      .run(randomUUID(), user.id, courseId, rating, comment, new Date().toISOString());
-    const row = getDb().prepare("SELECT id FROM reviews WHERE user_id=? AND course_id=?").get(user.id, courseId)!;
-    return json({ id: String(row.id), courseId, rating, comment }, 201);
+    const result = transaction((db) => {
+      db.prepare(`INSERT INTO reviews (id,user_id,course_id,rating,comment) VALUES (?,?,?,?,?)
+        ON CONFLICT(user_id,course_id) DO UPDATE SET rating=excluded.rating,comment=excluded.comment,updated_at=?`)
+        .run(randomUUID(), user.id, courseId, rating, comment, new Date().toISOString());
+      const summary = db.prepare("SELECT AVG(rating) average,COUNT(*) total FROM reviews WHERE course_id=?").get(courseId)!;
+      db.prepare("UPDATE courses SET rating=? WHERE id=?").run(Number(summary.average), courseId);
+      const row = db.prepare("SELECT id FROM reviews WHERE user_id=? AND course_id=?").get(user.id, courseId)!;
+      return { id: String(row.id), courseId, rating, comment, averageRating: Number(summary.average), ratingCount: Number(summary.total) };
+    });
+    return json(result, 201);
   });
 }

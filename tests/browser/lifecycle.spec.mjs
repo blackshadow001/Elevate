@@ -97,6 +97,37 @@ test('my learning lists and archived courses use the learner account', async ({ 
   await expect(library.getByText('No archived courses.')).toBeVisible();
 });
 
+test('course player shows real course facts and saves a rating and study plan', async ({ page }) => {
+  await page.goto(`${base}/login`);
+  await page.getByLabel('Email', { exact: true }).fill('samira@example.invalid');
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard(?:\?|$)/);
+  expect((await page.request.post(`${base}/api/courses/course-free-foundations/enroll`)).ok()).toBeTruthy();
+  await page.goto(`${base}/learn/web-foundations-free-starter/lesson-free-1`);
+  await expect(page.getByText('Course overview')).toBeVisible();
+  await expect(page.getByText('2 lessons · 1 section')).toBeVisible();
+  await page.getByRole('button', { name: 'Your course progress' }).click();
+  await expect(page.getByText('0 of 2 lessons complete')).toBeVisible();
+  await page.getByRole('button', { name: 'Rate this course' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Rate this course' });
+  await dialog.getByRole('button', { name: '4 stars' }).click();
+  await dialog.getByLabel('Review (optional)').fill('Useful introduction.');
+  await dialog.getByRole('button', { name: 'Save rating' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByText('1 rating')).toBeVisible();
+  const course = await page.request.get(`${base}/api/courses/course-free-foundations`);
+  expect((await course.json()).data.rating).toBe(4);
+  await page.getByRole('button', { name: 'Plan a study session' }).click();
+  await page.getByLabel('Day', { exact: true }).selectOption({ label: 'Tuesday' });
+  await page.getByLabel('Time', { exact: true }).fill('20:00');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Add to calendar' }).click();
+  const calendar = await downloadPromise;
+  expect(calendar.suggestedFilename()).toMatch(/\.ics$/);
+  expect(readFileSync(await calendar.path(), 'utf8')).toContain('RRULE:FREQ=WEEKLY;BYDAY=TU');
+});
+
 test('wishlist shows only saved courses and removal restores the empty state', async ({ page }) => {
   await page.goto(`${base}/wishlist`);
   await expect(page).toHaveURL(/\/login/);
