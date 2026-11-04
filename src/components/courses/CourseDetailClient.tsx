@@ -15,7 +15,11 @@ import {
   Award, 
   FileText,
   ChevronDown,
-  Share2
+  Share2,
+  ArrowRight,
+  Sparkles,
+  MonitorPlay,
+  Layers3
 } from "lucide-react";
 import { Course } from "@/types";
 import { formatINR } from "@/lib/utils";
@@ -24,6 +28,7 @@ import { useNotification } from "@/components/notifications/NotificationProvider
 import { EnrollmentModal } from "@/components/courses/EnrollmentModal";
 import { PaidCheckoutModal } from "@/components/courses/PaidCheckoutModal";
 import { CourseThumbnail } from "@/components/courses/CourseThumbnail";
+import { CourseReviews } from "@/components/courses/CourseReviews";
 import { enrollCourse, useLearningState } from "@/lib/learningState";
 import { useAuth } from "@/context/AuthContext";
 
@@ -41,7 +46,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
   const wishlisted = isWishlisted(course.id);
 
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "curriculum" | "instructor">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "curriculum" | "instructor" | "reviews">("overview");
 
   // Accordion state
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -88,6 +93,19 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
   const discountPercent = Math.round(
     course.originalPrice > 0 ? ((course.originalPrice - course.price) / course.originalPrice) * 100 : 0
   );
+  const quickFacts = [
+    { label: "Level", value: course.level, icon: Layers3 },
+    { label: "Language", value: course.language, icon: Globe2 },
+    { label: "Lessons", value: String(course.totalLessons), icon: BookOpen },
+    { label: "Total length", value: course.duration, icon: Clock },
+  ];
+  const faqs = [
+    { question: "What language is this course taught in?", answer: `This course is taught in ${course.language}.` },
+    { question: "What should I know before starting?", answer: course.requirements.length
+      ? course.requirements.join(" · ") : "No prerequisites have been listed for this course. Review the lessons to see the topics covered." },
+    { question: "Can I track my progress?", answer: "Yes. Your completed lessons and course progress are saved in My Learning." },
+    { question: "Is there a completion certificate?", answer: "A certificate is issued when you complete all required course lessons and activities." },
+  ];
 
   return (
     <>
@@ -101,12 +119,13 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
       <PaidCheckoutModal open={enrollModalOpen && course.price > 0} onClose={() => setEnrollModalOpen(false)}
         courseId={course.id} courseTitle={course.title} displayedPrice={course.price} />
 
-      {/* Navy Hero Banner */}
-      <section className="bg-[#172033] text-white py-12 lg:py-16">
+      {/* Shared course landing hero, populated from the published course. */}
+      <section className="relative overflow-hidden bg-[#172033] py-12 text-white lg:py-20">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-28 -top-48 h-[34rem] w-[34rem] rounded-full bg-[#FF6B35]/20 blur-3xl" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-14">
             {/* Left Info Column */}
-            <div className="lg:col-span-8 space-y-5">
+            <div className="lg:col-span-7 space-y-6">
               {/* Breadcrumbs */}
               <nav className="flex items-center gap-2 text-xs text-[#94A3B8]">
                 <Link href="/" className="hover:text-white transition-colors">Home</Link>
@@ -118,11 +137,15 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                 <span className="text-white truncate max-w-xs">{course.title}</span>
               </nav>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-orange-200">
+                <span className="rounded-full border border-orange-300/35 bg-orange-300/10 px-3 py-1.5">{course.category}</span>
+                <span className="rounded-full border border-white/20 px-3 py-1.5">{course.level}</span>
+              </div>
+              <h1 className="max-w-4xl text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white">
                 {course.title}
               </h1>
 
-              <p className="text-base sm:text-lg text-[#94A3B8] leading-relaxed">
+              <p className="max-w-2xl text-base leading-relaxed text-[#CBD5E1] sm:text-lg">
                 {course.subtitle}
               </p>
 
@@ -151,13 +174,9 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
               </div>
 
               {/* Instructor & Meta */}
-              <div className="pt-2 flex flex-wrap items-center gap-6 text-xs text-[#94A3B8]">
+              <div className="flex flex-wrap items-center gap-6 pt-2 text-xs text-[#CBD5E1]">
                 <div className="flex items-center gap-2">
-                  <img
-                    src={course.instructor.avatar}
-                    alt={course.instructor.name}
-                    className="w-7 h-7 rounded-full object-cover border border-white/20"
-                  />
+                  {course.instructor.avatar ? <img src={course.instructor.avatar} alt="" className="h-7 w-7 rounded-full border border-white/20 object-cover" /> : <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full bg-orange-100 text-xs font-bold text-[#C96114]">{course.instructor.name.charAt(0)}</span>}
                   <span>Created by <strong className="text-white font-semibold underline">{course.instructor.name}</strong></span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -166,18 +185,40 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                 </div>
                 <div>Last updated: {course.updatedAt}</div>
               </div>
+              <a href="#enroll" className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-950/20 transition-colors hover:bg-[#E85D2A] lg:hidden">
+                {isEnrolled ? "Continue learning" : course.price > 0 ? "Explore enrollment" : "Start learning"} <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+            <div className="lg:col-span-5">
+              <div className="overflow-hidden rounded-3xl border border-white/15 bg-white/10 p-2 shadow-2xl shadow-black/30">
+                <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#0F172A]"><CourseThumbnail category={course.category} title={course.title} imageUrl={course.image} className="h-full w-full" /></div>
+                <p className="flex items-center gap-2 px-4 py-3 text-xs font-semibold text-[#E2E8F0]"><MonitorPlay className="h-4 w-4 text-[#FF6B35]" /> Learn at your own pace, lesson by lesson</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Content Body & Sticky Floating Card */}
+      <section aria-label="Course at a glance" className="border-b border-[#E5E7EB] bg-white">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-6 sm:px-6 lg:grid-cols-4 lg:px-8">
+          {quickFacts.map(({ label, value, icon: Icon }) => <div key={label} className="flex items-center gap-3 rounded-2xl bg-[#F8FAFC] px-4 py-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-[#E85D2A]"><Icon className="h-5 w-5" /></span><div><p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">{label}</p><p className="text-sm font-bold text-[#172033]">{value}</p></div></div>)}
+        </div>
+      </section>
+
+      {/* Course content and enrollment */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           {/* Left Content Column */}
-          <div id="course-content" className="lg:col-span-8 space-y-10">
+          <div id="course-content" className="order-2 space-y-10 lg:order-1 lg:col-span-8">
+            <section className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-[#E85D2A]"><Sparkles className="h-4 w-4" /> Your learning path</div>
+              <h2 className="max-w-2xl text-2xl font-extrabold tracking-tight text-[#172033] sm:text-3xl">What you will explore</h2>
+              <p className="mt-3 text-sm leading-relaxed text-[#64748B]">Follow the published lessons in order, practise the activities, and keep your progress in one place.</p>
+              {course.whatYouWillLearn.length > 0 && <div className="mt-7 grid gap-3 sm:grid-cols-2">{course.whatYouWillLearn.slice(0, 6).map((outcome, index) => <div key={`${outcome}-${index}`} className="flex gap-3 rounded-2xl bg-[#FFF7F1] p-4"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#E85D2A]" /><span className="text-sm font-medium leading-relaxed text-[#172033]">{outcome}</span></div>)}</div>}
+            </section>
+            {course.sections.length > 0 && <section aria-labelledby="course-path-title"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.15em] text-[#E85D2A]">Step by step</p><h2 id="course-path-title" className="mt-2 text-2xl font-extrabold text-[#172033]">Inside the course</h2></div><div className="grid gap-4 sm:grid-cols-2">{course.sections.slice(0, 4).map((section, index) => <article key={section.id} className="rounded-2xl border border-[#E5E7EB] bg-white p-5"><span className="text-xs font-bold uppercase tracking-wide text-[#E85D2A]">Module {String(index + 1).padStart(2, "0")}</span><h3 className="mt-2 text-base font-bold text-[#172033]">{section.title}</h3><p className="mt-2 text-xs text-[#64748B]">{section.lessons.length} {section.lessons.length === 1 ? "lesson" : "lessons"}</p>{section.lessons[0] && <p className="mt-4 border-t border-[#E5E7EB] pt-3 text-xs leading-relaxed text-[#475569]">Starts with {section.lessons[0].title}</p>}</article>)}</div>{course.sections.length > 4 && <p className="mt-3 text-xs text-[#64748B]">Plus {course.sections.length - 4} more {course.sections.length - 4 === 1 ? "module" : "modules"} in the curriculum.</p>}</section>}
             {/* Animated Tab Bar */}
-            <div role="tablist" aria-label="Course details" className="flex items-center gap-6 border-b border-[#E5E7EB] text-sm font-bold text-[#64748B]">
+            <div role="tablist" aria-label="Course details" className="flex items-center gap-6 overflow-x-auto border-b border-[#E5E7EB] text-sm font-bold text-[#64748B]">
               <button
                 type="button"
                 role="tab"
@@ -216,6 +257,10 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                 }`}
               >
                 Instructor
+              </button>
+              <button type="button" role="tab" aria-selected={activeTab === "reviews"} onClick={() => setActiveTab("reviews")}
+                className={`shrink-0 pb-3 transition-colors ${activeTab === "reviews" ? "border-b-2 border-[#FF6B35] text-[#FF6B35]" : "hover:text-[#172033]"}`}>
+                Reviews ({course.ratingCount})
               </button>
             </div>
 
@@ -350,11 +395,13 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
               </div>
             </div>
             </div>}
+            {activeTab === "reviews" && <div role="tabpanel"><CourseReviews courseId={course.id} /></div>}
+            <section className="rounded-3xl bg-[#172033] p-7 text-white sm:p-9"><p className="text-xs font-bold uppercase tracking-[0.15em] text-orange-300">Know before you start</p><h2 className="mt-2 text-2xl font-extrabold">Common questions</h2><div className="mt-6 divide-y divide-white/15">{faqs.map((item) => <details key={item.question} className="group py-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold marker:hidden">{item.question}<ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" /></summary><p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#CBD5E1]">{item.answer}</p></details>)}</div></section>
           </div>
 
           {/* Right Column: Sticky Purchase & Preview Card */}
-          <div className="lg:col-span-4">
-            <div className="bg-white rounded-3xl border border-[#E5E7EB] shadow-xl p-6 lg:-mt-64 relative z-20 space-y-6">
+          <div id="enroll" className="order-1 lg:order-2 lg:col-span-4">
+            <div className="sticky top-24 z-20 space-y-6 rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xl">
               {/* Video Preview Box */}
               <button
                 type="button"
