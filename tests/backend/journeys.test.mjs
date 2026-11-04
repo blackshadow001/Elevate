@@ -882,14 +882,20 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const initialPlan = await call('/api/personal-plan');
     assert.equal(initialPlan.body.data.monthlyPriceMinor, null);
     assert.equal(initialPlan.body.data.checkoutAvailable, false);
+    assert.equal(initialPlan.body.data.includedCourseCount, 0);
     assert.equal((await call('/api/admin/personal-plan', { method: 'PUT', cookie: learner,
-      body: { monthlyPriceMinor: 29900, annualPriceMinor: 299900 } })).response.status, 403);
+      body: { monthlyPriceMinor: 29900, annualPriceMinor: 299900, courseIds: ['course-free-foundations'] } })).response.status, 403);
     assert.equal((await call('/api/admin/personal-plan', { method: 'PUT', cookie: admin,
-      body: { monthlyPriceMinor: 0, annualPriceMinor: null } })).response.status, 422);
+      body: { monthlyPriceMinor: 0, annualPriceMinor: null, courseIds: [] } })).response.status, 422);
+    assert.equal((await call('/api/admin/personal-plan', { method: 'PUT', cookie: admin,
+      body: { monthlyPriceMinor: 29900, annualPriceMinor: null, courseIds: ['course-unknown'] } })).response.status, 422);
     const savedPlan = await call('/api/admin/personal-plan', { method: 'PUT', cookie: admin,
-      body: { monthlyPriceMinor: 29900, annualPriceMinor: 299900 } });
+      body: { monthlyPriceMinor: 29900, annualPriceMinor: 299900, courseIds: ['course-free-foundations'] } });
     assert.equal(savedPlan.response.status, 200, JSON.stringify(savedPlan.body));
-    assert.equal((await call('/api/personal-plan')).body.data.annualPriceMinor, 299900);
+    const publicPlan = await call('/api/personal-plan');
+    assert.equal(publicPlan.body.data.annualPriceMinor, 299900);
+    assert.equal(publicPlan.body.data.includedCourseCount, 1);
+    assert.deepEqual(publicPlan.body.data.includedCourses.map((course) => course.id), ['course-free-foundations']);
     const loginPage = await fetch(`${base}/control-center/login`);
     assert.equal(loginPage.status, 200);
     assert.match(await loginPage.text(), /Administrator sign in/);
