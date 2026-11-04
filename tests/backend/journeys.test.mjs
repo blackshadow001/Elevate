@@ -1260,9 +1260,13 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       const response = await fetch(`${base}${path}`, { redirect: 'manual' });
       assert.ok(response.status < 400, `${path} returned ${response.status}`);
     }
-    for (const path of ['/career-paths/full-stack-developer', '/blog/modern-react-compiler-nextjs-15']) {
+    for (const path of ['/career-paths/full-stack-developer']) {
       const response = await fetch(`${base}${path}`, { redirect: 'manual' });
       assert.equal(response.status, 404, `${path} should not show sample content`);
+    }
+    for (const path of ['/blog/modern-react-compiler-nextjs-15', '/blog/building-production-rag-agents', '/blog/design-tokens-multi-platform-apps']) {
+      const response = await fetch(`${base}${path}`, { redirect: 'manual' });
+      assert.equal(response.status, 200, `${path} should show an archived article`);
     }
   });
 });
