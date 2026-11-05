@@ -86,7 +86,7 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
     notify({
       type: "success",
       title: "Class Successfully Ended",
-      message: "The class status was saved. Recordings require a streaming provider.",
+      message: "The class has ended. Upload its recording from Live Classes so learners can catch up.",
     });
   };
 
@@ -170,7 +170,8 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
           />}
 
           {/* Instructor Controls Bar */}
-          {meetingUrl ? <p className="text-xs text-[#64748B]">Use the meeting tab to control your microphone, camera, and screen share. End the class in Elevate when finished.</p> : <InstructorControls
+          {meetingUrl ? <div className="flex items-center justify-between gap-3"><p className="text-xs text-[#64748B]">Use the meeting tab for microphone, camera, and screen sharing.</p>
+            <button type="button" onClick={() => setEndClassModalOpen(true)} className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white">End Class</button></div> : <InstructorControls
             onToggleScreenShare={() => setScreenShareModalOpen(true)}
             isScreenSharing={isScreenSharing}
             onOpenParticipants={() =>

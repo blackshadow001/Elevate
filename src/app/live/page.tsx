@@ -63,6 +63,7 @@ export default function LiveLearningLandingPage() {
               <p className="text-lg sm:text-xl text-[#64748B] font-medium leading-relaxed">
                 Learn together. Ask questions. Build together.
               </p>
+              <Link href="/live/recordings" className="inline-flex rounded-xl bg-[#172033] px-5 py-3 text-sm font-bold text-white hover:bg-[#26344D]">Watch class recordings →</Link>
             </div>
 
             {/* Filter Tabs (Requirement 3: [ Live Now ] [ Upcoming ] [ Bootcamps ] [ Events ]) */}

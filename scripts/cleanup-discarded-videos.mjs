@@ -18,6 +18,7 @@ const qualities = ['360p', '480p', '720p', '1080p'];
 const variantKey = /^([0-9a-f-]{36}\.(?:mp4|webm))\.(?:360p|480p|720p|1080p)\.(?:mp4|mp4\.part|failed)$/;
 const used = db.prepare(`SELECT 1 WHERE EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=?)
   OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)
+  OR EXISTS(SELECT 1 FROM live_class_recordings r JOIN media_assets m ON m.id=r.asset_id WHERE m.storage_key=?)
   OR EXISTS(SELECT 1 FROM media_assets WHERE storage_key=?)`);
 let deleted = 0;
 let partials = 0;
@@ -27,7 +28,8 @@ try {
   // resource reference is an abandoned upload left by an older release.
   const abandoned = db.prepare(`SELECT m.storage_key FROM media_assets m WHERE m.mime_type IN ('video/mp4','video/webm')
     AND NOT EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=m.storage_key)
-    AND NOT EXISTS(SELECT 1 FROM course_resources WHERE storage_key=m.storage_key)`).all();
+    AND NOT EXISTS(SELECT 1 FROM course_resources WHERE storage_key=m.storage_key)
+    AND NOT EXISTS(SELECT 1 FROM live_class_recordings WHERE asset_id=m.id)`).all();
   for (const row of abandoned) {
     const key = String(row.storage_key);
     if (!videoKey.test(key)) continue;
@@ -39,7 +41,7 @@ try {
   const due = db.prepare('SELECT storage_key FROM discarded_videos WHERE discarded_at_ms<=?').all(now - threeDays + hour);
   for (const row of due) {
     const key = String(row.storage_key);
-    if (!videoKey.test(key) || used.get(key, key, key)) {
+    if (!videoKey.test(key) || used.get(key, key, key, key)) {
       db.prepare('DELETE FROM discarded_videos WHERE storage_key=?').run(key);
       continue;
     }
@@ -75,13 +77,13 @@ try {
       }
     } else if (variant) {
       const original = variant[1];
-      if (info.mtimeMs <= now - threeDays && !used.get(original, original, original)) {
+      if (info.mtimeMs <= now - threeDays && !used.get(original, original, original, original)) {
         await unlink(join(mediaPath, key));
         deleted++;
       }
     } else if (info.mtimeMs <= now - threeDays &&
       !db.prepare('SELECT 1 FROM discarded_videos WHERE storage_key=?').get(key) &&
-      !used.get(key, key, key)) {
+      !used.get(key, key, key, key)) {
       // A completed file without an asset or references may be left by a
       // process crash before the upload transaction committed.
       await unlink(join(mediaPath, key));

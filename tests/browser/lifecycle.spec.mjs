@@ -303,6 +303,11 @@ test('tutor video uploads privately, persists in draft and preview respects spee
   const thumbnailUrl = await page.getByRole('img', { name: 'Thumbnail Preview' }).getAttribute('src');
   expect(thumbnailUrl).toBeTruthy();
   await expect.poll(() => page.getByRole('img', { name: 'Thumbnail Preview' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+  await page.getByText('Curriculum', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Add Module / Section' }).click();
+  await page.getByRole('textbox', { name: 'Section 1 title' }).fill('Video lessons');
+  await page.getByRole('button', { name: 'Add Lesson' }).click();
+  await page.getByRole('textbox', { name: 'Lesson 1 title' }).fill('Lesson video');
   await page.getByText('Video Preview', { exact: true }).click();
   await expect(page.getByText('MP4 or WebM, up to 1 GB per video. Saved privately on this server.')).toBeVisible();
   await page.locator('input[type="file"][accept="video/mp4,video/webm"]').setInputFiles({
@@ -366,8 +371,41 @@ test('tutor video uploads privately, persists in draft and preview respects spee
     page.getByRole('button', { name: 'Confirm' }).click(),
   ]);
   expect(submitResponse.status()).toBe(422);
-  expect((await submitResponse.json()).error.code).toBe('COURSE_MEDIA_INCOMPLETE');
+  expect((await submitResponse.json()).error.code).toBe('COURSE_INCOMPLETE');
   await expect(page.getByText(title)).toBeVisible();
+});
+
+test('tutor video studio exports edited lesson video', async ({ page }) => {
+  await page.goto(`${base}/login`);
+  await page.getByLabel('Email', { exact: true }).fill('john@example.com');
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await expect(page).toHaveURL(/\/instructor(?:\?|$)/);
+  await page.goto(`${base}/instructor/courses/create`);
+  await page.getByLabel('Course Title').fill(`Studio QA ${randomBytes(4).toString('hex')}`);
+  await page.getByText('Thumbnail', { exact: true }).first().click();
+  await page.locator('input[type="file"][accept="image/jpeg,image/png,image/webp"]').setInputFiles(resolve(root, 'public/courses/course-2.jpg'));
+  await expect(page.getByRole('img', { name: 'Thumbnail Preview' })).toHaveAttribute('src', /^\/api\/course-thumbnails\//);
+  await page.getByText('Curriculum', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Add Module / Section' }).click();
+  await page.getByRole('textbox', { name: 'Section 1 title' }).fill('Studio lessons');
+  await page.getByRole('button', { name: 'Add Lesson' }).click();
+  await page.getByRole('textbox', { name: 'Lesson 1 title' }).fill('Edited lesson');
+  await page.getByText('Video Preview', { exact: true }).click();
+  await page.getByRole('button', { name: /Open Video Studio/ }).click();
+  const studio = page.getByRole('dialog', { name: 'Video editing studio' });
+  await studio.locator('input[type="file"]').setInputFiles(resolve(root, 'public/videos/lesson-demo.webm'));
+  await expect.poll(() => studio.locator('video').evaluate(element => element.duration)).toBeGreaterThan(2);
+  await studio.getByLabel('End (s)').first().fill('5');
+  await studio.getByRole('button', { name: '+ Caption' }).click();
+  await studio.getByPlaceholder('Text').fill('Edited caption');
+  await studio.getByLabel('End (s)').last().fill('5');
+  const [upload] = await Promise.all([
+    page.waitForResponse(response => response.url().includes('/lessons/') && response.url().endsWith('/media') && response.request().method() === 'POST', { timeout: 30_000 }),
+    studio.getByRole('button', { name: 'Export and upload to lesson' }).click(),
+  ]);
+  expect(upload.status()).toBe(201);
+  await expect(page.getByText('Uploaded', { exact: true })).toBeVisible();
 });
 
 test('watched hosted video completes and persists, while a direct end jump does not', async ({ browser }) => {
@@ -549,6 +587,7 @@ test('stored classroom chat survives reload and learner leave revokes access', a
     title: `Browser live QA ${randomBytes(4).toString('hex')}`,
     description: 'An isolated stored-chat classroom test.',
     scheduledAt: new Date(Date.now() + 86_400_000).toISOString(), durationMinutes: 60,
+    meetingUrl: 'https://meet.google.com/browser-test-room',
   } });
   expect(created.status()).toBe(201);
   const classId = (await created.json()).data.id;
@@ -562,7 +601,7 @@ test('stored classroom chat survives reload and learner leave revokes access', a
   await learnerPage.getByRole('button', { name: 'Sign In', exact: true }).click();
   await expect(learnerPage).toHaveURL(/\/dashboard(?:\?|$)/);
   await learnerPage.goto(`${base}/live/classes/${classId}`);
-  await expect(learnerPage.getByText('Development classroom: chat messages are saved; video streaming, Q&A, and polls are previews.')).toBeVisible();
+  await expect(learnerPage.getByRole('link', { name: 'Open meeting' })).toHaveAttribute('href', 'https://meet.google.com/browser-test-room');
   const message = `Stored QA message ${randomBytes(3).toString('hex')}`;
   await learnerPage.getByPlaceholder('Send a message to class...').fill(message);
   await learnerPage.getByTitle('Send Message').click();

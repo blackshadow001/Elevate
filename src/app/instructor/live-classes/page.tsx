@@ -30,6 +30,7 @@ export default function InstructorLiveClassesListPage() {
   const [editingClass, setEditingClass] = useState<LiveClass | null>(null);
   const [cancellingClass, setCancellingClass] = useState<LiveClass | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [recordingUpload, setRecordingUpload] = useState<{ id: string; percent: number } | null>(null);
 
   useEffect(() => {
     liveService.getInstructorLiveClasses().then(setClassesList)
@@ -78,6 +79,31 @@ export default function InstructorLiveClassesListPage() {
 
   const handleRescheduleClass = async (item: LiveClass) => {
     setEditingClass({ ...item, status: "scheduled" });
+  };
+
+  const uploadRecording = (item: LiveClass, file: File) => {
+    if (!["video/mp4", "video/webm"].includes(file.type) || file.size > 1_000_000_000) {
+      notify({ type: "error", title: "Recording not uploaded", message: "Choose an MP4 or WebM file no larger than 1 GB." });
+      return;
+    }
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/instructor/live-classes/${encodeURIComponent(item.id)}/recording`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) setRecordingUpload({ id: item.id, percent: Math.round(event.loaded / event.total * 100) });
+    };
+    xhr.onloadend = () => {
+      setRecordingUpload(null);
+      let response: { error?: { message?: string } } = {};
+      try { response = JSON.parse(xhr.responseText); } catch { /* Network errors have no response body. */ }
+      if (xhr.status === 201) {
+        setClassesList((current) => current.map((entry) => entry.id === item.id ? { ...entry, recordingAvailable: true } : entry));
+        notify({ type: "success", title: "Recording saved", message: "Eligible learners can now watch the class recording." });
+      } else notify({ type: "error", title: "Recording not uploaded", message: response.error?.message || "Check your connection and try again." });
+    };
+    setRecordingUpload({ id: item.id, percent: 0 });
+    xhr.send(file);
   };
 
   const filtered = classesList.filter((c) => {
@@ -194,7 +220,7 @@ export default function InstructorLiveClassesListPage() {
                     <Radio className="w-3.5 h-3.5 text-red-600 animate-pulse" />
                     <span>{item.attendeesCount} participants</span>
                   </div>
-                  <span>Streaming pending</span>
+                  <span>{item.meetingUrl ? "Meeting link ready" : "Add meeting link"}</span>
                 </div>
               )}
 
@@ -256,7 +282,7 @@ export default function InstructorLiveClassesListPage() {
               )}
 
               {item.status === "completed" && (
-                <button
+                <div className="w-full space-y-2"><button
                   type="button"
                   onClick={() => setSelectedAnalyticsClass(item)}
                   className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-[#E5E7EB] hover:bg-slate-50 text-xs font-bold text-[#172033] transition-colors cursor-pointer"
@@ -264,6 +290,13 @@ export default function InstructorLiveClassesListPage() {
                   <BarChart3 className="w-4 h-4 text-[#FF6B35]" />
                   <span>View Session Summary</span>
                 </button>
+                <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#172033] px-4 py-2.5 text-xs font-bold text-white">
+                  <Video className="h-4 w-4" />{item.recordingAvailable ? "Replace recording" : "Upload class recording"}
+                  <input type="file" accept="video/mp4,video/webm" className="hidden" disabled={recordingUpload?.id === item.id}
+                    onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadRecording(item, file); }} />
+                </label>
+                {recordingUpload?.id === item.id && <div className="text-xs text-[#64748B]">Uploading {recordingUpload.percent}%<progress max={100} value={recordingUpload.percent} className="mt-1 w-full accent-[#FF6B35]" /></div>}
+                </div>
               )}
               {item.status === "cancelled" && <button type="button" onClick={() => handleRescheduleClass(item)} className="w-full rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-[#172033] hover:bg-slate-50">Reschedule Class</button>}
             </div>

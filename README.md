@@ -8,6 +8,8 @@ Elevate is a Next.js learning platform with learner, tutor, and administrator po
 
 For live classes, a tutor can paste an HTTPS meeting link from Google Meet, Zoom, or Teams when scheduling or editing the class. Elevate shows the link to authorized learners only after the tutor starts the class. Audio, video, recording, and meeting controls run in that external service; native in-page streaming still requires a provider integration.
 
+After a live class ends, its tutor can upload an MP4 or WebM recording (up to 1 GB) from Live Classes. Eligible signed-in learners find it under Live Learning → Class recordings. Replacing a recording queues the old file for the existing three-day media cleanup. The course builder's Video Studio can record a screen or camera in Chrome/Edge, keep timeline sections, add timed captions and text overlays, and export an MP4 (or WebM fallback) lesson video in the browser before uploading it. Export runs at playback speed, up to 1080p, and depends on the browser's MediaRecorder support. External meeting services do not automatically send recordings to Elevate.
+
 Set these values in the deployment environment before building or starting. Keep secrets in the host's secret manager, outside Git:
 
 | Setting | Production value |

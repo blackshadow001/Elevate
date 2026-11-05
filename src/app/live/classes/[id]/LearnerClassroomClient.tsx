@@ -224,7 +224,8 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
 
           {/* Bottom Learner Controls (Requirement 11) */}
           <div className="pt-2">
-            {meetingUrl ? <p className="text-xs text-slate-400">Use the meeting tab for microphone, camera, and screen sharing controls.</p> : <LiveControls
+            {meetingUrl ? <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-400">Use the meeting tab for microphone, camera, and screen sharing controls.</p>
+              <button type="button" onClick={handleLeaveClass} className="rounded-xl border border-white/20 px-4 py-2 text-xs font-bold text-white">Leave Class</button></div> : <LiveControls
               onLeaveClass={handleLeaveClass}
               onToggleSidebarTab={setActiveTab}
               activeSidebarTab={activeTab}

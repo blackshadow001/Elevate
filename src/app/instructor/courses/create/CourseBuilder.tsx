@@ -11,6 +11,7 @@ import { formatVideoDuration, measureVideoDuration } from "@/lib/videoDuration";
 import { type LessonActivity, newLessonActivity } from "@/lib/lessonActivities";
 import { LessonActivityEditor } from "@/components/instructor/LessonActivityEditor";
 import { VideoPlayer } from "@/components/learning/VideoPlayer";
+import { VideoEditingStudio } from "@/components/instructor/VideoEditingStudio";
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -132,6 +133,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const [previewFileName, setPreviewFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [showVideoStudio, setShowVideoStudio] = useState(false);
   const [videoUploadPercent, setVideoUploadPercent] = useState<number | null>(null);
   const [videoUploadStage, setVideoUploadStage] = useState<"preparing" | "uploading" | "processing" | null>(null);
   const [videoUploadStalled, setVideoUploadStalled] = useState(false);
@@ -174,12 +176,13 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     const newLesson: BuilderLesson = {
       id: `les-new-${crypto.randomUUID()}`,
       title: "",
-      duration: "0 mins",
+      duration: "1 mins",
       type: "Video",
     };
     setSections((prev) =>
       prev.map((s) => (s.id === sectionId ? { ...s, lessons: [...s.lessons, newLesson] } : s))
     );
+    setActiveUploadLesson((current) => current || newLesson.id);
   };
 
   const handleDeleteLesson = (sectionId: string, lessonId: string) => {
@@ -307,10 +310,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     } finally { setUploadingThumbnail(false); }
   };
 
-  const handleLocalVideoPreview = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    event.target.value = "";
+  const uploadSelectedVideo = async (file: File, editedDurationSeconds?: number) => {
     if (!["video/mp4", "video/webm"].includes(file.type) || file.size > MAX_VIDEO_SIZE_BYTES) {
       notify({ type: "error", title: "Upload unavailable", message: "Choose an MP4 or WebM file no larger than 1 GB." });
       return;
@@ -328,7 +328,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     const uploadController = new AbortController();
     videoUploadAbort.current = uploadController;
     try {
-      const durationSeconds = await measureVideoDuration(file);
+      const durationSeconds = editedDurationSeconds ? Math.max(1, Math.round(editedDurationSeconds)) : await measureVideoDuration(file);
       const { saved, lessonId } = await saveDraft();
       videoUploadLastProgress.current = Date.now();
       setVideoUploadStage("uploading");
@@ -349,6 +349,12 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
         videoUploadAbort.current = null;
       setUploadingVideo(false);
     }
+  };
+
+  const handleLocalVideoPreview = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) void uploadSelectedVideo(file);
   };
 
   const handlePublishCourse = async () => {
@@ -675,6 +681,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                     </span>
                     <input
                       type="text"
+                      aria-label={`Section ${secIdx + 1} title`}
                       value={sec.title}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -728,6 +735,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
 
                         <input
                           type="text"
+                          aria-label={`Lesson ${lessonIndex + 1} title`}
                           value={les.title}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -855,6 +863,10 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
               </div>
 
               {/* Upload Box (Requirement 16) */}
+              <button type="button" disabled={uploadingVideo || !activeUploadLesson} onClick={() => setShowVideoStudio(true)}
+                className="w-full rounded-2xl border border-[#FF6B35] bg-orange-50 px-5 py-3 text-sm font-bold text-[#172033] hover:bg-orange-100 disabled:opacity-50">
+                Open Video Studio · record, cut, caption and overlay
+              </button>
               <div className="border-2 border-dashed border-[#E5E7EB] hover:border-[#FF6B35] rounded-3xl p-6 text-center space-y-3 bg-[#F7F8FA]">
                 <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#FF6B35] flex items-center justify-center mx-auto">
                   <Upload className="w-6 h-6" />
@@ -1042,6 +1054,10 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
           </div>
         </div>
       )}
+      {showVideoStudio && <VideoEditingStudio onClose={() => setShowVideoStudio(false)} onExport={(file, durationSeconds) => {
+        setShowVideoStudio(false);
+        void uploadSelectedVideo(file, durationSeconds);
+      }} />}
     </div>
   );
 }

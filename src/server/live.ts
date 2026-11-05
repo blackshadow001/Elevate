@@ -14,13 +14,15 @@ function liveDto(row: Row, includeMeeting = false) {
     title: String(row.title), description: String(row.description), scheduledAt: String(row.scheduled_at),
     durationMinutes: Number(row.duration_minutes), status: String(row.status),
     provider: row.provider ? String(row.provider) : null, providerReady: Boolean(row.meeting_reference),
+    recordingAvailable: Boolean(row.recording_asset_id),
     ...(includeMeeting ? { meetingUrl: row.meeting_reference ? String(row.meeting_reference) : null } : {}),
     createdAt: String(row.created_at), updatedAt: String(row.updated_at),
   };
 }
-const liveSelect = `SELECT l.*,u.name instructor_name,c.title course_title,
+const liveSelect = `SELECT l.*,u.name instructor_name,c.title course_title,r.asset_id recording_asset_id,r.title recording_title,
   (SELECT COUNT(*) FROM live_participants p WHERE p.live_class_id=l.id AND p.left_at IS NULL) active_participants
-  FROM live_classes l JOIN users u ON u.id=l.instructor_id LEFT JOIN courses c ON c.id=l.course_id`;
+  FROM live_classes l JOIN users u ON u.id=l.instructor_id LEFT JOIN courses c ON c.id=l.course_id
+  LEFT JOIN live_class_recordings r ON r.live_class_id=l.id`;
 
 export function listLiveClasses() {
   return getDb().prepare(`${liveSelect} WHERE l.status IN ('scheduled','live') ORDER BY l.scheduled_at LIMIT 100`).all().map((row) => liveDto(row));
@@ -128,6 +130,17 @@ function canAttend(row: Row, user: SessionUser): boolean {
   if (!row.course_id) return true;
   return Boolean(getDb().prepare("SELECT 1 FROM enrollments WHERE user_id=? AND course_id=? AND status IN ('active','completed')")
     .get(user.id, String(row.course_id)));
+}
+
+export function listRecordingsForUser(user: SessionUser) {
+  const rows = getDb().prepare(`${liveSelect} WHERE l.status='ended' AND r.asset_id IS NOT NULL
+    ORDER BY l.scheduled_at DESC LIMIT 100`).all();
+  return rows.filter((row) => canAttend(row, user)).map((row) => ({
+    classId: String(row.id), title: String(row.title), courseTitle: row.course_title ? String(row.course_title) : null,
+    instructorName: String(row.instructor_name), scheduledAt: String(row.scheduled_at),
+    recordingTitle: String(row.recording_title || row.title),
+    assetId: String(row.recording_asset_id),
+  }));
 }
 
 export function joinClass(id: string, user: SessionUser) {

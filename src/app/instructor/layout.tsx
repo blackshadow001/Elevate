@@ -14,7 +14,6 @@ import {
   Settings, 
   Menu, 
   X, 
-  ArrowLeft,
   GraduationCap,
   Flame
 } from "lucide-react";
@@ -159,14 +158,6 @@ function InstructorStudioContent({
             <span className="text-[10px] text-slate-300">View →</span>
           </button>
 
-          {/* Back to public site */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Public Website</span>
-          </Link>
         </div>
       </aside>
 

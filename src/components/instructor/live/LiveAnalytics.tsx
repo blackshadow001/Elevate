@@ -31,7 +31,7 @@ export function LiveAnalytics({ liveClass, onBack }: LiveAnalyticsProps) {
       </div>
       <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
         <Info className="w-5 h-5 shrink-0" />
-        <p>The class status and schedule are saved on this server. Attendance, watch time, poll results, resource downloads, and recordings are unavailable until live streaming and analytics providers are connected.</p>
+        <p>The class status and schedule are saved. Upload the meeting recording from Live Classes for learners who missed it. Detailed watch time and poll analytics require further integration.</p>
       </div>
     </div>
   );

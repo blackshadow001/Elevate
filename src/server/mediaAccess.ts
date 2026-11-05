@@ -18,7 +18,14 @@ export async function authorizedMediaAsset(assetId: string) {
       AND l.status='published' AND c.status='published'`).get(String(asset.storage_key));
     const resource = db.prepare(`SELECT 1 FROM course_resources r JOIN enrollments e ON e.course_id=r.course_id
       WHERE r.storage_key=? AND e.user_id=? AND e.status IN ('active','completed')`).get(String(asset.storage_key), user.id);
-    if (!allowed && !preview && !resource) throw new ApiError(403, "FORBIDDEN", "You cannot access this media asset.");
+    const recording = db.prepare(`SELECT 1 FROM live_class_recordings r
+      JOIN live_classes l ON l.id=r.live_class_id
+      WHERE r.asset_id=? AND l.status='ended' AND (
+        l.course_id IS NULL OR EXISTS(SELECT 1 FROM enrollments e WHERE e.course_id=l.course_id
+          AND e.user_id=? AND e.status IN ('active','completed'))
+        OR EXISTS(SELECT 1 FROM bootcamp_sessions s JOIN bootcamp_registrations b ON b.bootcamp_id=s.bootcamp_id
+          WHERE s.live_class_id=l.id AND b.user_id=?))`).get(String(asset.id), user.id, user.id);
+    if (!allowed && !preview && !resource && !recording) throw new ApiError(403, "FORBIDDEN", "You cannot access this media asset.");
   }
   return { id: String(asset.id), storageKey: String(asset.storage_key), mimeType: String(asset.mime_type), sizeBytes: Number(asset.size_bytes) };
 }

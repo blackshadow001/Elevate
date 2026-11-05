@@ -781,6 +781,30 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal(history.body.data.items.at(-1).body, 'Hello class');
     await call(`/api/live/classes/${id}/leave`, { method: 'POST', cookie: learner });
     assert.equal((await call(`/api/live/classes/${id}/messages`, { cookie: learner })).response.status, 403);
+    assert.equal((await call(`/api/instructor/live-classes/${id}`, { method: 'PATCH', cookie: instructor, body: { status: 'ended' } })).body.data.status, 'ended');
+    const recordingPath = `/api/instructor/live-classes/${id}/recording`;
+    const recordingBytes = readFileSync(resolve(root, 'public/videos/lesson-demo.webm'));
+    async function uploadRecording(cookie) {
+      const response = await fetch(`${base}${recordingPath}`, { method: 'POST', headers: {
+        ...(cookie ? { Cookie: cookie } : {}), Origin: base, 'Content-Type': 'video/webm',
+      }, body: recordingBytes });
+      return { response, body: await response.json() };
+    }
+    assert.equal((await uploadRecording(null)).response.status, 401);
+    assert.equal((await uploadRecording(otherInstructor)).response.status, 403);
+    const recording = await uploadRecording(instructor);
+    assert.equal(recording.response.status, 201, JSON.stringify(recording.body));
+    assert.equal((await call('/api/live/recordings')).response.status, 401);
+    const available = await call('/api/live/recordings', { cookie: learner });
+    assert.ok(available.body.data.some((entry) => entry.classId === id && entry.assetId === recording.body.data.assetId));
+    const playback = await fetch(`${base}/api/media/${recording.body.data.assetId}/stream`, { headers: { Cookie: learner } });
+    assert.equal(playback.status, 200);
+    assert.deepEqual(Buffer.from(await playback.arrayBuffer()), recordingBytes);
+    const replacement = await uploadRecording(instructor);
+    assert.equal(replacement.response.status, 201, JSON.stringify(replacement.body));
+    assert.notEqual(replacement.body.data.assetId, recording.body.data.assetId);
+    assert.equal((await call(`/api/media/${recording.body.data.assetId}/access`, { cookie: learner })).response.status, 404);
+    assert.equal((await call(`/api/media/${replacement.body.data.assetId}/access`, { cookie: learner })).response.status, 200);
   });
   await t.test('cancelled live class rescheduling is validated and owned', async () => {
     const created = await call('/api/instructor/live-classes', { method: 'POST', cookie: instructor, body: {

@@ -13,6 +13,7 @@ export interface LiveClass {
   platform?: "zoom" | "google-meet" | "teams" | "custom";
   provider?: "zoom" | "google-meet" | "teams" | "custom";
   meetingUrl?: string;
+  recordingAvailable?: boolean;
   status: "scheduled" | "live" | "completed" | "cancelled";
   description: string;
   attendeesCount: number;

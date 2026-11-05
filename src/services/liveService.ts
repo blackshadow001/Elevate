@@ -15,7 +15,7 @@ let resourcesStore: LiveResource[] = [];
 
 type ApiLive = { id: string; courseId: string | null; courseTitle: string | null; activeParticipants: number;
   instructor: { id: string; name: string }; title: string;
-  description: string; scheduledAt: string; durationMinutes: number; status: string; provider: string | null; providerReady: boolean; meetingUrl?: string | null };
+  description: string; scheduledAt: string; durationMinutes: number; status: string; provider: string | null; providerReady: boolean; meetingUrl?: string | null; recordingAvailable?: boolean };
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { credentials: "same-origin", cache: "no-store", ...init });
   const body = await response.json();
@@ -37,6 +37,7 @@ function toLive(item: ApiLive): LiveClass {
     duration: item.durationMinutes, status: item.status === "ended" ? "completed" : item.status as LiveClass["status"],
     description: item.description, attendeesCount: item.activeParticipants, registeredCount: item.activeParticipants,
     tags: [], provider: "custom", platform: "custom", meetingUrl: item.meetingUrl || undefined,
+    recordingAvailable: item.recordingAvailable || false,
   };
 }
 type ApiEvent = { id: string; slug: string; title: string; description: string; eventType: string;

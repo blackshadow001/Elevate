@@ -6,7 +6,8 @@ const localVideoKey = /^[0-9a-f-]{36}\.(mp4|webm)$/;
 
 export function queueDiscardedVideo(db: DatabaseSync, storageKey: string): void {
   const used = db.prepare(`SELECT 1 WHERE EXISTS(SELECT 1 FROM lessons WHERE video_storage_key=?)
-    OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)`).get(storageKey, storageKey);
+    OR EXISTS(SELECT 1 FROM course_resources WHERE storage_key=?)
+    OR EXISTS(SELECT 1 FROM live_class_recordings r JOIN media_assets m ON m.id=r.asset_id WHERE m.storage_key=?)`).get(storageKey, storageKey, storageKey);
   if (used) return;
   db.prepare("DELETE FROM media_assets WHERE storage_key=?").run(storageKey);
   if (localVideoKey.test(storageKey)) {
