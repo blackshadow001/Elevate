@@ -10,8 +10,6 @@ import {
   IndianRupee,
   Users,
   UserCog,
-  GraduationCap,
-  ShieldCheck,
   ShoppingBag,
   FolderTree,
   Radio,
@@ -42,50 +40,46 @@ export interface NavGroup {
 
 export const ADMIN_NAV_GROUPS: NavGroup[] = [
   {
-    group: "OVERVIEW",
+    group: "START",
     items: [
       { label: "Dashboard", href: "/control-center", icon: LayoutDashboard },
     ],
   },
   {
-    group: "MARKETPLACE",
+    group: "COURSES",
     items: [
-      { label: "Courses Catalog", href: "/control-center/courses", icon: BookOpen },
-      { label: "Review Queue", href: "/control-center/courses/approvals", icon: ClipboardCheck },
-      { label: "Categories", href: "/control-center/categories", icon: FolderTree },
+      { label: "Review courses", href: "/control-center/courses/approvals", icon: ClipboardCheck },
+      { label: "All courses", href: "/control-center/courses", icon: BookOpen },
+      { label: "Course pricing", href: "/control-center/pricing", icon: IndianRupee },
     ],
   },
   {
     group: "PEOPLE",
     items: [
-      { label: "All Users", href: "/control-center/users", icon: Users },
-      { label: "Tutors", href: "/control-center/users?role=instructor", icon: GraduationCap },
       { label: "Tutor Applications", href: "/control-center/tutor-applications", icon: ClipboardCheck },
-      { label: "Learners", href: "/control-center/users?role=learner", icon: ShieldCheck },
+      { label: "Users", href: "/control-center/users", icon: Users },
       { label: "Admin Profiles", href: "/control-center/profiles", icon: UserCog },
     ],
   },
   {
-    group: "COMMERCE",
+    group: "MORE TOOLS",
     items: [
-      { label: "Pricing & Margins", href: "/control-center/pricing", icon: IndianRupee },
+      { label: "Categories", href: "/control-center/categories", icon: FolderTree },
       { label: "Orders & Sales", href: "/control-center/orders", icon: ShoppingBag },
-    ],
-  },
-  {
-    group: "OPERATIONS",
-    items: [
       { label: "Live Classes", href: "/control-center/operations/live", icon: Radio },
       { label: "Certificates", href: "/control-center/operations/certificates", icon: Award },
-    ],
-  },
-  {
-    group: "PLATFORM",
-    items: [
-      { label: "Settings & System", href: "/control-center/settings", icon: Settings },
+      { label: "Settings", href: "/control-center/settings", icon: Settings },
     ],
   },
 ];
+
+function isActiveNavItem(href: string, pathname: string) {
+  if (href === "/control-center") return pathname === href;
+  if (href === "/control-center/courses") {
+    return pathname === href || (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/approvals`));
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 interface AdminLayoutContextType {
   sidebarCollapsed: boolean;
@@ -117,6 +111,7 @@ export default function AdminShell({
   const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState(0);
   const visibleGroups = adminUser.isSuperAdmin ? ADMIN_NAV_GROUPS : ADMIN_NAV_GROUPS.filter(group => group.group !== "PEOPLE");
 
@@ -138,7 +133,12 @@ export default function AdminShell({
 
   // Close mobile drawer on route change
   useEffect(() => {
-    queueMicrotask(() => setMobileOpen(false));
+    queueMicrotask(() => {
+      setMobileOpen(false);
+      if (ADMIN_NAV_GROUPS.find((group) => group.group === "MORE TOOLS")?.items.some((item) => pathname.startsWith(item.href))) {
+        setMoreOpen(true);
+      }
+    });
   }, [pathname]);
 
   const handleSignOut = async () => {
@@ -245,21 +245,21 @@ export default function AdminShell({
             <div className="flex-1 overflow-y-auto py-5 px-3 space-y-6">
               {visibleGroups.map((group) => (
                 <div key={group.group}>
-                  {!collapsed && (
+                  {group.group === "MORE TOOLS" ? (
+                    <button type="button" onClick={() => setMoreOpen(!moreOpen)} aria-expanded={moreOpen}
+                      className={`mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#F8FAFC] ${collapsed ? "justify-center" : ""}`}>
+                      <Settings className="h-4 w-4 shrink-0" />
+                      {!collapsed && <><span className="flex-1 text-left">More tools</span><ChevronRight className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-90" : ""}`} /></>}
+                    </button>
+                  ) : !collapsed && (
                     <div className="px-3 mb-2 text-[10px] font-black tracking-wider text-[#94A3B8] uppercase">
                       {group.group}
                     </div>
                   )}
-                  <nav className="space-y-1">
+                  {(group.group !== "MORE TOOLS" || moreOpen) && <nav className="space-y-1">
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive =
-                        item.href === "/control-center"
-                          ? pathname === "/control-center"
-                          : pathname.startsWith(item.href.split("?")[0]) &&
-                            (item.href.includes("?")
-                              ? false
-                              : true);
+                      const isActive = isActiveNavItem(item.href, pathname);
                       
                       const badgeCount =
                         item.href === "/control-center/courses/approvals" && pendingApprovals > 0
@@ -295,25 +295,11 @@ export default function AdminShell({
                         </Link>
                       );
                     })}
-                  </nav>
+                  </nav>}
                 </div>
               ))}
             </div>
 
-            {/* Sidebar Footer info */}
-            {!collapsed && (
-              <div className="p-4 border-t border-[#E5E7EB] bg-[#FFFDF9]/60">
-                <div className="rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[11px] font-black text-[#172033]">SQLite Production DB</span>
-                  </div>
-                  <p className="mt-1 text-[10px] text-[#64748B]">
-                    Engine: <code className="text-[#172033] font-mono">node:sqlite</code>
-                  </p>
-                </div>
-              </div>
-            )}
           </aside>
 
           {/* Mobile Navigation Drawer */}
@@ -346,16 +332,15 @@ export default function AdminShell({
                   <div className="mt-4 space-y-6 overflow-y-auto max-h-[calc(100vh-140px)]">
                     {visibleGroups.map((group) => (
                       <div key={group.group}>
-                        <div className="px-2 mb-1.5 text-[10px] font-black tracking-wider text-[#94A3B8] uppercase">
-                          {group.group}
-                        </div>
-                        <nav className="space-y-1">
+                        {group.group === "MORE TOOLS" ? (
+                          <button type="button" onClick={() => setMoreOpen(!moreOpen)} aria-expanded={moreOpen} className="mb-1.5 flex w-full items-center gap-2 rounded-xl px-2 py-2 text-xs font-bold text-[#64748B] hover:bg-[#F8FAFC]">
+                            <Settings className="h-4 w-4" /><span className="flex-1 text-left">More tools</span><ChevronRight className={`h-4 w-4 transition-transform ${moreOpen ? "rotate-90" : ""}`} />
+                          </button>
+                        ) : <div className="px-2 mb-1.5 text-[10px] font-black tracking-wider text-[#94A3B8] uppercase">{group.group}</div>}
+                        {(group.group !== "MORE TOOLS" || moreOpen) && <nav className="space-y-1">
                           {group.items.map((item) => {
                             const Icon = item.icon;
-                            const isActive =
-                              item.href === "/control-center"
-                                ? pathname === "/control-center"
-                                : pathname.startsWith(item.href.split("?")[0]);
+                            const isActive = isActiveNavItem(item.href, pathname);
                             return (
                               <Link
                                 key={item.href}
@@ -372,7 +357,7 @@ export default function AdminShell({
                               </Link>
                             );
                           })}
-                        </nav>
+                        </nav>}
                       </div>
                     ))}
                   </div>

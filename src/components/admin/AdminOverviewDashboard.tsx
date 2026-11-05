@@ -83,23 +83,42 @@ export default function AdminOverviewDashboard({ adminName, isSuperAdmin }: { ad
 
   return (
     <div className="space-y-8">
-      {isSuperAdmin && <Link href="/control-center/tutor-applications" className="inline-flex items-center gap-2 rounded-xl border border-[#FF6B35] bg-orange-50 px-4 py-3 text-sm font-bold text-[#E85D2A]">Review tutor applications <ArrowRight className="h-4 w-4" /></Link>}
       {/* Page Header */}
       <PageHeader
-        title="Super Admin Control Center"
-        subtitle={`Welcome back, ${adminName}. Operational overview, marketplace health, and pending approval workflows.`}
-        actions={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/control-center/courses/approvals"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-4 py-2.5 text-xs font-black text-white hover:bg-[#E85D2A] transition-colors shadow-xs"
-            >
-              <ClipboardCheck className="h-4 w-4" />
-              <span>Review Queue ({metrics.pendingApprovalsCount})</span>
-            </Link>
-          </div>
-        }
+        title="Admin dashboard"
+        subtitle={`Welcome back, ${adminName}. Choose the next task below.`}
       />
+
+      <section aria-label="Next admin tasks" className="space-y-4">
+        <div>
+          <h2 className="text-xl font-extrabold text-[#172033]">What needs your attention</h2>
+          <p className="mt-1 text-sm text-[#64748B]">Open a task, finish it, then return here for the next one.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {isSuperAdmin && <Link href="/control-center/tutor-applications" className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs hover:border-[#FF6B35]">
+            <p className="text-xs font-bold text-[#FF6B35]">TUTORS</p>
+            <h3 className="mt-2 text-base font-extrabold">Review applications</h3>
+            <p className="mt-1 text-sm text-[#64748B]">{actionCenter.pendingTutorReview.length} waiting for a decision</p>
+            <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#172033]">Open applications <ArrowRight className="h-4 w-4" /></span>
+          </Link>}
+          <Link href="/control-center/courses/approvals" className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs hover:border-[#FF6B35]">
+            <p className="text-xs font-bold text-[#FF6B35]">COURSES</p>
+            <h3 className="mt-2 text-base font-extrabold">Review submitted courses</h3>
+            <p className="mt-1 text-sm text-[#64748B]">{metrics.pendingApprovalsCount} waiting for content approval</p>
+            <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#172033]">Open review queue <ArrowRight className="h-4 w-4" /></span>
+          </Link>
+          <Link href={actionCenter.publishCandidates[0] ? `/control-center/courses/${actionCenter.publishCandidates[0].id}` : "/control-center/courses"} className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs hover:border-[#FF6B35]">
+            <p className="text-xs font-bold text-[#FF6B35]">PUBLISHING</p>
+            <h3 className="mt-2 text-base font-extrabold">Set prices and publish</h3>
+            <p className="mt-1 text-sm text-[#64748B]">{actionCenter.publishCandidates.length} approved courses awaiting price or publication</p>
+            <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#172033]">Open course workflow <ArrowRight className="h-4 w-4" /></span>
+          </Link>
+        </div>
+      </section>
+
+      <details className="rounded-2xl border border-[#E5E7EB] bg-white p-4">
+        <summary className="cursor-pointer text-sm font-bold text-[#172033]">Show reports and recent activity</summary>
+        <div className="mt-6 space-y-8">
 
       {/* Primary KPI Metric Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -401,6 +420,8 @@ export default function AdminOverviewDashboard({ adminName, isSuperAdmin }: { ad
           )}
         </div>
       </div>
+        </div>
+      </details>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { getAdminOverview } from "@/server/adminOverview";
 
 export async function GET() {
   return safe(async () => {
-    await requireRole("admin");
-    return getAdminOverview();
+    const admin = await requireRole("admin");
+    return getAdminOverview(admin.isSuperAdmin === true);
   });
 }

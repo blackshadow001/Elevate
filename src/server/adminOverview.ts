@@ -1,6 +1,5 @@
 import "server-only";
 import { getDb } from "@/server/db";
-import { pricingForCourse } from "@/server/courseApproval";
 
 export interface AdminMetrics {
   grossSalesMinor: number | null;
@@ -36,7 +35,7 @@ export interface AdminOverviewData {
   recentOrders: Array<{ id: string; userName: string; userEmail: string; courseTitle: string; totalMinor: number; currency: string; status: string; createdAt: string }>;
   actionCenter: {
     pendingApprovals: Array<{ id: string; title: string; instructorName: string; updatedAt: string; priceMinor: number }>;
-    pricingIssues: Array<{ id: string; title: string; instructorName: string; pricingStatus: string }>;
+    publishCandidates: Array<{ id: string; title: string; instructorName: string; pricingStatus: string }>;
     pendingTutorReview: Array<{ id: string; name: string; email: string; createdAt: string }>;
   };
   recentActivity: Array<{
@@ -51,7 +50,7 @@ export interface AdminOverviewData {
   }>;
 }
 
-export function getAdminOverview(): AdminOverviewData {
+export function getAdminOverview(isSuperAdmin = false): AdminOverviewData {
   const db = getDb();
 
   // Core metrics from actual DB tables
@@ -263,14 +262,19 @@ export function getAdminOverview(): AdminOverviewData {
     LIMIT 10
   `).all() as Array<{ id: string; title: string; updated_at: string; price_minor: number; instructor_name: string }>;
 
-  const pricingIssuesRows = db.prepare(`
-    SELECT c.id, c.title, p.pricing_status, u.name as instructor_name
+  const publishCandidateRows = db.prepare(`
+    SELECT c.id, c.title, COALESCE(p.pricing_status,'pending') pricing_status, u.name as instructor_name
     FROM courses c
     JOIN users u ON u.id = c.instructor_id
-    JOIN course_pricing p ON p.course_id = c.id
-    WHERE p.pricing_status IN ('pending', 'changes_requested', 'rejected')
-    LIMIT 10
+    LEFT JOIN course_pricing p ON p.course_id = c.id
+    WHERE c.review_status = 'approved' AND c.status = 'draft'
+    ORDER BY CASE WHEN p.pricing_status='approved' THEN 1 ELSE 0 END, c.updated_at DESC
   `).all() as Array<{ id: string; title: string; pricing_status: string; instructor_name: string }>;
+  const pendingTutorRows = isSuperAdmin ? db.prepare(`
+    SELECT a.id,u.name,u.email,a.submitted_at
+    FROM tutor_applications a JOIN users u ON u.id=a.user_id
+    WHERE a.status='pending' ORDER BY a.submitted_at DESC
+  `).all() as Array<{ id: string; name: string; email: string; submitted_at: string }> : [];
 
   const actionCenter = {
     pendingApprovals: pendingApprovalsRows.map((r) => ({
@@ -280,13 +284,15 @@ export function getAdminOverview(): AdminOverviewData {
       updatedAt: String(r.updated_at),
       priceMinor: Number(r.price_minor),
     })),
-    pricingIssues: pricingIssuesRows.map((r) => ({
+    publishCandidates: publishCandidateRows.map((r) => ({
       id: String(r.id),
       title: String(r.title),
       instructorName: String(r.instructor_name),
       pricingStatus: String(r.pricing_status),
     })),
-    pendingTutorReview: [],
+    pendingTutorReview: pendingTutorRows.map((row) => ({
+      id: row.id, name: row.name, email: row.email, createdAt: row.submitted_at,
+    })),
   };
 
   // Recent activity from course_approval_history, orders, and certificates

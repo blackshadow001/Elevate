@@ -92,6 +92,7 @@ export default function AdminReviewQueuePage() {
   const [approvedMarginPct, setApprovedMarginPct] = useState(20);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [approvedCourseId, setApprovedCourseId] = useState<string | null>(null);
 
   const loadPending = async () => {
     try {
@@ -153,6 +154,7 @@ export default function AdminReviewQueuePage() {
     setBusy(true);
     setError("");
     setSuccess("");
+    setApprovedCourseId(null);
 
     try {
       const res = await fetch(`/api/admin/courses/${selectedId}/review`, {
@@ -168,6 +170,7 @@ export default function AdminReviewQueuePage() {
       if (!res.ok) throw new Error(json.error?.message || "Action failed");
 
       setSuccess(action === "request_changes" ? "Course rejected with requested changes and feedback recorded." : `Course ${action === "approve" ? "approved" : "rejected"}.`);
+      if (action === "approve") setApprovedCourseId(selectedId);
       setFeedback("");
       await loadPending();
     } catch (err) {
@@ -196,6 +199,7 @@ export default function AdminReviewQueuePage() {
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-700">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{success}</span>
+          {approvedCourseId && <Link href={`/control-center/courses/${approvedCourseId}`} className="ml-auto rounded-lg bg-emerald-700 px-3 py-2 text-white hover:bg-emerald-800">Continue to price &amp; publish →</Link>}
         </div>
       )}
 
@@ -238,6 +242,7 @@ export default function AdminReviewQueuePage() {
                       setSelectedId(item.id);
                       setError("");
                       setSuccess("");
+                      setApprovedCourseId(null);
                     }}
                     className={`w-full text-left rounded-2xl border p-4 transition-all ${
                       isSelected
@@ -368,7 +373,7 @@ export default function AdminReviewQueuePage() {
 
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/control-center/pricing`}
+                        href={`/control-center/pricing?courseId=${encodeURIComponent(detail.course.id)}`}
                         className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC]"
                       >
                         Configure Margin
