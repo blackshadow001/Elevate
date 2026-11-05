@@ -15,7 +15,7 @@ let resourcesStore: LiveResource[] = [];
 
 type ApiLive = { id: string; courseId: string | null; courseTitle: string | null; activeParticipants: number;
   instructor: { id: string; name: string }; title: string;
-  description: string; scheduledAt: string; durationMinutes: number; status: string; provider: string | null; providerReady: boolean };
+  description: string; scheduledAt: string; durationMinutes: number; status: string; provider: string | null; providerReady: boolean; meetingUrl?: string | null };
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { credentials: "same-origin", cache: "no-store", ...init });
   const body = await response.json();
@@ -36,7 +36,7 @@ function toLive(item: ApiLive): LiveClass {
     startTime: scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }),
     duration: item.durationMinutes, status: item.status === "ended" ? "completed" : item.status as LiveClass["status"],
     description: item.description, attendeesCount: item.activeParticipants, registeredCount: item.activeParticipants,
-    tags: [], provider: "custom", platform: "custom",
+    tags: [], provider: "custom", platform: "custom", meetingUrl: item.meetingUrl || undefined,
   };
 }
 type ApiEvent = { id: string; slug: string; title: string; description: string; eventType: string;
@@ -120,7 +120,7 @@ export const liveService = {
     if (Number.isNaN(scheduledAt.getTime())) throw new Error("Choose a valid class date and time.");
     const created = await api<ApiLive>("/api/instructor/live-classes", { method: "POST", ...jsonBody({
       title: data.title, description: data.description, courseId: data.courseId || null,
-      scheduledAt: scheduledAt.toISOString(), durationMinutes: data.duration,
+      scheduledAt: scheduledAt.toISOString(), durationMinutes: data.duration, meetingUrl: data.meetingUrl || null,
     }) });
     return toLive(created);
   },
@@ -133,7 +133,7 @@ export const liveService = {
     return toLive(updated);
   },
 
-  async updateLiveClass(id: string, changes: Partial<Pick<LiveClass, "title" | "description" | "scheduledAt" | "startTime" | "duration">>): Promise<LiveClass | undefined> {
+  async updateLiveClass(id: string, changes: Partial<Pick<LiveClass, "title" | "description" | "scheduledAt" | "startTime" | "duration" | "meetingUrl">>): Promise<LiveClass | undefined> {
     const current = await this.getLiveClass(id);
     if (!current) return undefined;
     const date = changes.scheduledAt || current.scheduledAt;
@@ -142,18 +142,19 @@ export const liveService = {
     if (Number.isNaN(scheduledAt.getTime())) throw new Error("Choose a valid class date and time.");
     const updated = await api<ApiLive>(`/api/instructor/live-classes/${encodeURIComponent(id)}`, {
       method: "PATCH", ...jsonBody({ title: changes.title || current.title, description: changes.description ?? current.description,
-        scheduledAt: scheduledAt.toISOString(), durationMinutes: changes.duration || current.duration }),
+        scheduledAt: scheduledAt.toISOString(), durationMinutes: changes.duration || current.duration,
+        ...(changes.meetingUrl !== undefined ? { meetingUrl: changes.meetingUrl } : {}) }),
     });
     return toLive(updated);
   },
 
-  async rescheduleLiveClass(id: string, changes: Pick<LiveClass, "title" | "description" | "scheduledAt" | "startTime" | "duration">): Promise<LiveClass> {
+  async rescheduleLiveClass(id: string, changes: Pick<LiveClass, "title" | "description" | "scheduledAt" | "startTime" | "duration"> & Pick<LiveClass, "meetingUrl">): Promise<LiveClass> {
     const scheduledAt = new Date(`${changes.scheduledAt}T${changes.startTime}:00+05:30`);
     if (Number.isNaN(scheduledAt.getTime())) throw new Error("Choose a valid class date and time.");
     const updated = await api<ApiLive>(`/api/instructor/live-classes/${encodeURIComponent(id)}`, {
       method: "PATCH", ...jsonBody({
         title: changes.title, description: changes.description, scheduledAt: scheduledAt.toISOString(),
-        durationMinutes: changes.duration, status: "scheduled",
+        durationMinutes: changes.duration, status: "scheduled", meetingUrl: changes.meetingUrl || null,
       }),
     });
     return toLive(updated);
@@ -168,7 +169,7 @@ export const liveService = {
   async isReminderSet(id: string): Promise<boolean> {
     return (await api<{ reminderSet: boolean }>(`/api/live/classes/${encodeURIComponent(id)}/reminder`)).reminderSet;
   },
-  async joinLiveClass(id: string): Promise<{ access: string; activeParticipants: number }> {
+  async joinLiveClass(id: string): Promise<{ access: string; activeParticipants: number; meetingUrl: string | null }> {
     return api(`/api/live/classes/${encodeURIComponent(id)}/join`, { method: "POST" });
   },
   async leaveLiveClass(id: string): Promise<void> {

@@ -25,12 +25,13 @@ export default function ScheduleLiveClassPage() {
   const { user } = useAuth();
 
   const [formData, setFormData] = useState({
-    title: "React 19 Server Functions Masterclass",
+    title: "",
     courseId: "",
-    description: "Live interactive deep dive into optimistic actions, server function execution, and caching strategies.",
+    description: "",
     scheduledAt: "",
     startTime: "19:00",
     duration: 90,
+    meetingUrl: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,14 +48,15 @@ export default function ScheduleLiveClassPage() {
       courseTitle: selectedCourse?.title || "Open class",
       instructorId: user.id,
       instructorName: user.name,
-      instructorRole: "Senior Software Architect",
-      instructorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200",
+      instructorRole: "Instructor",
+      instructorAvatar: "",
       scheduledAt: formData.scheduledAt,
       startTime: formData.startTime,
       duration: Number(formData.duration),
+      meetingUrl: formData.meetingUrl,
       status: "scheduled",
       description: formData.description,
-      tags: ["Live Workshop", "Architecture"],
+      tags: [],
     });
 
     setIsSubmitting(false);
@@ -62,7 +64,7 @@ export default function ScheduleLiveClassPage() {
     notify({
       type: "success",
       title: "Live Class Scheduled! 📅",
-      message: `"${formData.title}" is scheduled. A live provider must be configured before streaming.`,
+      message: `"${formData.title}" is scheduled${formData.meetingUrl ? " with a meeting link." : ". Add a meeting link before starting it."}`,
     });
 
     setTimeout(() => {
@@ -180,8 +182,12 @@ export default function ScheduleLiveClassPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-            The class schedule is saved to your account. Streaming and meeting links are unavailable until a live provider is connected.
+          <div className="space-y-1.5">
+            <label htmlFor="meetingUrl" className="block text-xs font-bold uppercase text-[#172033]">Meeting link</label>
+            <input id="meetingUrl" type="url" placeholder="https://meet.google.com/..." value={formData.meetingUrl}
+              onChange={(e) => setFormData({ ...formData, meetingUrl: e.target.value })}
+              className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#172033] focus:bg-white focus:border-[#FF6B35] focus:outline-none" />
+            <p className="text-xs text-[#64748B]">Create a meeting in Google Meet, Zoom, or Teams and paste its HTTPS link. Enrolled learners can open it when you start the class. You can also add the link later.</p>
           </div>
 
           {/* Submit */}

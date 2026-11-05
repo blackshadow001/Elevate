@@ -758,9 +758,11 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const created = await call('/api/instructor/live-classes', { method: 'POST', cookie: instructor, body: {
       title: 'Backend Integration Class', description: 'An isolated classroom API test.',
       scheduledAt: '2026-11-12T13:30:00.000Z', durationMinutes: 60,
+      meetingUrl: 'https://meet.google.com/example-room',
     } });
     assert.equal(created.response.status, 201, JSON.stringify(created.body));
     const id = created.body.data.id;
+    assert.equal((await call(`/api/live/classes/${id}`)).body.data.meetingUrl, undefined, 'Public class details must not reveal the meeting link.');
     const reminder = await call(`/api/live/classes/${id}/reminder`, { method: 'POST', cookie: learner });
     assert.equal(reminder.body.data.reminderSet, true, JSON.stringify(reminder.body));
     assert.equal((await call(`/api/live/classes/${id}/reminder`, { cookie: learner })).body.data.reminderSet, true);
@@ -771,7 +773,8 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal(started.body.data.status, 'live');
     const joined = await call(`/api/live/classes/${id}/join`, { method: 'POST', cookie: learner });
     assert.equal(joined.response.status, 200, JSON.stringify(joined.body));
-    assert.equal(joined.body.data.access, 'development_only');
+    assert.equal(joined.body.data.access, 'external_meeting');
+    assert.equal(joined.body.data.meetingUrl, 'https://meet.google.com/example-room');
     const message = await call(`/api/live/classes/${id}/messages`, { method: 'POST', cookie: learner, body: { message: 'Hello class' } });
     assert.equal(message.response.status, 201, JSON.stringify(message.body));
     const history = await call(`/api/live/classes/${id}/messages`, { cookie: learner });
@@ -786,6 +789,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     } });
     assert.equal(created.response.status, 201, JSON.stringify(created.body));
     const id = created.body.data.id;
+    assert.equal((await call(`/api/instructor/live-classes/${id}`, { method: 'PATCH', cookie: instructor, body: { status: 'live' } })).response.status, 409);
     assert.equal((await call(`/api/instructor/live-classes/${id}`, { method: 'PATCH', cookie: instructor, body: { status: 'cancelled' } })).body.data.status, 'cancelled');
     assert.equal((await call(`/api/live/classes/${id}`)).response.status, 404);
     assert.equal((await call(`/api/instructor/live-classes/${id}`, { method: 'PATCH', cookie: otherInstructor, body: {

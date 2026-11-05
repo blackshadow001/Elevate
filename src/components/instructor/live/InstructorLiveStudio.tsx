@@ -53,12 +53,13 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [chatMessages, setChatMessages] = useState<LiveChatMessage[]>([]);
   const [polls, setPolls] = useState<LivePoll[]>([]);
+  const [meetingUrl, setMeetingUrl] = useState<string | null>(null);
 
   // Load participants & polls
   useEffect(() => {
     liveService.getParticipants().then(setParticipants);
     if (liveClass.status === "live") {
-      liveService.joinLiveClass(liveClass.id).then(() => liveService.getClassMessages(liveClass.id))
+      liveService.joinLiveClass(liveClass.id).then((access) => { setMeetingUrl(access.meetingUrl); return liveService.getClassMessages(liveClass.id); })
         .then(setChatMessages).catch((error) => notifyRef.current({ type: "error", title: "Classroom unavailable", message: error instanceof Error ? error.message : "Please try again." }));
     }
     liveService.getPolls().then(setPolls);
@@ -119,7 +120,7 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-black uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                <span>Demo Classroom Live</span>
+                <span>Class Live</span>
               </span>
               <span className="text-xs text-slate-400">Host: {liveClass.instructorName}</span>
             </div>
@@ -153,7 +154,12 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Video Studio (8 cols if panel open, 12 if closed) */}
         <div className={`${activePanel ? "lg:col-span-8" : "lg:col-span-12"} space-y-4`}>
-          <LiveVideo
+          {meetingUrl ? <div className="aspect-video rounded-3xl bg-[#172033] border border-white/10 flex flex-col items-center justify-center gap-4 p-6 text-center text-white">
+            <Radio className="h-10 w-10 text-[#FF6B35]" />
+            <h2 className="text-xl font-bold">Host the live video meeting</h2>
+            <p className="max-w-md text-sm text-slate-300">Open the meeting in a new tab. Learners will receive the same link after joining this live class.</p>
+            <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-[#FF6B35] px-6 py-3 font-bold">Open meeting</a>
+          </div> : <LiveVideo
             title={liveClass.title}
             instructorName={liveClass.instructorName}
             instructorRole={liveClass.instructorRole}
@@ -161,10 +167,10 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
             attendeesCount={participants.length}
             isScreenSharing={isScreenSharing}
             onToggleScreenShare={() => setScreenShareModalOpen(true)}
-          />
+          />}
 
           {/* Instructor Controls Bar */}
-          <InstructorControls
+          {meetingUrl ? <p className="text-xs text-[#64748B]">Use the meeting tab to control your microphone, camera, and screen share. End the class in Elevate when finished.</p> : <InstructorControls
             onToggleScreenShare={() => setScreenShareModalOpen(true)}
             isScreenSharing={isScreenSharing}
             onOpenParticipants={() =>
@@ -180,7 +186,7 @@ export function InstructorLiveStudio({ liveClass }: InstructorLiveStudioProps) {
             }
             onEndClass={() => setEndClassModalOpen(true)}
             activePanel={activePanel}
-          />
+          />}
         </div>
 
         {/* Right Active Drawer / Tool Panel (4 cols) */}

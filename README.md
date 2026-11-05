@@ -6,6 +6,8 @@ Elevate is a Next.js learning platform with learner, tutor, and administrator po
 
 **Supported deployment:** one long-running Node.js 24 process with a durable, writable SQLite volume and HTTPS at the public origin. Do not deploy this SQLite configuration to an ephemeral filesystem or multiple app instances. Razorpay checkout is implemented but requires operator credentials, a reachable signed webhook, and a real Test Mode transaction before live collection. Tutor video upload and authorized range playback use local disk; the media directory must be durable and backed up with SQLite. Cloud video delivery, transcoding, live audio/video, real-time engagement, and outbound notifications still require providers.
 
+For live classes, a tutor can paste an HTTPS meeting link from Google Meet, Zoom, or Teams when scheduling or editing the class. Elevate shows the link to authorized learners only after the tutor starts the class. Audio, video, recording, and meeting controls run in that external service; native in-page streaming still requires a provider integration.
+
 Set these values in the deployment environment before building or starting. Keep secrets in the host's secret manager, outside Git:
 
 | Setting | Production value |

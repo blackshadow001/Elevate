@@ -5,7 +5,7 @@ import { SessionUser } from "@/server/auth";
 import { getDb, transaction } from "@/server/db";
 
 type Row = Record<string, unknown>;
-function liveDto(row: Row) {
+function liveDto(row: Row, includeMeeting = false) {
   return {
     id: String(row.id), courseId: row.course_id ? String(row.course_id) : null,
     courseTitle: row.course_title ? String(row.course_title) : null,
@@ -13,7 +13,8 @@ function liveDto(row: Row) {
     instructor: { id: String(row.instructor_id), name: String(row.instructor_name) },
     title: String(row.title), description: String(row.description), scheduledAt: String(row.scheduled_at),
     durationMinutes: Number(row.duration_minutes), status: String(row.status),
-    provider: row.provider ? String(row.provider) : null, providerReady: Boolean(row.provider_room_id),
+    provider: row.provider ? String(row.provider) : null, providerReady: Boolean(row.meeting_reference),
+    ...(includeMeeting ? { meetingUrl: row.meeting_reference ? String(row.meeting_reference) : null } : {}),
     createdAt: String(row.created_at), updatedAt: String(row.updated_at),
   };
 }
@@ -22,7 +23,7 @@ const liveSelect = `SELECT l.*,u.name instructor_name,c.title course_title,
   FROM live_classes l JOIN users u ON u.id=l.instructor_id LEFT JOIN courses c ON c.id=l.course_id`;
 
 export function listLiveClasses() {
-  return getDb().prepare(`${liveSelect} WHERE l.status IN ('scheduled','live') ORDER BY l.scheduled_at LIMIT 100`).all().map(liveDto);
+  return getDb().prepare(`${liveSelect} WHERE l.status IN ('scheduled','live') ORDER BY l.scheduled_at LIMIT 100`).all().map((row) => liveDto(row));
 }
 
 export function getLiveClass(id: string) {
@@ -40,7 +41,18 @@ function ownedClass(id: string, user: SessionUser): Row {
 
 export function listOwnLiveClasses(user: SessionUser) {
   return getDb().prepare(`${liveSelect} ${user.role === "admin" ? "" : "WHERE l.instructor_id=?"} ORDER BY l.scheduled_at DESC`)
-    .all(...(user.role === "admin" ? [] : [user.id])).map(liveDto);
+    .all(...(user.role === "admin" ? [] : [user.id])).map((row) => liveDto(row, true));
+}
+
+function meetingUrlInput(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  const raw = text(value, "Meeting link", 1, 2048);
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new ApiError(422, "INVALID_MEETING_URL", "Enter a valid HTTPS meeting link."); }
+  if (url.protocol !== "https:" || !url.hostname || url.username || url.password) {
+    throw new ApiError(422, "INVALID_MEETING_URL", "Enter a valid HTTPS meeting link.");
+  }
+  return url.toString();
 }
 
 function dateInput(value: unknown): string {
@@ -56,6 +68,7 @@ export function createLiveClass(user: SessionUser, body: Record<string, unknown>
   const duration = number(body.durationMinutes, "Duration", 1, 1440);
   if (!Number.isInteger(duration)) throw new ApiError(422, "INVALID_DURATION", "Duration must be whole minutes.");
   const courseId = body.courseId === undefined || body.courseId === null ? null : text(body.courseId, "Course ID", 1, 100);
+  const meetingUrl = meetingUrlInput(body.meetingUrl);
   if (courseId) {
     const course = getDb().prepare("SELECT instructor_id FROM courses WHERE id=?").get(courseId);
     if (!course) throw new ApiError(404, "COURSE_NOT_FOUND", "Course not found.");
@@ -63,10 +76,10 @@ export function createLiveClass(user: SessionUser, body: Record<string, unknown>
   }
   const id = randomUUID();
   getDb().prepare(`INSERT INTO live_classes
-    (id,course_id,instructor_id,title,description,scheduled_at,duration_minutes,status)
-    VALUES (?,?,?,?,?,?,?,'scheduled')`).run(id, courseId, user.id, title,
-    optionalText(body.description, "Description", 5000) || "", scheduled, duration);
-  return getLiveClass(id);
+    (id,course_id,instructor_id,title,description,scheduled_at,duration_minutes,status,provider,meeting_reference)
+    VALUES (?,?,?,?,?,?,?,'scheduled',?,?)`).run(id, courseId, user.id, title,
+    optionalText(body.description, "Description", 5000) || "", scheduled, duration, meetingUrl ? "external" : null, meetingUrl);
+  return liveDto(getDb().prepare(`${liveSelect} WHERE l.id=?`).get(id)!, true);
 }
 
 export function updateLiveClass(id: string, user: SessionUser, body: Record<string, unknown>) {
@@ -88,17 +101,24 @@ export function updateLiveClass(id: string, user: SessionUser, body: Record<stri
     if (!Number.isInteger(duration)) throw new ApiError(422, "INVALID_DURATION", "Duration must be whole minutes.");
     updates.push("duration_minutes=?"); values.push(duration);
   }
+  if (body.meetingUrl !== undefined) {
+    const meetingUrl = meetingUrlInput(body.meetingUrl);
+    updates.push("provider=?", "meeting_reference=?"); values.push(meetingUrl ? "external" : "", meetingUrl || "");
+  }
   if (body.status !== undefined) {
     const status = String(body.status);
     const allowed = prior.status === "scheduled" ? ["live", "cancelled"]
       : prior.status === "cancelled" ? ["scheduled"] : ["ended", "cancelled"];
     if (!allowed.includes(status)) throw new ApiError(409, "INVALID_TRANSITION", "This class status change is not allowed.");
+    if (status === "live" && !prior.meeting_reference && !body.meetingUrl) {
+      throw new ApiError(409, "MEETING_LINK_REQUIRED", "Add a meeting link before starting this class.");
+    }
     updates.push("status=?"); values.push(status);
   }
   if (!updates.length) throw new ApiError(422, "NO_CHANGES", "No editable fields were provided.");
   getDb().prepare(`UPDATE live_classes SET ${updates.join(",")},updated_at=? WHERE id=?`)
     .run(...values, new Date().toISOString(), id);
-  return liveDto(getDb().prepare(`${liveSelect} WHERE l.id=?`).get(id)!);
+  return liveDto(getDb().prepare(`${liveSelect} WHERE l.id=?`).get(id)!, true);
 }
 
 function canAttend(row: Row, user: SessionUser): boolean {
@@ -120,8 +140,9 @@ export function joinClass(id: string, user: SessionUser) {
       .run(randomUUID(), id, user.id, role);
     const active = Number(db.prepare("SELECT COUNT(*) total FROM live_participants WHERE live_class_id=? AND left_at IS NULL")
       .get(id)?.total || 0);
-    return { classId: id, role, activeParticipants: active, providerReady: Boolean(row.provider_room_id),
-      access: row.provider_room_id ? "provider_configuration_required" : "development_only" };
+    return { classId: id, role, activeParticipants: active, providerReady: Boolean(row.meeting_reference),
+      meetingUrl: row.meeting_reference ? String(row.meeting_reference) : null,
+      access: row.meeting_reference ? "external_meeting" : "meeting_not_configured" };
   });
 }
 

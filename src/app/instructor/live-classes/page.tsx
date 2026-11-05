@@ -47,8 +47,9 @@ export default function InstructorLiveClassesListPage() {
 
   const handleStartClass = async (id: string) => {
     try {
+      if (!classesList.find((item) => item.id === id)?.meetingUrl) throw new Error("Add a meeting link in Edit live class before starting.");
       await liveService.updateLiveClassStatus(id, "live");
-      notify({ type: "info", title: "Class opened", message: "The classroom is a development preview. Streaming requires a connected provider." });
+      notify({ type: "info", title: "Class opened", message: "Open the meeting link to host the video call." });
       router.push(`/instructor/live-classes/${id}`);
     } catch (error) { notify({ type: "error", title: "Class not started", message: error instanceof Error ? error.message : "Please try again." }); }
   };
@@ -58,7 +59,7 @@ export default function InstructorLiveClassesListPage() {
     if (!editingClass?.title.trim() || !editingClass.description.trim() || !editingClass.scheduledAt.trim() || !editingClass.startTime.trim() || editingClass.duration < 15) return;
     const wasCancelled = classesList.some((item) => item.id === editingClass.id && item.status === "cancelled");
     try { const updated = await (wasCancelled ? liveService.rescheduleLiveClass : liveService.updateLiveClass)(editingClass.id, {
-      title: editingClass.title.trim(), description: editingClass.description.trim(), scheduledAt: editingClass.scheduledAt.trim(), startTime: editingClass.startTime.trim(), duration: editingClass.duration,
+      title: editingClass.title.trim(), description: editingClass.description.trim(), scheduledAt: editingClass.scheduledAt.trim(), startTime: editingClass.startTime.trim(), duration: editingClass.duration, meetingUrl: editingClass.meetingUrl?.trim() || "",
     });
     if (!updated) throw new Error("This class is unavailable. Refresh the list and try again.");
     setClassesList((previous) => previous.map((item) => item.id === updated.id ? { ...updated } : item));
@@ -280,6 +281,7 @@ export default function InstructorLiveClassesListPage() {
             <label className="block text-xs font-bold text-[#172033]">Start time<input required value={editingClass.startTime} onChange={(event) => setEditingClass({ ...editingClass, startTime: event.target.value })} className="mt-1 w-full rounded-xl border p-3 text-sm" /></label>
           </div>
           <label className="block text-xs font-bold text-[#172033]">Duration (minutes)<input required type="number" min={15} max={480} value={editingClass.duration} onChange={(event) => setEditingClass({ ...editingClass, duration: Number(event.target.value) })} className="mt-1 w-full rounded-xl border p-3 text-sm" /></label>
+          <label className="block text-xs font-bold text-[#172033]">Meeting link<input type="url" placeholder="https://meet.google.com/..." value={editingClass.meetingUrl || ""} onChange={(event) => setEditingClass({ ...editingClass, meetingUrl: event.target.value })} className="mt-1 w-full rounded-xl border p-3 text-sm" /></label>
           <div className="flex justify-end gap-3"><button type="button" onClick={() => setEditingClass(null)} className="rounded-xl border px-4 py-2 text-xs font-bold">Cancel</button><button type="submit" className="rounded-xl bg-[#FF6B35] px-4 py-2 text-xs font-bold text-white">Save changes</button></div>
         </form>
       </div>}

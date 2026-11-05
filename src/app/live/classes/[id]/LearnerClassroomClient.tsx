@@ -25,7 +25,8 @@ import {
   Vote, 
   ArrowLeft, 
   Sparkles,
-  Users
+  Users,
+  Video
 } from "lucide-react";
 
 interface LearnerClassroomClientProps {
@@ -49,11 +50,12 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
   const [showPollOverlay, setShowPollOverlay] = useState(true);
   const [classAccess, setClassAccess] = useState<"checking" | "joined" | "unavailable">("checking");
   const [classError, setClassError] = useState("");
+  const [meetingUrl, setMeetingUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     liveService.joinLiveClass(initialClass.id)
-      .then(() => liveService.getClassMessages(initialClass.id))
+      .then((access) => { if (active) setMeetingUrl(access.meetingUrl); return liveService.getClassMessages(initialClass.id); })
       .then((messages) => { if (active) { setChatMessages(messages); setClassAccess("joined"); } })
       .catch((error) => { if (active) { setClassError(error instanceof Error ? error.message : "Classroom unavailable."); setClassAccess("unavailable"); } });
     liveService.getQuestions().then(setQuestions);
@@ -141,7 +143,7 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-slate-100 flex flex-col justify-between">
-      <div className="bg-[#243047] px-5 py-2 text-center text-xs text-slate-200">Development classroom: chat messages are saved; video streaming, Q&A, and polls are previews.</div>
+      <div className="bg-[#243047] px-5 py-2 text-center text-xs text-slate-200">Video runs in the linked meeting service. Classroom Q&A, polls, and video controls here are previews.</div>
       {/* Top Navbar Header (Requirement 8) */}
       <header className="h-16 px-4 sm:px-6 bg-[#172033] border-b border-white/10 flex items-center justify-between z-30 shrink-0">
         <div className="flex items-center gap-4">
@@ -186,7 +188,12 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
         {/* Left 70% Video Area (8 or 8.5 cols) */}
         <div className="lg:col-span-8 xl:col-span-8 flex flex-col justify-between space-y-3">
           <div className="space-y-3">
-            <LiveVideo
+            {meetingUrl ? <div className="aspect-video rounded-3xl bg-[#172033] border border-white/10 flex flex-col items-center justify-center gap-4 p-6 text-center">
+              <Video className="h-10 w-10 text-[#FF6B35]" />
+              <h2 className="text-xl font-bold">Join the live video meeting</h2>
+              <p className="max-w-md text-sm text-slate-300">The meeting opens in a new tab. Keep this classroom open for saved chat.</p>
+              <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-[#FF6B35] px-6 py-3 font-bold text-white">Open meeting</a>
+            </div> : <LiveVideo
               title={initialClass.title}
               instructorName={initialClass.instructorName}
               instructorRole={initialClass.instructorRole}
@@ -194,7 +201,7 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
               attendeesCount={initialClass.attendeesCount}
               isScreenSharing={isScreenSharing}
               onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)}
-            />
+            />}
 
             {/* Title & Instructor meta below video */}
             <div className="bg-[#172033] rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -217,13 +224,13 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
 
           {/* Bottom Learner Controls (Requirement 11) */}
           <div className="pt-2">
-            <LiveControls
+            {meetingUrl ? <p className="text-xs text-slate-400">Use the meeting tab for microphone, camera, and screen sharing controls.</p> : <LiveControls
               onLeaveClass={handleLeaveClass}
               onToggleSidebarTab={setActiveTab}
               activeSidebarTab={activeTab}
               isHandRaised={isHandRaised}
               onToggleHandRaise={handleToggleHandRaise}
-            />
+            />}
           </div>
         </div>
 
