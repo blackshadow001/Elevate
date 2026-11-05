@@ -15,7 +15,7 @@ export default async function HomePage() {
     <div className="min-h-screen flex flex-col bg-[#FFFDF9]">
       <Navbar />
       <main className="flex-1">
-        <Hero />
+        <Hero courses={courses} />
         <Categories courses={courses} />
         <PopularCourses courses={courses} />
         <CTA />
