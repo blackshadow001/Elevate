@@ -172,7 +172,7 @@ export function LearnerClassroomClient({ initialClass }: LearnerClassroomClientP
         {/* Right: Learner Profile */}
         <div className="flex items-center gap-3">
           <img
-            src={user?.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200"}
+            src={user?.avatar || "/images/first-version/photo-1535713875002-d1d0cf377fde.jpg"}
             alt={user?.name || "Alex"}
             className="w-8 h-8 rounded-full object-cover ring-1 ring-white/20"
           />

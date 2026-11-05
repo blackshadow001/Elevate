@@ -329,7 +329,7 @@ export const liveService = {
     const newQ: LiveQuestion = {
       id: `qa-${Date.now()}`,
       authorName,
-      authorAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
+      authorAvatar: "/images/first-version/photo-1535713875002-d1d0cf377fde.jpg",
       question: questionText,
       timestamp: timeStr,
       upvotes: 1,

@@ -25,11 +25,11 @@ export const mockBlogPosts: BlogPost[] = [
     author: {
       name: "John Doe",
       role: "Software Architect",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+      avatar: "/images/first-version/photo-1534528741775-53994a69daeb.jpg",
     },
     publishedAt: "October 4, 2026",
     readTime: "6 min read",
-    coverImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800",
+    coverImage: "/images/first-version/photo-1555066931-4365d14bab8c.jpg",
     content: `
 Modern frontend development is witnessing its biggest paradigm shift since hooks arrived. The React Compiler automatically optimizes rendering cycles, virtually eliminating the need for manual useMemo, useCallback, and React.memo boilerplate.
 
@@ -49,11 +49,11 @@ By analyzing JavaScript semantics at build time, the compiler introduces fine-gr
     author: {
       name: "Priya Sundaram",
       role: "Lead AI Researcher",
-      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+      avatar: "/images/first-version/photo-1573496359142-b8d87734a5a2.jpg",
     },
     publishedAt: "September 28, 2026",
     readTime: "8 min read",
-    coverImage: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=800",
+    coverImage: "/images/first-version/photo-1618005182384-a83a8bd57fbe.jpg",
     content: `
 Retrieval-Augmented Generation (RAG) is now the standard architecture for domain-adapted LLMs. However, pure dense vector search often struggles with precise SKU numbers, product codes, or niche jargon.
 
@@ -70,11 +70,11 @@ By synthesizing results from BM25 sparse keyword indices with modern multilingua
     author: {
       name: "Ananya Sharma",
       role: "Staff Product Designer",
-      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
+      avatar: "/images/first-version/photo-1580489944761-15a19d654956.jpg",
     },
     publishedAt: "September 15, 2026",
     readTime: "5 min read",
-    coverImage: "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&q=80&w=800",
+    coverImage: "/images/first-version/photo-1581291518857-4e27b48ff24e.jpg",
     content: `
 Cohesive brand experiences require shared single sources of truth. Modern Figma variables empower design teams to export token definitions directly to JSON, creating a seamless sync pipeline with engineering repositories.
     `,
