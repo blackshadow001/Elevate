@@ -18,12 +18,6 @@ export function confirmSuperAdmin(db: ReturnType<typeof getDb>, actorId: string,
   }
 }
 
-function reasonText(value: unknown): string {
-  if (typeof value !== "string" || value.trim().length < 3 || value.trim().length > 500)
-    throw new ApiError(422, "REASON_REQUIRED", "Enter a reason of 3–500 characters.");
-  return value.trim();
-}
-
 export function listAdminProfiles() {
   return getDb().prepare(`SELECT u.id,u.name,u.email,u.status,u.is_super_admin,u.created_at,u.updated_at,
     (SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id=u.id) last_session_at
@@ -35,13 +29,12 @@ export function listAdminProfiles() {
 }
 
 export function createSubAdmin(actorId: string, body: Record<string, unknown>) {
-  if (Object.keys(body).some(key => !["name", "email", "currentPassword", "reason"].includes(key)))
+  if (Object.keys(body).some(key => !["name", "email", "currentPassword"].includes(key)))
     throw new ApiError(422, "INVALID_INPUT", "Unsupported administrator field.");
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (name.length < 2 || name.length > 160 || email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new ApiError(422, "INVALID_INPUT", "Enter a valid name and email address.");
-  const reason = reasonText(body.reason);
   return transaction(db => {
     confirmSuperAdmin(db, actorId, body.currentPassword);
     if (db.prepare("SELECT 1 FROM users WHERE email=?").get(email))
@@ -58,15 +51,14 @@ export function createSubAdmin(actorId: string, body: Record<string, unknown>) {
       throw error;
     }
     recordAdminAction(db, { actorId, action: "sub_admin_created", entityType: "user", entityId: id,
-      reason, changes: { role: "admin", isSuperAdmin: false, email } });
+      changes: { role: "admin", isSuperAdmin: false, email } });
     return { profile: { id, name, email, status: "active", isSuperAdmin: false }, temporaryPassword };
   });
 }
 
 export function resetSubAdminPassword(actorId: string, targetId: string, body: Record<string, unknown>) {
-  if (Object.keys(body).some(key => !["currentPassword", "reason"].includes(key)))
+  if (Object.keys(body).some(key => !["currentPassword"].includes(key)))
     throw new ApiError(422, "INVALID_INPUT", "Unsupported password reset field.");
-  const reason = reasonText(body.reason);
   return transaction(db => {
     confirmSuperAdmin(db, actorId, body.currentPassword);
     const target = db.prepare("SELECT id,name,email,status,role,is_super_admin FROM users WHERE id=?").get(targetId);
@@ -80,7 +72,7 @@ export function resetSubAdminPassword(actorId: string, targetId: string, body: R
     db.prepare("UPDATE users SET password_hash=?,updated_at=? WHERE id=?").run(passwordHash, now, targetId);
     db.prepare("UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL").run(now, targetId);
     recordAdminAction(db, { actorId, action: "sub_admin_password_reset", entityType: "user", entityId: targetId,
-      reason, changes: { sessionsRevoked: true } });
+      changes: { sessionsRevoked: true } });
     return { profile: { id: targetId, name: String(target.name), email: String(target.email) }, temporaryPassword };
   });
 }

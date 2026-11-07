@@ -9,7 +9,7 @@ import PageHeader from "@/components/admin/PageHeader";
 import { useActionDialog } from "@/components/ui/ActionDialogProvider";
 
 export default function AdminCertificatesPage() {
-  const { confirm, prompt } = useActionDialog();
+  const { confirm } = useActionDialog();
   const [certs, setCerts] = useState<Array<{id:string; certificate_number:string; learner_name:string; course_title:string; issued_at:string; verification_status:string}>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -33,14 +33,10 @@ export default function AdminCertificatesPage() {
   useEffect(() => { void Promise.resolve().then(load); }, [load]);
 
   const changeStatus = async (certificateId: string, nextStatus: "valid" | "revoked") => {
-    const reason = await prompt(`Why should this certificate be ${nextStatus === "revoked" ? "revoked" : "restored"}? This reason is saved in the audit history.`,
-      { title: nextStatus === "revoked" ? "Revoke certificate" : "Restore certificate", danger: nextStatus === "revoked" });
-    if (reason === null) return;
-    if (reason.trim().length < 3 || reason.length > 500) { setError("Enter a reason of 3–500 characters."); return; }
     if (!await confirm(`Confirm certificate ${nextStatus === "revoked" ? "revocation" : "restoration"}?`,
       { title: "Confirm certificate change", confirmLabel: nextStatus === "revoked" ? "Revoke" : "Restore", danger: nextStatus === "revoked" })) return;
     try {
-      const response = await fetch(`/api/admin/certificates/${certificateId}`, { method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: nextStatus, reason }) });
+      const response = await fetch(`/api/admin/certificates/${certificateId}`, { method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: nextStatus }) });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error?.message || "Unable to update certificate.");
       setNotice(`Certificate ${nextStatus === "revoked" ? "revoked" : "restored"}.`); setError(""); await load();

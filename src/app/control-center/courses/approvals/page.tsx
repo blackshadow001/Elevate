@@ -88,7 +88,6 @@ export default function AdminReviewQueuePage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState("");
   const [approvedMarginPct, setApprovedMarginPct] = useState(20);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -147,10 +146,6 @@ export default function AdminReviewQueuePage() {
 
   const handleAction = async (action: "approve" | "reject" | "request_changes") => {
     if (!selectedId) return;
-    if (action !== "approve" && !feedback.trim()) {
-      setError("Please provide explanatory feedback for the instructor explaining why the course was rejected.");
-      return;
-    }
     setBusy(true);
     setError("");
     setSuccess("");
@@ -163,15 +158,13 @@ export default function AdminReviewQueuePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: action === "request_changes" ? "reject" : action,
-          feedback: feedback.trim() || undefined,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "Action failed");
 
-      setSuccess(action === "request_changes" ? "Course rejected with requested changes and feedback recorded." : `Course ${action === "approve" ? "approved" : "rejected"}.`);
+      setSuccess(action === "request_changes" ? "Course returned for changes." : `Course ${action === "approve" ? "approved" : "rejected"}.`);
       if (action === "approve") setApprovedCourseId(selectedId);
-      setFeedback("");
       await loadPending();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Review submission failed");
@@ -340,24 +333,11 @@ export default function AdminReviewQueuePage() {
                   </div>
                 </div>
 
-                {/* Audit & Decision Form */}
+                  {/* Review decision */}
                 <div className="border-t border-[#E5E7EB] pt-5 space-y-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
-                    Reviewer Decision & Feedback
+                    Review decision
                   </h4>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#172033] mb-1.5">
-                      Editorial Feedback (Required if requesting changes or rejecting)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={feedback}
-                      onChange={(e) => setFeedback(e.target.value)}
-                      placeholder="Specify requirements, syllabus improvements, or margin comments for the tutor…"
-                      className="w-full rounded-xl border border-[#E5E7EB] p-3 text-xs text-[#172033] placeholder-[#94A3B8] focus:border-[#FF6B35] focus:outline-none"
-                    />
-                  </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                     <div className="flex items-center gap-2">

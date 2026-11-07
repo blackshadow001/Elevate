@@ -37,7 +37,7 @@ interface UserDetail {
 }
 
 export default function AdminUsersPage() {
-  const { confirm, prompt } = useActionDialog();
+  const { confirm } = useActionDialog();
   const searchParams = useSearchParams();
   const initialRole = searchParams?.get("role") || "";
 
@@ -55,7 +55,6 @@ export default function AdminUsersPage() {
   const [creatingTutor, setCreatingTutor] = useState(false);
   const [tutorName, setTutorName] = useState("");
   const [tutorEmail, setTutorEmail] = useState("");
-  const [tutorReason, setTutorReason] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [oneTimePassword, setOneTimePassword] = useState<{ email: string; value: string } | null>(null);
 
@@ -89,9 +88,6 @@ export default function AdminUsersPage() {
     const confirmMsg = `Are you sure you want to ${nextStatus === "disabled" ? "disable" : "activate"} user ${user.name}?`;
     if (!await confirm(confirmMsg, { title: `${nextStatus === "disabled" ? "Deactivate" : "Activate"} account`,
       confirmLabel: nextStatus === "disabled" ? "Deactivate" : "Activate", danger: nextStatus === "disabled" })) return;
-    const reason = await prompt("Why is this account status changing? This reason is saved in the audit history.");
-    if (!reason || reason.trim().length < 3) return;
-
     setBusyId(user.id);
     setError("");
     setSuccess("");
@@ -101,7 +97,7 @@ export default function AdminUsersPage() {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus, reason: reason.trim() }),
+        body: JSON.stringify({ status: nextStatus }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "Failed to update status");
@@ -116,9 +112,8 @@ export default function AdminUsersPage() {
   };
 
   const handleRoleChange = async (user: UserRow, newRole: string) => {
-    const reason = await prompt(`Why should ${user.name}'s role change to ${newRole}? This reason is saved in the audit history.`,
-      { title: "Change account role", confirmLabel: "Continue", danger: newRole === "admin" });
-    if (!reason || reason.trim().length < 3) return;
+    if (!await confirm(`Change ${user.name}'s role to ${newRole}?`,
+      { title: "Change account role", confirmLabel: "Change role", danger: newRole === "admin" })) return;
     setBusyId(user.id);
     setError("");
     setSuccess("");
@@ -128,7 +123,7 @@ export default function AdminUsersPage() {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: newRole, reason: reason.trim() }),
+        body: JSON.stringify({ role: newRole }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "Failed to update role");
@@ -160,13 +155,13 @@ export default function AdminUsersPage() {
     try {
       const response = await fetch("/api/admin/users", {
         method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: tutorName, email: tutorEmail, reason: tutorReason, currentPassword }),
+        body: JSON.stringify({ name: tutorName, email: tutorEmail, currentPassword }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || "Unable to create tutor account.");
       setOneTimePassword({ email: result.data.user.email, value: result.data.temporaryPassword });
       setSuccess("Tutor account created. Share the one-time password securely.");
-      setTutorName(""); setTutorEmail(""); setTutorReason("");
+      setTutorName(""); setTutorEmail("");
       await loadUsers();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to create tutor account."); }
     finally { setCurrentPassword(""); setCreatingTutor(false); }
@@ -207,7 +202,6 @@ export default function AdminUsersPage() {
         <form onSubmit={handleCreateTutor} className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block text-xs font-bold text-[#172033]">Full name<input className="mt-1 w-full rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm focus:border-[#FF6B35] focus:outline-none" value={tutorName} onChange={event => setTutorName(event.target.value)} minLength={2} maxLength={160} required /></label>
           <label className="block text-xs font-bold text-[#172033]">Email<input className="mt-1 w-full rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm focus:border-[#FF6B35] focus:outline-none" type="email" value={tutorEmail} onChange={event => setTutorEmail(event.target.value)} maxLength={254} required /></label>
-          <label className="block text-xs font-bold text-[#172033]">Reason for access<input className="mt-1 w-full rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm focus:border-[#FF6B35] focus:outline-none" value={tutorReason} onChange={event => setTutorReason(event.target.value)} minLength={3} maxLength={500} required /></label>
           <label className="block text-xs font-bold text-[#172033]">Your current password<input className="mt-1 w-full rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm focus:border-[#FF6B35] focus:outline-none" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} required /></label>
           <button className="rounded-xl bg-[#172033] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#26344D] disabled:opacity-50 sm:col-span-2 sm:justify-self-start" disabled={creatingTutor}>{creatingTutor ? "Creating…" : "Create tutor account"}</button>
         </form>

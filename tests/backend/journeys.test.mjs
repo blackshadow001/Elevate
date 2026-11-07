@@ -170,7 +170,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal((await call(`/api/admin/tutor-applications/${submitted.body.data.id}`, { method: 'PATCH', cookie: applicant,
       body: { action: 'approve', note: 'Good proposal' } })).response.status, 403);
     assert.equal((await call(`/api/admin/tutor-applications/${submitted.body.data.id}`, { method: 'PATCH', cookie: adminCookie,
-      body: { action: 'approve', note: 'Good proposal' } })).response.status, 200);
+      body: { action: 'approve' } })).response.status, 200);
     assert.equal((await call('/api/auth/me', { cookie: applicant })).response.status, 401);
     const tutorLogin = await call('/api/auth/login', { method: 'POST', body: { email, password } });
     assert.equal(tutorLogin.body.data.role, 'instructor');
@@ -980,14 +980,12 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.ok(certificates.body.data.items.length >= 1);
     const certificateId = certificates.body.data.items[0].id;
     assert.equal((await call(`/api/admin/certificates/${certificateId}`, { method: 'PATCH', cookie: instructor,
-      body: { status: 'revoked', reason: 'Unauthorized change' } })).response.status, 403);
+      body: { status: 'revoked' } })).response.status, 403);
     assert.equal((await call(`/api/admin/certificates/${certificateId}`, { method: 'PATCH', cookie: admin,
-      body: { status: 'revoked' } })).response.status, 422);
-    assert.equal((await call(`/api/admin/certificates/${certificateId}`, { method: 'PATCH', cookie: admin,
-      body: { status: 'revoked', reason: 'Audit verification test' } })).response.status, 200);
+      body: { status: 'revoked' } })).response.status, 200);
     assert.equal((await call(`/api/certificates/verify/${certificates.body.data.items[0].certificate_number}`)).body.data.valid, false);
     assert.equal((await call(`/api/admin/certificates/${certificateId}`, { method: 'PATCH', cookie: admin,
-      body: { status: 'valid', reason: 'Restore after audit test' } })).response.status, 200);
+      body: { status: 'valid' } })).response.status, 200);
     assert.equal((await call(`/api/certificates/verify/${certificates.body.data.items[0].certificate_number}`)).body.data.valid, true);
     const certificateAudit = new DatabaseSync(dbPath);
     try { assert.equal(certificateAudit.prepare("SELECT COUNT(*) n FROM admin_audit_logs WHERE entity_type='certificate' AND entity_id=?").get(certificateId).n, 2); }
@@ -998,14 +996,15 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     } });
     assert.equal(candidate.response.status, 201);
     assert.equal(candidate.body.data.role, 'learner');
-    const promotion = await call(`/api/admin/users/${candidate.body.data.id}`, { method: 'PATCH', cookie: admin, body: { role: 'admin', reason: 'Promote test operator after identity review.' } });
+    const promotion = await call(`/api/admin/users/${candidate.body.data.id}`, { method: 'PATCH', cookie: admin, body: { role: 'admin' } });
     assert.equal(promotion.response.status, 200, JSON.stringify(promotion.body));
     const promotedDetails = await call(`/api/admin/users/${candidate.body.data.id}`, { cookie: admin });
     assert.equal(promotedDetails.response.status, 200, JSON.stringify(promotedDetails.body));
     assert.equal(promotedDetails.body.data.user.role, 'admin');
-    assert.equal((await call(`/api/admin/users/${candidate.body.data.id}`, { method: 'PATCH', cookie: admin, body: { status: 'disabled' } })).response.status, 422);
+    assert.equal((await call(`/api/admin/users/${candidate.body.data.id}`, { method: 'PATCH', cookie: admin, body: { status: 'disabled' } })).response.status, 200);
+    assert.equal((await call(`/api/admin/users/${candidate.body.data.id}`, { method: 'PATCH', cookie: admin, body: { status: 'active' } })).response.status, 200);
     const auditDb = new DatabaseSync(dbPath);
-    try { assert.equal(auditDb.prepare("SELECT COUNT(*) n FROM admin_audit_logs WHERE entity_type='user' AND entity_id=?").get(candidate.body.data.id).n, 1); }
+    try { assert.equal(auditDb.prepare("SELECT COUNT(*) n FROM admin_audit_logs WHERE entity_type='user' AND entity_id=?").get(candidate.body.data.id).n, 3); }
     finally { auditDb.close(); }
     assert.equal((await call('/api/auth/me', { cookie: candidate.response.headers.get('set-cookie').split(';')[0] })).response.status, 401);
     const nonSuperLogin = await call('/api/admin/auth/login', { method: 'POST', body: { email: secondAdminEmail, password } });
@@ -1014,7 +1013,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal((await call(`/api/admin/users/usr_001`, { method: 'PATCH', cookie: nonSuperCookie, body: { role: 'admin' } })).response.status, 403);
     assert.equal((await call('/api/admin/users', { cookie: nonSuperCookie })).response.status, 403);
     const tutorEmail = `created-tutor-${randomBytes(5).toString('hex')}@example.invalid`;
-    const tutorBody = { name: 'Created Tutor', email: tutorEmail, currentPassword: password, reason: 'Verified teaching access' };
+    const tutorBody = { name: 'Created Tutor', email: tutorEmail, currentPassword: password };
     assert.equal((await call('/api/admin/users', { method: 'POST', body: tutorBody })).response.status, 401);
     assert.equal((await call('/api/admin/users', { method: 'POST', cookie: learner, body: tutorBody })).response.status, 403);
     assert.equal((await call('/api/admin/users', { method: 'POST', cookie: instructor, body: tutorBody })).response.status, 403);
@@ -1054,18 +1053,18 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.ok(usersPage.status === 307 || (await usersPage.text()).includes('NEXT_REDIRECT'));
     const subAdminEmail = `support-${randomBytes(5).toString('hex')}@example.invalid`;
     assert.equal((await call('/api/admin/profiles', { method: 'POST', cookie: admin, origin: 'https://elsewhere.invalid', body: {
-      name: 'Support Operator', email: subAdminEmail, currentPassword: password, reason: 'Support course reviews',
+      name: 'Support Operator', email: subAdminEmail, currentPassword: password,
     } })).response.status, 403);
     const attemptedEscalation = await call('/api/admin/profiles', { method: 'POST', cookie: admin, body: {
-      name: 'Support Operator', email: subAdminEmail, currentPassword: password, reason: 'Support course reviews', isSuperAdmin: true,
+      name: 'Support Operator', email: subAdminEmail, currentPassword: password, isSuperAdmin: true,
     } });
     assert.equal(attemptedEscalation.response.status, 422);
     const createdSubAdmin = await call('/api/admin/profiles', { method: 'POST', cookie: admin, body: {
-      name: 'Support Operator', email: subAdminEmail, currentPassword: password, reason: 'Support course reviews',
+      name: 'Support Operator', email: subAdminEmail, currentPassword: password,
     } });
     assert.equal(createdSubAdmin.response.status, 201, JSON.stringify(createdSubAdmin.body));
     assert.equal((await call('/api/admin/profiles', { method: 'POST', cookie: admin, body: {
-      name: 'Duplicate Operator', email: subAdminEmail, currentPassword: password, reason: 'Check duplicate account',
+      name: 'Duplicate Operator', email: subAdminEmail, currentPassword: password,
     } })).response.status, 409);
     assert.equal(createdSubAdmin.body.data.profile.isSuperAdmin, false);
     const initialSubPassword = createdSubAdmin.body.data.temporaryPassword;
@@ -1075,15 +1074,15 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const initialSubCookie = initialSubLogin.response.headers.get('set-cookie').split(';')[0];
     assert.equal((await call('/api/admin/profiles', { cookie: initialSubCookie })).response.status, 403);
     assert.equal((await call(`/api/admin/profiles/${createdSubAdmin.body.data.profile.id}/reset-password`, {
-      method: 'POST', cookie: initialSubCookie, body: { currentPassword: initialSubPassword, reason: 'Try self reset' },
+      method: 'POST', cookie: initialSubCookie, body: { currentPassword: initialSubPassword },
     })).response.status, 403);
     assert.equal((await call(`/api/admin/profiles/${createdSubAdmin.body.data.profile.id}/reset-password`, {
-      method: 'POST', cookie: admin, body: { currentPassword: 'wrong', reason: 'Routine credential rotation' },
+      method: 'POST', cookie: admin, body: { currentPassword: 'wrong' },
     })).response.status, 401);
     assert.equal((await call(`/api/admin/profiles/${adminResponse.body.data.id}/reset-password`, { method: 'POST', cookie: admin,
-      body: { currentPassword: password, reason: 'Attempt to reset super account' } })).response.status, 403);
+      body: { currentPassword: password } })).response.status, 403);
     const subReset = await call(`/api/admin/profiles/${createdSubAdmin.body.data.profile.id}/reset-password`, {
-      method: 'POST', cookie: admin, body: { currentPassword: password, reason: 'Routine credential rotation' },
+      method: 'POST', cookie: admin, body: { currentPassword: password },
     });
     assert.equal(subReset.response.status, 200, JSON.stringify(subReset.body));
     assert.equal((await call('/api/auth/me', { cookie: initialSubCookie })).response.status, 401);
@@ -1123,14 +1122,16 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal(submit.response.status, 200, JSON.stringify(submit.body));
     assert.equal(submit.body.data.status, 'pending_approval');
     assert.equal((await call(`/api/courses/${reviewedCourseId}`)).response.status, 404);
-    const rejected = await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: admin, body: { action: 'reject', feedback: 'Please improve the description.' } });
+    const rejected = await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: admin, body: { action: 'reject' } });
     assert.equal(rejected.response.status, 200, JSON.stringify(rejected.body));
     assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: instructor, body: { action: 'approve' } })).response.status, 403);
     const policy = await call(`/api/admin/courses/${reviewedCourseId}/pricing`, { method: 'PUT', cookie: admin,
       body: { basePriceMinor: 200000, minMarginBps: 1000, maxMarginBps: 2500, maxFinalMinor: 250000 } });
     assert.equal(policy.response.status, 200, JSON.stringify(policy.body));
     assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/pricing`, { method: 'PUT', cookie: admin,
-      body: { basePriceMinor: 210000, minMarginBps: 1000, maxMarginBps: 2500, maxFinalMinor: 250000 } })).response.status, 422);
+      body: { basePriceMinor: 210000, minMarginBps: 1000, maxMarginBps: 2500, maxFinalMinor: 250000 } })).response.status, 200);
+    assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/pricing`, { method: 'PUT', cookie: admin,
+      body: { basePriceMinor: 200000, minMarginBps: 1000, maxMarginBps: 2500, maxFinalMinor: 250000 } })).response.status, 200);
     assert.equal((await call(`/api/instructor/courses/${reviewedCourseId}`, { method: 'PATCH', cookie: instructor, body: { marginBps: 900 } })).response.status, 422);
     assert.equal((await call(`/api/instructor/courses/${reviewedCourseId}`, { method: 'PATCH', cookie: instructor, body: { marginBps: 2600 } })).response.status, 422);
     const proposed = await call(`/api/instructor/courses/${reviewedCourseId}`, { method: 'PATCH', cookie: instructor, body: { marginBps: 2000 } });
@@ -1178,7 +1179,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal((await call(`/api/courses/${reviewedCourseId}`)).response.status, 404);
     assert.equal((await call('/api/orders', { method: 'POST', cookie: learner, body: { courseId: reviewedCourseId } })).response.status, 404);
     const detail = await call(`/api/admin/courses/${reviewedCourseId}`, { cookie: admin });
-    assert.ok(detail.body.data.history.some((event) => event.action === 'rejected' && event.feedback.includes('description')));
+    assert.ok(detail.body.data.history.some((event) => event.action === 'rejected'));
     assert.ok(detail.body.data.history.some((event) => event.action === 'unpublished'));
     assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: learner,
       body: { action: 'approve' } })).response.status, 403);

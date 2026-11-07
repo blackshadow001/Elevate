@@ -1,4 +1,4 @@
-import { ApiError, id, readJson, safe, text } from "@/server/api";
+import { ApiError, id, readJson, safe } from "@/server/api";
 import { requireSuperAdmin } from "@/server/auth";
 import { getDb, transaction } from "@/server/db";
 import { recordAdminAction } from "@/server/adminAudit";
@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ us
     const target = id((await params).userId);
     if (admin.id === target) throw new ApiError(409, "SELF_CHANGE_DENIED", "You cannot change your own admin access here.");
     const body = await readJson(request);
-    if (Object.keys(body).some((key) => !["role", "status", "reason"].includes(key)))
+    if (Object.keys(body).some((key) => !["role", "status"].includes(key)))
       throw new ApiError(422, "INVALID_INPUT", "Unsupported user-management field.");
     if (body.role === undefined && body.status === undefined) throw new ApiError(422, "NO_CHANGES", "Provide a role or status.");
     if ((body.role !== undefined && !["learner", "instructor", "admin"].includes(body.role as string)) ||
@@ -44,14 +44,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ us
         if (current.is_super_admin) throw new ApiError(409, "SUPER_ADMIN_PROTECTED", "Super admin accounts cannot be changed through this endpoint.");
       }
       if (role === current.role && status === current.status) return { id: target, role, status, changed: false };
-      const reason = text(body.reason, "Administrative reason", 3, 500);
       const now = new Date().toISOString();
       db.prepare("UPDATE users SET role=?,status=?,updated_at=? WHERE id=?")
         .run(role, status, now, target);
       db.prepare("UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL")
         .run(now, target);
       recordAdminAction(db, { actorId: admin.id, action: role !== current.role ? "role_changed" : "status_changed",
-        entityType: "user", entityId: target, reason,
+        entityType: "user", entityId: target,
         changes: { before: { role: current.role, status: current.status }, after: { role, status } } });
       return { id: target, role, status, changed: true };
     });

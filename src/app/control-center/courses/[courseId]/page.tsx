@@ -30,10 +30,8 @@ export default function AdminCourseDetailPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState("");
   const [basePrice, setBasePrice] = useState("0");
   const [margin, setMargin] = useState("0");
-  const [pricingReason, setPricingReason] = useState("");
 
   const loadDetail = async () => {
     try {
@@ -56,10 +54,6 @@ export default function AdminCourseDetailPage() {
   }, [courseId]);
 
   const handleAction = async (action: "approve" | "reject" | "publish" | "unpublish") => {
-    if (action === "reject" && !feedback.trim()) {
-      setError("Add a reason so the tutor knows what to change.");
-      return;
-    }
     if ((action === "publish" || action === "unpublish") && !await confirm(`${action === "publish" ? "Publish this course to the marketplace" : "Unpublish this course and block new purchases"}?`,
       { title: action === "publish" ? "Publish course" : "Unpublish course", confirmLabel: action === "publish" ? "Publish" : "Unpublish", danger: action === "unpublish" })) return;
     setBusy(true);
@@ -69,12 +63,11 @@ export default function AdminCourseDetailPage() {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, feedback: feedback.trim() || undefined }),
+        body: JSON.stringify({ action }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "Action failed");
       await loadDetail();
-      setFeedback("");
       setSuccess(`Course ${action} action saved.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Action failed");
@@ -106,11 +99,6 @@ export default function AdminCourseDetailPage() {
       return;
     }
     const policyChanged = current?.basePriceMinor !== baseMinor || current.minMarginBps !== minMarginBps || current.maxMarginBps !== maxMarginBps;
-    const overridesTutor = current?.proposedMarginBps !== null && current?.proposedMarginBps !== undefined && current.proposedMarginBps !== marginBps;
-    if (((policyChanged && current?.basePriceMinor !== null && current?.basePriceMinor !== undefined) || overridesTutor) && pricingReason.trim().length < 3) {
-      setError("Add a short reason for changing the price policy or tutor's proposed margin.");
-      return;
-    }
     if (!await confirm(`Approve ${formatRupees(baseMinor + Math.round(baseMinor * marginBps / 10_000))} as the official course price?`,
       { title: "Approve course price", confirmLabel: "Approve price" })) return;
     setBusy(true); setError(""); setSuccess("");
@@ -119,19 +107,18 @@ export default function AdminCourseDetailPage() {
         const policyResponse = await fetch(`/api/admin/courses/${courseId}/pricing`, {
           method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ basePriceMinor: baseMinor, minMarginBps, maxMarginBps,
-            maxFinalMinor: current?.maxFinalMinor ?? null, reason: pricingReason.trim() }),
+            maxFinalMinor: current?.maxFinalMinor ?? null }),
         });
         const policyResult = await policyResponse.json();
         if (!policyResponse.ok) throw new Error(policyResult.error?.message || "Could not save the price policy.");
       }
       const response = await fetch(`/api/admin/courses/${courseId}/pricing`, {
         method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "approve", marginBps, feedback: pricingReason.trim() }),
+        body: JSON.stringify({ action: "approve", marginBps }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || "Could not approve the price.");
       await loadDetail();
-      setPricingReason("");
       setSuccess("Official price approved. You can now publish the course.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not approve the price. Check the saved policy before retrying.");
@@ -220,7 +207,6 @@ export default function AdminCourseDetailPage() {
               <button type="button" disabled={busy} onClick={() => void handleAction("approve")} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Approve content</button>
               {course.reviewStatus === "pending_approval" && <button type="button" disabled={busy} onClick={() => void handleAction("reject")} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50">Request changes</button>}
             </div>}
-            {course.reviewStatus === "pending_approval" && <label className="mt-3 block text-xs font-semibold">Feedback for the tutor<textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-[#CBD5E1] p-2 text-sm" placeholder="Required when requesting changes" /></label>}
           </div>
           <div className="rounded-xl border border-[#E5E7EB] bg-[#FFFDF9] p-4">
             <p className="text-xs font-bold text-[#64748B]">2 · Set course price</p>
@@ -229,7 +215,6 @@ export default function AdminCourseDetailPage() {
               <label className="block text-xs font-semibold">Base price (₹)<input type="number" min="0" step="0.01" value={basePrice} onChange={(event) => setBasePrice(event.target.value)} className="mt-1 w-full rounded-lg border border-[#CBD5E1] px-3 py-2 text-sm" /></label>
               <label className="block text-xs font-semibold">Tutor margin (%)<input type="number" min="0" max="100" step="0.01" value={margin} onChange={(event) => setMargin(event.target.value)} className="mt-1 w-full rounded-lg border border-[#CBD5E1] px-3 py-2 text-sm" /></label>
               <p className="text-xs text-[#64748B]">Learner price: {Number.isFinite(Number(basePrice)) && Number.isFinite(Number(margin)) ? formatRupees(Math.round(Number(basePrice) * 100) + Math.round(Math.round(Number(basePrice) * 100) * Number(margin) / 100)) : "—"}</p>
-              <label className="block text-xs font-semibold">Reason, if changing a price or tutor proposal<textarea value={pricingReason} onChange={(event) => setPricingReason(event.target.value)} rows={2} maxLength={500} className="mt-1 w-full rounded-lg border border-[#CBD5E1] p-2 text-sm" /></label>
               <button type="button" disabled={busy || course.reviewStatus !== "approved"} onClick={() => void handleApprovePrice()} className="rounded-lg bg-[#172033] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save and approve price</button>
             </div>}
             <Link href={`/control-center/pricing?courseId=${encodeURIComponent(course.id)}`} className="mt-3 inline-block text-xs font-bold text-[#FF6B35] hover:underline">Advanced pricing options</Link>

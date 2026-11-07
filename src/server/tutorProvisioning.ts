@@ -7,16 +7,13 @@ import { hashPassword } from "@/server/auth";
 import { transaction } from "@/server/db";
 
 export function createTutorAccount(actorId: string, body: Record<string, unknown>) {
-  if (Object.keys(body).some(key => !["name", "email", "currentPassword", "reason"].includes(key)))
+  if (Object.keys(body).some(key => !["name", "email", "currentPassword"].includes(key)))
     throw new ApiError(422, "INVALID_INPUT", "Unsupported tutor account field.");
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
   if (name.length < 2 || name.length > 160 || email.length < 5 || email.length > 254 ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new ApiError(422, "INVALID_INPUT", "Enter a valid tutor name and email address.");
-  if (reason.length < 3 || reason.length > 500)
-    throw new ApiError(422, "REASON_REQUIRED", "Enter a reason of 3–500 characters.");
 
   return transaction(db => {
     confirmSuperAdmin(db, actorId, body.currentPassword);
@@ -33,7 +30,7 @@ export function createTutorAccount(actorId: string, body: Record<string, unknown
       throw error;
     }
     recordAdminAction(db, { actorId, action: "tutor_created", entityType: "user", entityId: id,
-      reason, changes: { role: "instructor", email } });
+      changes: { role: "instructor", email } });
     return { user: { id, name, email, role: "instructor", status: "active" }, temporaryPassword };
   });
 }

@@ -1,4 +1,4 @@
-import { ApiError, id, readJson, safe, text } from "@/server/api";
+import { ApiError, id, readJson, safe } from "@/server/api";
 import { requireRole } from "@/server/auth";
 import { transaction } from "@/server/db";
 import { recordAdminAction } from "@/server/adminAudit";
@@ -12,10 +12,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ce
       const row = db.prepare("SELECT verification_status FROM certificates WHERE id=?").get(certificateId);
       if (!row) throw new ApiError(404, "CERTIFICATE_NOT_FOUND", "Certificate not found.");
       if (row.verification_status === body.status) return { id: certificateId, status: String(body.status), changed: false };
-      const reason = text(body.reason, "Administrative reason", 3, 500);
       db.prepare("UPDATE certificates SET verification_status=? WHERE id=?").run(String(body.status), certificateId);
       recordAdminAction(db, { actorId: admin.id, action: body.status === "revoked" ? "certificate_revoked" : "certificate_restored",
-        entityType: "certificate", entityId: certificateId, reason,
+        entityType: "certificate", entityId: certificateId,
         changes: { before: row.verification_status, after: body.status } });
       return { id: certificateId, status: String(body.status), changed: true };
     });

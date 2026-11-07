@@ -131,9 +131,6 @@ export function adminSetPricing(courseId: string, admin: SessionUser, body: Reco
     const before = pricingForCourse(courseId);
     if (before?.basePriceMinor === base && before.minMarginBps === min && before.maxMarginBps === max && before.maxFinalMinor === cap)
       return before;
-    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-    if (reason.length > 500 || (before?.basePriceMinor !== null && before?.basePriceMinor !== undefined && reason.length < 3))
-      throw new ApiError(422, "REASON_REQUIRED", "Explain a change to an existing pricing policy in 3–500 characters.");
     const current = db.prepare("SELECT proposed_margin_bps FROM course_pricing WHERE course_id=?").get(courseId);
     const proposed = current?.proposed_margin_bps === null || current?.proposed_margin_bps === undefined ? null : Number(current.proposed_margin_bps);
     const validProposal = proposed !== null && proposed >= min && proposed <= max && (cap === null || finalPriceMinor(base, proposed) <= cap);
@@ -147,7 +144,7 @@ export function adminSetPricing(courseId: string, admin: SessionUser, body: Reco
       .run(courseId, base, min, max, cap, validProposal ? proposed : null,
         validProposal ? finalPriceMinor(base, proposed) : null, admin.id, new Date().toISOString());
     const after = pricingForCourse(courseId);
-    history(db, courseId, admin.id, "pricing_updated", reason, { before, after });
+    history(db, courseId, admin.id, "pricing_updated", "", { before, after });
     return after;
   });
 }
@@ -167,8 +164,6 @@ export function adminPricingDecision(courseId: string, admin: SessionUser, actio
       if (policy.maxFinalMinor !== null && final > policy.maxFinalMinor) throw new ApiError(422, "PRICE_CAP", "Final price exceeds the cap.");
       if (policy.status === "approved" && policy.approvedMarginBps === margin && Number(course.price_minor) === final)
         return policy;
-      if (policy.proposedMarginBps !== null && margin !== policy.proposedMarginBps && !feedback.trim())
-        throw new ApiError(422, "FEEDBACK_REQUIRED", "Provide a reason when overriding the tutor's proposed margin.");
       db.prepare("UPDATE course_pricing SET approved_margin_bps=?,pricing_status='approved',updated_by=?,updated_at=? WHERE course_id=?")
         .run(margin, admin.id, new Date().toISOString(), courseId);
       db.prepare("UPDATE courses SET price_minor=?,currency=?,updated_at=? WHERE id=?")
@@ -178,7 +173,6 @@ export function adminPricingDecision(courseId: string, admin: SessionUser, actio
       delete metadata.originalPrice;
       db.prepare("UPDATE courses SET metadata_json=? WHERE id=?").run(JSON.stringify(metadata), courseId);
     } else {
-      if (!feedback.trim()) throw new ApiError(422, "FEEDBACK_REQUIRED", "Provide pricing feedback.");
       db.prepare("UPDATE course_pricing SET approved_margin_bps=NULL,pricing_status=?,updated_by=?,updated_at=? WHERE course_id=?")
         .run(action === "reject" ? "rejected" : "changes_requested", admin.id, new Date().toISOString(), courseId);
     }
@@ -199,7 +193,6 @@ export function adminReview(courseId: string, admin: SessionUser, action: Review
         (review === "unpublished" || (review === "draft" && previouslyPublished));
       if (review !== "pending_approval" && !adminReapproval)
         throw new ApiError(409, "INVALID_TRANSITION", "Course is not awaiting review or eligible for admin reapproval.");
-      if (action === "reject" && !feedback.trim()) throw new ApiError(422, "FEEDBACK_REQUIRED", "Provide a rejection reason.");
       db.prepare("UPDATE courses SET review_status=?,updated_at=? WHERE id=?")
         .run(action === "approve" ? "approved" : "rejected", new Date().toISOString(), courseId);
     } else if (action === "publish") {

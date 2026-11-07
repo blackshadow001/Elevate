@@ -56,7 +56,6 @@ export default function AdminPricingPage() {
   const [maxMargin, setMaxMargin] = useState<number>(25);
   const [capPrice, setCapPrice] = useState<string>("");
   const [approvedMargin, setApprovedMargin] = useState<number>(20);
-  const [reason, setReason] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -124,7 +123,6 @@ export default function AdminPricingPage() {
         minMarginBps: Math.round(minMargin * 100),
         maxMarginBps: Math.round(maxMargin * 100),
         maxFinalMinor: capPrice.trim() ? Math.round(Number(capPrice) * 100) : null,
-        reason: reason.trim(),
       };
 
       const res = await fetch(`/api/admin/courses/${selectedId}/pricing`, {
@@ -151,7 +149,7 @@ export default function AdminPricingPage() {
     setSaving(true); setError(""); setSuccess("");
     try {
       const response = await fetch(`/api/admin/courses/${selectedId}/pricing`, { method: "POST", credentials: "same-origin",
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve", marginBps: Math.round(approvedMargin * 100), feedback: reason.trim() }) });
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve", marginBps: Math.round(approvedMargin * 100) }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || "Unable to approve price.");
       setSuccess("Official price approved and saved.");
@@ -352,8 +350,6 @@ export default function AdminPricingPage() {
                 </div>
               </div>
               {exceedsCap && <p role="alert" className="text-xs font-bold text-red-700">This margin exceeds the configured final-price cap. Reduce the margin or change the cap before approval.</p>}
-
-              <label className="block text-xs font-bold text-[#172033]">Reason for changing an existing policy or overriding the tutor proposal<textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={2} maxLength={500} className="mt-1 w-full rounded-xl border border-[#E5E7EB] p-2.5 text-xs" /></label>
 
               <div className="flex justify-end pt-2">
                 <button
