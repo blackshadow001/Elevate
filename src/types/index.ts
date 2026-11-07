@@ -19,6 +19,7 @@ export interface Lesson {
   type: "video" | "reading" | "quiz" | "project" | "resource";
   completed?: boolean;
   videoUrl?: string;
+  isPreview?: boolean;
   content?: string;
   activity?: LessonActivity | null;
   notes?: string;
@@ -38,6 +39,7 @@ export interface Course {
   subtitle: string;
   description: string;
   category: string;
+  subcategory?: string;
   level: "Beginner" | "Intermediate" | "Advanced";
   language: "English" | "Tamil" | "Hindi";
   price: number;

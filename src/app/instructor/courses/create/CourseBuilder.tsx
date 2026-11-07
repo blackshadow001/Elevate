@@ -12,6 +12,8 @@ import { type LessonActivity, newLessonActivity } from "@/lib/lessonActivities";
 import { LessonActivityEditor } from "@/components/instructor/LessonActivityEditor";
 import { VideoPlayer } from "@/components/learning/VideoPlayer";
 import { VideoEditingStudio } from "@/components/instructor/VideoEditingStudio";
+import { CATALOG_CATEGORIES, catalogCategory } from "@/lib/catalogTaxonomy";
+import { MICRO_COURSE_TOPICS } from "@/lib/microCourseTopics";
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -42,6 +44,7 @@ interface BuilderLesson {
   title: string;
   duration: string;
   type: LessonType;
+  isPreview?: boolean;
   videoUrl?: string;
   content?: string;
   videoFileName?: string;
@@ -105,13 +108,29 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     title: initialCourse?.title || "",
     shortDescription: initialCourse?.subtitle || "",
     fullDescription: initialCourse?.description || "",
-    category: initialCourse?.category || "Development",
-    subcategory: "",
+    category: catalogCategory(initialCourse?.category || "Technology & Programming"),
+    subcategory: initialCourse?.subcategory || "",
     level: initialCourse?.level || "Intermediate",
     language: initialCourse?.language || "English",
     requirements: initialCourse?.requirements.join("\n") || "",
     whatYouWillLearn: initialCourse?.whatYouWillLearn.join("\n") || "",
   });
+  const [catalogCategories, setCatalogCategories] = useState<{ id: string; name: string; subcategories: string[] }[]>(
+    CATALOG_CATEGORIES.map(({ name, subcategories }) => ({ id: name, name, subcategories: [...subcategories] }))
+  );
+  const [selectedTopic, setSelectedTopic] = useState("");
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/categories", { credentials: "same-origin", cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        if (!active || !Array.isArray(body?.data)) return;
+        setCatalogCategories(body.data);
+        if (!initialCourse && body.data.length) setBasicInfo((current) => body.data.some((item: { name: string }) => item.name === current.category)
+          ? current : { ...current, category: body.data[0].name, subcategory: "" });
+      }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   // Thumbnail State
   const [thumbnailPreview, setThumbnailPreview] = useState<string>(initialCourse?.image || "");
@@ -123,7 +142,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const [sections, setSections] = useState<BuilderSection[]>(initialCourse ? initialCourse.sections.map((section) => ({
     id: section.id,
     title: section.title,
-    lessons: section.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, duration: lesson.duration, type: (lesson.type === "video" ? "Video" : lesson.type === "quiz" ? "Quiz" : lesson.type === "project" ? "Assignment" : lesson.type === "resource" ? "Resource" : "Text") as LessonType, videoUrl: lesson.videoUrl, content: lesson.content, activity: lesson.activity })),
+    lessons: section.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, duration: lesson.duration, type: (lesson.type === "video" ? "Video" : lesson.type === "quiz" ? "Quiz" : lesson.type === "project" ? "Assignment" : lesson.type === "resource" ? "Resource" : "Text") as LessonType, videoUrl: lesson.videoUrl, content: lesson.content, activity: lesson.activity, isPreview: lesson.isPreview })),
   })) : []);
 
   // A selected file is previewed locally while it streams to private server storage.
@@ -227,6 +246,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
       subtitle: basicInfo.shortDescription.trim(),
       description: basicInfo.fullDescription.trim(),
       category: basicInfo.category,
+      subcategory: basicInfo.subcategory,
       level: basicInfo.level as InstructorCourse["level"],
       language: basicInfo.language as InstructorCourse["language"],
       price: basePriceMinor === null || basePriceMinor === undefined ? pricing.price : proposedPrice,
@@ -251,6 +271,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
           title: lesson.title.trim(),
           duration: lesson.duration,
           type: lesson.type === "Video" ? "video" : lesson.type === "Quiz" ? "quiz" : lesson.type === "Assignment" ? "project" : "reading",
+          isPreview: lesson.type === "Video" && lesson.isPreview === true,
           videoUrl: lesson.type === "Video" ? lesson.videoUrl : undefined,
           content: lesson.type === "Text" ? lesson.content?.trim() : undefined,
           activity: lesson.type === "Quiz" || lesson.type === "Assignment" || lesson.type === "Resource" ? lesson.activity : undefined,
@@ -488,6 +509,24 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
           <h2 className="text-xl font-bold text-[#172033]">1. Course Information</h2>
 
           <div className="space-y-4 max-w-3xl">
+            {!initialCourse && <div className="rounded-2xl border border-[#F2D7C9] bg-[#FFF8F2] p-4">
+              <label htmlFor="micro-course-topic" className="block text-xs font-bold uppercase text-[#172033]">Start with a micro-course topic (optional)</label>
+              <select id="micro-course-topic" value={selectedTopic} onChange={(event) => {
+                const topic = MICRO_COURSE_TOPICS.find((item) => item.title === event.target.value);
+                setSelectedTopic(event.target.value);
+                if (topic) {
+                  setBasicInfo((current) => ({ ...current, title: topic.title, category: topic.category,
+                    subcategory: topic.subcategory, language: "Tamil" }));
+                  setPricing((current) => ({ ...current, price: topic.suggestedPrice }));
+                }
+              }} className="mt-2 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm">
+                <option value="">Write my own topic</option>
+                {catalogCategories.map(({ name }) => <optgroup key={name} label={name}>
+                  {MICRO_COURSE_TOPICS.filter((topic) => topic.category === name).map((topic) => <option key={topic.title} value={topic.title}>{topic.title} · suggested ₹{topic.suggestedPrice}</option>)}
+                </optgroup>)}
+              </select>
+              <p className="mt-2 text-xs text-[#64748B]">Each topic is a separate course. Add your own video and learning content; the admin approves the final price and publication.</p>
+            </div>}
             <div className="space-y-1.5">
               <label htmlFor="course-builder-title" className="block text-xs font-bold uppercase text-[#172033]">Course Title</label>
               <input
@@ -514,15 +553,22 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                 <label className="block text-xs font-bold uppercase text-[#172033]">Category</label>
                 <select
                   value={basicInfo.category}
-                  onChange={(e) => setBasicInfo({ ...basicInfo, category: e.target.value })}
+                  onChange={(e) => setBasicInfo({ ...basicInfo, category: e.target.value, subcategory: "" })}
                   className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#172033] focus:bg-white focus:border-[#FF6B35] focus:outline-none"
                 >
-                  <option>Development</option>
-                  <option>Data Science</option>
-                  <option>Design</option>
-                  <option>AI & ML</option>
-                  <option>Cloud & DevOps</option>
-                  <option>Cybersecurity</option>
+                  {catalogCategories.map(({ id, name }) => <option key={id} value={name}>{name}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase text-[#172033]">Subcategory</label>
+                <select
+                  value={basicInfo.subcategory}
+                  onChange={(e) => setBasicInfo({ ...basicInfo, subcategory: e.target.value })}
+                  className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#172033] focus:bg-white focus:border-[#FF6B35] focus:outline-none"
+                >
+                  <option value="">Choose a subcategory</option>
+                  {(catalogCategories.find((item) => item.name === basicInfo.category)?.subcategories || []).map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
 
@@ -761,7 +807,8 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                               prev.map((s) => ({
                                 ...s,
                                 lessons: s.lessons.map((l) => (l.id === les.id ? { ...l, type: t,
-                                  activity: t === "Quiz" || t === "Assignment" || t === "Resource" ? newLessonActivity(t) : null } : l)),
+                                  activity: t === "Quiz" || t === "Assignment" || t === "Resource" ? newLessonActivity(t) : null,
+                                  isPreview: t === "Video" ? l.isPreview : false } : l)),
                               }))
                             );
                           }}
@@ -796,6 +843,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
                       </div>
                     </div>
                     {les.type === "Text" && <textarea value={les.content || ""} onChange={(event) => setSections((previous) => previous.map((section) => ({ ...section, lessons: section.lessons.map((lesson) => lesson.id === les.id ? { ...lesson, content: event.target.value } : lesson) })))} aria-label={`Reading content for ${les.title}`} placeholder="Write the reading lesson content" rows={3} className="w-full rounded-lg border border-[#E5E7EB] bg-[#F7F8FA] p-3 text-xs text-[#172033]" />}
+                    {les.type === "Video" && <label className="flex items-start gap-2 text-xs text-[#475569]"><input type="checkbox" checked={Boolean(les.isPreview)} onChange={(event) => setSections((previous) => previous.map((section) => ({ ...section, lessons: section.lessons.map((lesson) => lesson.id === les.id ? { ...lesson, isPreview: event.target.checked } : lesson) })))} className="mt-0.5 accent-[#FF6B35]" /><span>Free preview clip (30–60 seconds). Upload this as a separate video lesson; keep the full lesson private.</span></label>}
                     {(les.type === "Quiz" || les.type === "Assignment" || les.type === "Resource") &&
                       <LessonActivityEditor activity={les.activity || newLessonActivity(les.type)}
                         onChange={(activity) => setSections((previous) => previous.map((section) => ({ ...section,

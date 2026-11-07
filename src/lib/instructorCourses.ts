@@ -22,9 +22,9 @@ type ApiCourse = {
   instructor: { id: string; name: string; avatar: string | null };
   pricing?: InstructorCourse["pricing"];
   reviewFeedback?: string | null;
-  metadata: { whatYouWillLearn?: string[]; requirements?: string[]; originalPrice?: number };
+  metadata: { subcategory?: string; whatYouWillLearn?: string[]; requirements?: string[]; originalPrice?: number };
   sections: Array<{ id: string; title: string; lessons: Array<{
-    id: string; title: string; description: string; type: string; durationSeconds: number; mediaAssetId?: string | null; activity?: LessonActivity | null;
+    id: string; title: string; description: string; type: string; durationSeconds: number; mediaAssetId?: string | null; isPreview?: boolean; activity?: LessonActivity | null;
   }> }>;
 };
 const EMPTY: InstructorCourse[] = [];
@@ -53,7 +53,7 @@ function toCourse(course: ApiCourse): InstructorCourse {
     role: "Instructor", rating: 0, studentsCount: 0, coursesCount: 0 };
   return {
     id: course.id, slug: course.slug, title: course.title, subtitle: course.subtitle,
-    description: course.description, category: course.category,
+    description: course.description, category: course.category, subcategory: course.metadata?.subcategory || "",
     level: course.level === "Advanced" || course.level === "Intermediate" ? course.level : "Beginner",
     language: course.language === "Hindi" || course.language === "Tamil" ? course.language : "English",
     price: course.pricing?.proposedFinalMinor !== null && course.pricing?.proposedFinalMinor !== undefined ? course.pricing.proposedFinalMinor / 100 : course.price,
@@ -66,6 +66,7 @@ function toCourse(course: ApiCourse): InstructorCourse {
     sections: course.sections.map((section) => ({ id: section.id, title: section.title,
       lessons: section.lessons.map((lesson) => ({
         id: lesson.id, title: lesson.title, content: lesson.description, activity: lesson.activity || null,
+        isPreview: Boolean(lesson.isPreview),
         duration: lesson.type === "video" && lesson.mediaAssetId
           ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
         type: lesson.activity?.kind === "resource" ? "resource" : lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",

@@ -12,23 +12,13 @@ import { Course } from "@/types";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { CourseCardSkeleton } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/ui/Reveal";
+import { catalogCategory } from "@/lib/catalogTaxonomy";
 
 interface CoursesExplorerProps {
   initialCourses: Course[];
+  initialCategories: Array<{ id: string; name: string; subcategories: string[] }>;
 }
 
-const CATEGORIES = [
-  "Development",
-  "Data Science",
-  "Design",
-  "Business",
-  "Marketing",
-  "AI & ML",
-  "Cloud & DevOps",
-  "Cybersecurity",
-];
-
-const POPULAR_SEARCH_TERMS = ["React", "Python", "UI/UX", "Data Science", "Next.js", "Docker"];
 const LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const LANGUAGES = ["English", "Tamil", "Hindi"];
 const RATINGS = [
@@ -37,19 +27,21 @@ const RATINGS = [
 ];
 const categoryKey = (value: string) => value.toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-export function CoursesExplorer({ initialCourses }: CoursesExplorerProps) {
+export function CoursesExplorer({ initialCourses, initialCategories }: CoursesExplorerProps) {
   const searchParams = useSearchParams();
-  return <CoursesExplorerInner key={searchParams.toString()} initialCourses={initialCourses} initialCategory={searchParams.get("category")} initialSearch={searchParams.get("search") || ""} />;
+  return <CoursesExplorerInner key={searchParams.toString()} initialCourses={initialCourses} initialCategories={initialCategories} initialCategory={searchParams.get("category")} initialSubcategory={searchParams.get("subcategory") || ""} initialSearch={searchParams.get("search") || ""} />;
 }
 
-function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }: CoursesExplorerProps & { initialCategory: string | null; initialSearch: string }) {
+function CoursesExplorerInner({ initialCourses, initialCategories, initialCategory, initialSubcategory, initialSearch }: CoursesExplorerProps & { initialCategory: string | null; initialSubcategory: string; initialSearch: string }) {
   const router = useRouter();
   const allCourses = initialCourses;
+  const categoryNames = initialCategories.map(({ name }) => name);
 
   const [search, setSearch] = useState(initialSearch);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    initialCategory ? [initialCategory] : []
+    initialCategory ? categoryNames.filter((name) => categoryKey(name) === categoryKey(catalogCategory(initialCategory)) || categoryKey(name) === categoryKey(initialCategory)) : []
   );
+  const [selectedSubcategory, setSelectedSubcategory] = useState(initialSubcategory);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
@@ -60,6 +52,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
 
   // Toggle helpers
   const toggleCategory = (cat: string) => {
+    setSelectedSubcategory("");
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
@@ -79,6 +72,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
 
   const clearAllFilters = () => {
     setSelectedCategories([]);
+    setSelectedSubcategory("");
     setSelectedLevels([]);
     setSelectedLanguages([]);
     setSelectedRating(null);
@@ -109,6 +103,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
           );
           if (!matchCat) return false;
         }
+        if (selectedSubcategory && course.subcategory !== selectedSubcategory) return false;
 
         // Level filter
         if (selectedLevels.length > 0) {
@@ -143,6 +138,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
     allCourses,
     search,
     selectedCategories,
+    selectedSubcategory,
     selectedLevels,
     selectedLanguages,
     selectedRating,
@@ -152,6 +148,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
 
   const activeFiltersCount =
     selectedCategories.length +
+    (selectedSubcategory ? 1 : 0) +
     selectedLevels.length +
     selectedLanguages.length +
     (selectedRating ? 1 : 0) +
@@ -190,21 +187,37 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
           )}
         </div>
 
-        {/* Quick Search Suggestions */}
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 text-xs text-[#64748B]">
-          <span>Popular:</span>
-          {POPULAR_SEARCH_TERMS.map((term) => (
-            <button
-              key={term}
-              type="button"
-              onClick={() => setSearch(term)}
-              className="px-2.5 py-1 rounded-full bg-white border border-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
-            >
-              {term}
-            </button>
-          ))}
-        </div>
       </div>
+
+      <section aria-label="Explore categories" className="mb-10 rounded-3xl bg-[#172033] p-5 text-white sm:p-7">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
+          <div><p className="text-xs font-bold uppercase tracking-widest text-[#FFB899]">Explore categories</p><h2 className="mt-1 text-2xl font-extrabold">Find a subject to learn</h2></div>
+          <span className="text-xs text-slate-300">{allCourses.length} published courses</span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          {initialCategories.map(({ id, name }) => {
+            const count = allCourses.filter((course) => course.category === name).length;
+            const active = selectedCategories.includes(name);
+            return <button key={id} type="button" onClick={() => { setSelectedCategories(active ? [] : [name]); setSelectedSubcategory(""); }}
+              aria-pressed={active} className={`rounded-xl border px-4 py-3 text-left transition-colors ${active ? "border-[#FF6B35] bg-[#FF6B35] text-white" : "border-white/15 bg-white/5 hover:border-[#FFB899] hover:bg-white/10"}`}>
+              <span className="block text-sm font-bold">{name}</span><span className="mt-1 block text-xs text-white/70">{count} {count === 1 ? "course" : "courses"}</span>
+            </button>;
+          })}
+        </div>
+        {selectedCategories.length === 1 && <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/15 pt-4">
+          <span className="mr-1 text-xs font-bold text-slate-300">Explore topics</span>
+          {(initialCategories.find((item) => item.name === selectedCategories[0])?.subcategories || []).map((name) => <button key={name} type="button" onClick={() => setSelectedSubcategory(selectedSubcategory === name ? "" : name)}
+            aria-pressed={selectedSubcategory === name} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${selectedSubcategory === name ? "bg-white text-[#172033]" : "border border-white/20 text-white hover:bg-white/10"}`}>{name}</button>)}
+        </div>}
+      </section>
+
+      {allCourses.some((course) => course.language === "Tamil") && <section className="mb-10">
+        <h2 className="text-xl font-extrabold text-[#172033]">Explore Tamil courses</h2>
+        <p className="mt-1 text-sm text-[#64748B]">Published lessons taught in Tamil.</p>
+        <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {allCourses.filter((course) => course.language === "Tamil").sort((a, b) => b.studentsCount - a.studentsCount).slice(0, 4).map((course) => <CourseCard key={course.id} course={course} />)}
+        </div>
+      </section>}
 
       {/* Main Grid & Sidebar Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -232,7 +245,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-[#172033]">Category</h3>
               <div className="space-y-2">
-                {CATEGORIES.map((cat) => {
+                {categoryNames.map((cat) => {
                   const checked = selectedCategories.some(
                     (c) => categoryKey(c) === categoryKey(cat)
                   );
@@ -390,7 +403,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
               ))}
             </div>
           ) : filteredCourses.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div data-testid="catalog-results" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCourses.map((course, idx) => (
                 <Reveal key={course.id} direction="up" delay={0.04 * (idx % 3)}>
                   <CourseCard course={course} />
@@ -405,7 +418,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
               </div>
               <h3 className="text-xl font-bold text-[#172033]">No courses found</h3>
               <p className="text-sm text-[#64748B] max-w-md mx-auto">
-                We couldn&apos;t find any courses matching your criteria. Try searching for &ldquo;React&rdquo;, &ldquo;Python&rdquo;, or &ldquo;Data Science&rdquo;.
+                We couldn&apos;t find any published courses matching your criteria. Try a different category, language, or search term.
               </p>
               <div className="flex items-center justify-center gap-3 pt-2">
                 <button
@@ -446,7 +459,7 @@ function CoursesExplorerInner({ initialCourses, initialCategory, initialSearch }
               <div>
                 <h4 className="text-xs font-bold uppercase text-[#64748B] mb-2">Category</h4>
                 <div className="space-y-2">
-                  {CATEGORIES.map((cat) => (
+                  {categoryNames.map((cat) => (
                     <label key={cat} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"

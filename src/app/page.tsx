@@ -5,18 +5,20 @@ import { Categories } from "@/components/home/Categories";
 import { PopularCourses } from "@/components/home/PopularCourses";
 import { CTA } from "@/components/home/CTA";
 import { courseService } from "@/services/courseService";
+import { listCatalogCategories } from "@/server/catalogCategories";
 
 export const instant = false;
 
 export default async function HomePage() {
   const courses = await courseService.getAllCourses();
+  const categories = listCatalogCategories();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFDF9]">
       <Navbar />
       <main className="flex-1">
         <Hero courses={courses} />
-        <Categories courses={courses} />
+        <Categories courses={courses} categories={categories} />
         <PopularCourses courses={courses} />
         <CTA />
       </main>

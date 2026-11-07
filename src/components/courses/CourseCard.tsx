@@ -10,10 +10,12 @@ import {
   ShoppingBag,
   Palette,
   Code,
-  BarChart3,
-  Sparkles,
-  Cloud,
-  ShieldCheck
+  BrainCircuit,
+  Workflow,
+  Megaphone,
+  BriefcaseBusiness,
+  TrendingUp,
+  PenTool
 } from "lucide-react";
 import { Course } from "@/types";
 import { formatINR } from "@/lib/utils";
@@ -25,10 +27,24 @@ interface CourseCardProps {
   className?: string;
 }
 
+const categoryIcons: Record<string, typeof BookOpen> = {
+  "AI & Generative AI": BrainCircuit,
+  "AI Tools & Automation": Workflow,
+  "Technology & Programming": Code,
+  "Digital Marketing": Megaphone,
+  "Business & Entrepreneurship": BriefcaseBusiness,
+  "Sales & Communication": TrendingUp,
+  "Finance & Investment Basics": BookOpen,
+  "Mindfulness & Personal Development": Heart,
+  "Freelancing & Online Income": PenTool,
+  "Design & Content Creation": Palette,
+};
+
 export function CourseCard({ course, className = "" }: CourseCardProps) {
   const router = useRouter();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const wishlisted = isWishlisted(course.id);
+  const CategoryIcon = categoryIcons[course.category] || BookOpen;
 
   const handleCardClick = () => {
     router.push(`/courses/${course.slug}`);
@@ -97,15 +113,7 @@ export function CourseCard({ course, className = "" }: CourseCardProps) {
         {/* Category Badge & Language */}
         <div className="flex items-center justify-between text-xs font-semibold text-[#64748B] mb-2.5">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#FF6B35] font-bold text-[11px] tracking-wide uppercase">
-            {course.category === "Design" && <Palette className="w-3.5 h-3.5" />}
-            {course.category === "Development" && <Code className="w-3.5 h-3.5" />}
-            {course.category === "Data Science" && <BarChart3 className="w-3.5 h-3.5" />}
-            {course.category === "AI & ML" && <Sparkles className="w-3.5 h-3.5" />}
-            {course.category === "Cloud & DevOps" && <Cloud className="w-3.5 h-3.5" />}
-            {course.category === "Cybersecurity" && <ShieldCheck className="w-3.5 h-3.5" />}
-            {!["Design", "Development", "Data Science", "AI & ML", "Cloud & DevOps", "Cybersecurity"].includes(course.category) && (
-              <BookOpen className="w-3.5 h-3.5" />
-            )}
+            <CategoryIcon className="w-3.5 h-3.5" />
             <span>{course.category}</span>
           </span>
           <span className="bg-[#F7F8FA] px-2 py-0.5 rounded text-[11px] border border-[#E5E7EB]">

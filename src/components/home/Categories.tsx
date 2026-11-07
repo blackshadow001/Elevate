@@ -1,17 +1,21 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpen, BrainCircuit, Cloud, Code2, Database, Palette, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, BookOpen, BrainCircuit, BriefcaseBusiness, Code2, Heart, Megaphone, Palette, PenTool, TrendingUp, Workflow } from "lucide-react";
 import { Course } from "@/types";
 
 const categoryIcons = {
-  Development: Code2,
-  "Data Science": Database,
-  Cybersecurity: ShieldCheck,
-  Design: Palette,
-  "AI & ML": BrainCircuit,
-  "Cloud & DevOps": Cloud,
+  "AI & Generative AI": BrainCircuit,
+  "AI Tools & Automation": Workflow,
+  "Technology & Programming": Code2,
+  "Digital Marketing": Megaphone,
+  "Business & Entrepreneurship": BriefcaseBusiness,
+  "Sales & Communication": TrendingUp,
+  "Finance & Investment Basics": BookOpen,
+  "Mindfulness & Personal Development": Heart,
+  "Freelancing & Online Income": PenTool,
+  "Design & Content Creation": Palette,
 } as const;
 
-export function Categories({ courses }: { courses: Course[] }) {
+export function Categories({ courses, categories: catalogCategories }: { courses: Course[]; categories: Array<{ id: string; name: string }> }) {
   const categories = new Map<string, { count: number; example: string }>();
   for (const course of courses) {
     if (!course.category) continue;
@@ -21,8 +25,6 @@ export function Categories({ courses }: { courses: Course[] }) {
       example: current?.example ?? course.title,
     });
   }
-  if (!categories.size) return null;
-
   return <section className="relative overflow-hidden border-y border-[#E7E8ED] bg-[#F8F7F4] py-16 sm:py-20">
     <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-56 h-96 w-96 rounded-full bg-[#FF6B35]/10 blur-3xl" />
     <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -39,9 +41,10 @@ export function Categories({ courses }: { courses: Course[] }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[...categories].map(([name, { count, example }]) => {
+        {catalogCategories.map(({ id, name }) => {
+          const { count, example } = categories.get(name) || { count: 0, example: "" };
           const Icon = categoryIcons[name as keyof typeof categoryIcons] ?? BookOpen;
-          return <Link key={name} href={`/courses?category=${encodeURIComponent(name)}`}
+          return <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`}
             className="group relative flex min-h-48 flex-col justify-between overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#FFB799] hover:shadow-xl hover:shadow-orange-900/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E85D2A]">
             <span aria-hidden="true" className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#FFF3EC] transition-transform duration-300 group-hover:scale-125" />
             <span className="relative flex items-start justify-between gap-4">
@@ -51,7 +54,7 @@ export function Categories({ courses }: { courses: Course[] }) {
             <span className="relative mt-6 block">
               <span className="block text-lg font-extrabold text-[#172033] group-hover:text-[#D65B28]">{name}</span>
               <span className="mt-1 block text-xs font-semibold text-[#64748B]">{count} {count === 1 ? "course" : "courses"}</span>
-              <span className="mt-3 block truncate border-t border-[#F1F2F4] pt-3 text-xs text-[#64748B]" title={example}>Includes {example}</span>
+              <span className="mt-3 block truncate border-t border-[#F1F2F4] pt-3 text-xs text-[#64748B]" title={example}>{example ? `Includes ${example}` : "New lessons are added after review"}</span>
             </span>
           </Link>;
         })}

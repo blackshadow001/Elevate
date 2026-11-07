@@ -90,8 +90,12 @@ export function addLesson(courseId: string, sectionId: string, user: SessionUser
   if (!["video", "reading", "quiz", "project"].includes(type)) throw new ApiError(422, "INVALID_TYPE", "Unsupported lesson type.");
   const duration = number(body.durationSeconds ?? 0, "Duration", 0, 86_400);
   if (!Number.isInteger(duration)) throw new ApiError(422, "INVALID_DURATION", "Duration must be whole seconds.");
+  if (body.isPreview === true && (type !== "video" || duration < 30 || duration > 60))
+    throw new ApiError(422, "INVALID_PREVIEW", "A free preview must be a separate 30–60 second video lesson.");
   return transaction((db) => {
     if (body.status === "published") blockProgressChangingEdit(courseId);
+    if (body.isPreview === true && db.prepare("SELECT 1 FROM lessons l JOIN course_sections s ON s.id=l.section_id WHERE s.course_id=? AND l.is_preview=1 LIMIT 1").get(courseId))
+      throw new ApiError(409, "PREVIEW_EXISTS", "This course already has a free preview clip.");
     const position = Number(db.prepare("SELECT COALESCE(MAX(position)+1,0) position FROM lessons WHERE section_id=?").get(sectionId)?.position);
     const id = randomUUID();
     db.prepare(`INSERT INTO lessons (id,section_id,title,description,position,type,duration_seconds,is_preview,status)
@@ -104,6 +108,11 @@ export function addLesson(courseId: string, sectionId: string, user: SessionUser
 
 export function editLesson(courseId: string, lessonId: string, user: SessionUser, body: Record<string, unknown>) {
   const lesson = lessonForCourse(courseId, lessonId, user);
+  const nextPreview = body.isPreview === undefined ? Boolean(lesson.is_preview) : body.isPreview === true;
+  const nextDuration = body.durationSeconds === undefined ? Number(lesson.duration_seconds) : Number(body.durationSeconds);
+  const nextType = body.type === undefined ? String(lesson.type) : String(body.type);
+  if (nextPreview && (nextType !== "video" || nextDuration < 30 || nextDuration > 60))
+    throw new ApiError(422, "INVALID_PREVIEW", "A free preview must be a separate 30–60 second video lesson.");
   const updates: string[] = [];
   const values: Array<string | number> = [];
   if (body.title !== undefined) { updates.push("title=?"); values.push(text(body.title, "Lesson title", 1, 200)); }
@@ -128,6 +137,8 @@ export function editLesson(courseId: string, lessonId: string, user: SessionUser
   }
   if (!updates.length) throw new ApiError(422, "NO_CHANGES", "No editable fields were provided.");
   return transaction((db) => {
+    if (nextPreview && db.prepare("SELECT 1 FROM lessons l JOIN course_sections s ON s.id=l.section_id WHERE s.course_id=? AND l.is_preview=1 AND l.id<>? LIMIT 1").get(courseId, lessonId))
+      throw new ApiError(409, "PREVIEW_EXISTS", "This course already has a free preview clip.");
     if ((body.status !== undefined && body.status !== lesson.status) ||
       (body.type !== undefined && body.type !== lesson.type)) blockProgressChangingEdit(courseId);
     db.prepare(`UPDATE lessons SET ${updates.join(",")} WHERE id=?`).run(...values, lessonId);

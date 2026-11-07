@@ -19,7 +19,8 @@ import {
   ArrowRight,
   Sparkles,
   MonitorPlay,
-  Layers3
+  Layers3,
+  X
 } from "lucide-react";
 import { Course } from "@/types";
 import { formatINR } from "@/lib/utils";
@@ -29,14 +30,16 @@ import { EnrollmentModal } from "@/components/courses/EnrollmentModal";
 import { PaidCheckoutModal } from "@/components/courses/PaidCheckoutModal";
 import { CourseThumbnail } from "@/components/courses/CourseThumbnail";
 import { CourseReviews } from "@/components/courses/CourseReviews";
+import { CourseCard } from "@/components/courses/CourseCard";
 import { enrollCourse, useLearningState } from "@/lib/learningState";
 import { useAuth } from "@/context/AuthContext";
 
 interface CourseDetailClientProps {
   course: Course;
+  relatedCourses?: Course[];
 }
 
-export function CourseDetailClient({ course }: CourseDetailClientProps) {
+export function CourseDetailClient({ course, relatedCourses = [] }: CourseDetailClientProps) {
   const router = useRouter();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const { notify } = useNotification();
@@ -47,6 +50,8 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
 
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "curriculum" | "instructor" | "reviews">("overview");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const previewLesson = course.sections.flatMap((section) => section.lessons).find((lesson) => lesson.type === "video" && lesson.isPreview && lesson.videoUrl);
 
   // Accordion state
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -130,7 +135,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
               <nav className="flex items-center gap-2 text-xs text-[#94A3B8]">
                 <Link href="/" className="hover:text-white transition-colors">Home</Link>
                 <span>/</span>
-                <Link href={`/courses?category=${course.category.toLowerCase()}`} className="hover:text-white transition-colors">
+                <Link href={`/courses?category=${encodeURIComponent(course.category)}`} className="hover:text-white transition-colors">
                   {course.category}
                 </Link>
                 <span>/</span>
@@ -397,6 +402,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
             </div>}
             {activeTab === "reviews" && <div role="tabpanel"><CourseReviews courseId={course.id} /></div>}
             <section className="rounded-3xl bg-[#172033] p-7 text-white sm:p-9"><p className="text-xs font-bold uppercase tracking-[0.15em] text-orange-300">Know before you start</p><h2 className="mt-2 text-2xl font-extrabold">Common questions</h2><div className="mt-6 divide-y divide-white/15">{faqs.map((item) => <details key={item.question} className="group py-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold marker:hidden">{item.question}<ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" /></summary><p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#CBD5E1]">{item.answer}</p></details>)}</div></section>
+            {relatedCourses.length > 0 && <section aria-labelledby="related-courses-title"><h2 id="related-courses-title" className="text-2xl font-extrabold text-[#172033]">Continue with related concepts</h2><p className="mt-1 text-sm text-[#64748B]">Published courses in {course.subcategory || course.category}.</p><div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{relatedCourses.map((item) => <CourseCard key={item.id} course={item} />)}</div></section>}
           </div>
 
           {/* Right Column: Sticky Purchase & Preview Card */}
@@ -406,11 +412,11 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
               <button
                 type="button"
                 onClick={() => {
-                  setActiveTab("curriculum");
-                  document.getElementById("course-content")?.scrollIntoView({ behavior: "smooth" });
+                  if (previewLesson) setPreviewOpen(true);
+                  else { setActiveTab("curriculum"); document.getElementById("course-content")?.scrollIntoView({ behavior: "smooth" }); }
                 }}
                 className="relative aspect-video rounded-2xl overflow-hidden bg-black group cursor-pointer w-full"
-                aria-label="View course curriculum"
+                aria-label={previewLesson ? "Play free course preview" : "View course curriculum"}
               >
                 <CourseThumbnail
                   category={course.category}
@@ -424,7 +430,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                   </div>
                 </div>
                 <span className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-xs text-white text-[11px] font-semibold px-2.5 py-1 rounded-md">
-                  View course curriculum
+                  {previewLesson ? "Play free preview" : "View course curriculum"}
                 </span>
               </button>
 
@@ -493,13 +499,19 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#16A34A]" />
-                  <span>{course.price === 0 ? "No payment required" : "Course access begins after verified payment"}</span>
+                  <span>{course.price === 0 ? "No payment required" : "Buy once for ongoing access to this course"}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+      {previewOpen && previewLesson?.videoUrl && <div role="dialog" aria-modal="true" aria-label="Free course preview" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewOpen(false)}>
+        <div className="w-full max-w-3xl" onClick={(event) => event.stopPropagation()}>
+          <div className="mb-3 flex items-center justify-between text-white"><strong>{previewLesson.title}</strong><button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close preview" className="rounded-full p-2 hover:bg-white/20"><X className="h-5 w-5" /></button></div>
+          <video controls autoPlay playsInline src={previewLesson.videoUrl} className="aspect-video w-full rounded-xl bg-black" />
+        </div>
+      </div>}
     </>
   );
 }

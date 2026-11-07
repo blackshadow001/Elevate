@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
@@ -9,9 +9,6 @@ import {
   Menu, 
   X, 
   BookOpen, 
-  Layers, 
-  Compass, 
-  Sparkles, 
   Heart,
   Video,
   Award,
@@ -23,12 +20,20 @@ import {
 import { Logo } from "@/components/ui/Logo";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
+import { CATALOG_CATEGORIES } from "@/lib/catalogTaxonomy";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [catalogCategories, setCatalogCategories] = useState<{ id: string; name: string }[]>(CATALOG_CATEGORIES.map(({ name }) => ({ id: name, name })));
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/categories", { cache: "no-store" }).then((response) => response.ok ? response.json() : null)
+      .then((body) => { if (active && Array.isArray(body?.data)) setCatalogCategories(body.data); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const pathname = usePathname();
   const router = useRouter();
   const { wishlistIds } = useWishlist();
@@ -105,35 +110,11 @@ export function Navbar() {
               </button>
 
               {exploreOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-[#E5E7EB] p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <Link
-                    href="/courses?category=development"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#FFFDF9] hover:text-[#FF6B35] transition-colors text-sm font-medium text-[#172033]"
-                  >
-                    <BookOpen className="w-4 h-4 text-[#FF6B35]" />
-                    <span>Software Development</span>
-                  </Link>
-                  <Link
-                    href="/courses?category=data-science"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#FFFDF9] hover:text-[#FF6B35] transition-colors text-sm font-medium text-[#172033]"
-                  >
-                    <Layers className="w-4 h-4 text-[#10B981]" />
-                    <span>Data Science & Analytics</span>
-                  </Link>
-                  <Link
-                    href="/courses?category=ai-ml"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#FFFDF9] hover:text-[#FF6B35] transition-colors text-sm font-medium text-[#172033]"
-                  >
-                    <Sparkles className="w-4 h-4 text-[#8B5CF6]" />
-                    <span>AI & Machine Learning</span>
-                  </Link>
-                  <Link
-                    href="/career-paths"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#FFFDF9] hover:text-[#FF6B35] transition-colors text-sm font-medium text-[#172033]"
-                  >
-                    <Compass className="w-4 h-4 text-[#3B82F6]" />
-                    <span>All Guided Paths</span>
-                  </Link>
+                <div className="absolute top-full left-0 mt-2 max-h-[70vh] w-72 overflow-y-auto bg-white rounded-xl shadow-xl border border-[#E5E7EB] p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {catalogCategories.map(({ id, name }) => <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`} onClick={() => setExploreOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#FFFDF9] hover:text-[#FF6B35] transition-colors text-sm font-medium text-[#172033]">
+                    <BookOpen className="w-4 h-4 shrink-0 text-[#FF6B35]" /><span>{name}</span>
+                  </Link>)}
                 </div>
               )}
             </div>
@@ -333,10 +314,7 @@ export function Navbar() {
               Explore <ChevronDown className={`w-4 h-4 ${exploreOpen ? "rotate-180" : ""}`} />
             </button>
             {exploreOpen && <div className="pl-4 flex flex-col gap-3 text-sm">
-              <Link href="/courses?category=development" onClick={() => setMobileMenuOpen(false)}>Software Development</Link>
-              <Link href="/courses?category=data-science" onClick={() => setMobileMenuOpen(false)}>Data Science & Analytics</Link>
-              <Link href="/courses?category=ai-ml" onClick={() => setMobileMenuOpen(false)}>AI & Machine Learning</Link>
-              <Link href="/career-paths" onClick={() => setMobileMenuOpen(false)}>All Guided Paths</Link>
+              {catalogCategories.map(({ id, name }) => <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`} onClick={() => { setMobileMenuOpen(false); setExploreOpen(false); }}>{name}</Link>)}
             </div>}
             <Link
               href="/courses"

@@ -5,6 +5,8 @@ import { SessionUser } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { markRevision, pricingForCourse, proposal } from "@/server/courseApproval";
 import { readActivity } from "@/server/lessonActivities";
+import { catalogCategory } from "@/lib/catalogTaxonomy";
+import { requireCatalogCategory } from "@/server/catalogCategories";
 
 type Row = Record<string, unknown>;
 const courseSelect = `SELECT c.id,c.slug,c.title,c.subtitle,c.description,c.category,c.level,c.language,
@@ -21,7 +23,7 @@ export function courseDto(row: Row) {
     AND action IN ('rejected','pricing_rejected','pricing_changes_requested') ORDER BY created_at DESC LIMIT 1`).get(String(row.id));
   return {
     id: String(row.id), slug: String(row.slug), title: String(row.title), subtitle: String(row.subtitle),
-    description: String(row.description), category: String(row.category), level: String(row.level),
+    description: String(row.description), category: catalogCategory(String(row.category)), level: String(row.level),
     language: String(row.language), thumbnail: row.thumbnail ? String(row.thumbnail) : null,
     price: Number(row.price_minor) / 100, currency: String(row.currency),
     status: row.status === "published" ? "published" : String(row.review_status || row.status),
@@ -107,6 +109,7 @@ export function createCourse(user: SessionUser, body: Record<string, unknown>) {
   const slug = text(body.slug, "Slug", 3, 100).toLowerCase();
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new ApiError(422, "INVALID_SLUG", "Slug must use lowercase words separated by hyphens.");
   const price = number(body.price ?? 0, "Price", 0, 1_000_000);
+  const category = requireCatalogCategory(body.category ?? "Technology & Programming");
   if (!Number.isInteger(price * 100)) throw new ApiError(422, "INVALID_PRICE", "Price supports two decimal places.");
   const id = randomUUID();
   const db = getDb();
@@ -115,7 +118,7 @@ export function createCourse(user: SessionUser, body: Record<string, unknown>) {
     (id,title,slug,subtitle,description,category,level,language,thumbnail,instructor_id,price_minor,currency)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(
     id, title, slug, optionalText(body.subtitle, "Subtitle", 500) || "", optionalText(body.description, "Description", 20_000) || "",
-    typeof body.category === "string" ? text(body.category, "Category", 1, 100) : "General",
+    category,
     body.level === "Intermediate" || body.level === "Advanced" ? body.level : "Beginner",
     typeof body.language === "string" ? text(body.language, "Language", 2, 60) : "English",
     typeof body.thumbnail === "string" ? text(body.thumbnail, "Thumbnail", 1, 2000) : null,
@@ -143,6 +146,8 @@ export function updateCourse(id: string, user: SessionUser, body: Record<string,
     if (field === "level") {
       if (!["Beginner", "Intermediate", "Advanced"].includes(String(body.level))) throw new ApiError(422, "INVALID_LEVEL", "Invalid course level.");
       value = String(body.level);
+    } else if (field === "category") {
+      value = requireCatalogCategory(body.category);
     } else if (field === "thumbnail") {
       value = body.thumbnail === null ? null : text(body.thumbnail, "Thumbnail", 1, 2000);
     } else {

@@ -655,8 +655,10 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const courseId = course.body.data.id;
     const section = await call(`/api/instructor/courses/${courseId}/sections`, { method: 'POST', cookie: instructor, body: { title: 'Draft Section' } });
     assert.equal(section.response.status, 201, JSON.stringify(section.body));
+    assert.equal((await call(`/api/instructor/courses/${courseId}/sections/${section.body.data.id}/lessons`, { method: 'POST', cookie: instructor,
+      body: { title: 'Full video cannot be previewed', type: 'video', durationSeconds: 600, isPreview: true } })).response.status, 422);
     const lesson = await call(`/api/instructor/courses/${courseId}/sections/${section.body.data.id}/lessons`, { method: 'POST', cookie: instructor, body: {
-      title: 'Private Preview', type: 'video', durationSeconds: 600, isPreview: true, status: 'published',
+      title: 'Private Preview', type: 'video', durationSeconds: 45, isPreview: true, status: 'published',
     } });
     assert.equal(lesson.response.status, 201, JSON.stringify(lesson.body));
     const assetId = randomBytes(10).toString('hex');
@@ -668,6 +670,21 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       db.prepare('UPDATE lessons SET video_storage_key=? WHERE id=?').run(storageKey, lesson.body.data.id);
     } finally { db.close(); }
     assert.equal((await call(`/api/media/${assetId}/access`, { cookie: learner })).response.status, 403);
+    const publishedPreview = new DatabaseSync(dbPath);
+    try {
+      publishedPreview.prepare("UPDATE courses SET status='published',review_status='approved',price_minor=3900 WHERE id=?").run(courseId);
+      publishedPreview.prepare('UPDATE media_assets SET duration_seconds=45 WHERE id=?').run(assetId);
+    } finally { publishedPreview.close(); }
+    assert.equal((await call(`/api/media/${assetId}/access`)).response.status, 200);
+    const oversizedPreview = new DatabaseSync(dbPath);
+    try {
+      oversizedPreview.prepare('UPDATE media_assets SET duration_seconds=600 WHERE id=?').run(assetId);
+    }
+    finally { oversizedPreview.close(); }
+    assert.equal((await call(`/api/media/${assetId}/access`)).response.status, 401);
+    const restoreDraft = new DatabaseSync(dbPath);
+    try { restoreDraft.prepare("UPDATE courses SET status='draft',review_status='draft' WHERE id=?").run(courseId); }
+    finally { restoreDraft.close(); }
   });
   await t.test('course thumbnails upload privately and persist instead of reverting to the default', async () => {
     const slug = `thumbnail-test-${randomBytes(5).toString('hex')}`;
@@ -907,6 +924,19 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const adminResponse = await call('/api/admin/auth/login', { method: 'POST', body: { email: 'admin@example.com', password } });
     assert.equal(adminResponse.response.status, 200, JSON.stringify(adminResponse.body));
     const admin = adminResponse.response.headers.get('set-cookie').split(';')[0];
+    const startingCategories = await call('/api/categories');
+    assert.equal(startingCategories.response.status, 200);
+    assert.equal(startingCategories.body.data.length, 10);
+    assert.ok(startingCategories.body.data.some((category) => category.name === 'Technology & Programming'));
+    assert.equal((await call('/api/admin/categories', { method: 'POST', cookie: learner,
+      body: { name: 'Education', subcategories: ['Teaching'] } })).response.status, 403);
+    const newCategory = await call('/api/admin/categories', { method: 'POST', cookie: admin,
+      body: { name: 'Education', subcategories: ['Teaching'] } });
+    assert.equal(newCategory.response.status, 200, JSON.stringify(newCategory.body));
+    const renamedCategory = await call(`/api/admin/categories/${newCategory.body.data.id}`, { method: 'PATCH', cookie: admin,
+      body: { name: 'Education & Training', subcategories: ['Teaching', 'Learning Design'] } });
+    assert.equal(renamedCategory.response.status, 200, JSON.stringify(renamedCategory.body));
+    assert.ok((await call('/api/categories')).body.data.some((category) => category.name === 'Education & Training'));
     const initialPlan = await call('/api/personal-plan');
     assert.equal(initialPlan.body.data.monthlyPriceMinor, null);
     assert.equal(initialPlan.body.data.checkoutAvailable, false);

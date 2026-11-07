@@ -45,6 +45,7 @@ function mapCourse(source: ServerCourse): Course {
   return {
     id: source.id, slug: source.slug, title: source.title, subtitle: source.subtitle,
     description: source.description, category: source.category,
+    subcategory: typeof metadata.subcategory === "string" ? metadata.subcategory : "",
     level: (source.level === "Advanced" || source.level === "Intermediate" ? source.level : "Beginner"),
     language: (source.language === "Hindi" || source.language === "Tamil" ? source.language : "English"),
     price: source.price, originalPrice: typeof metadata.originalPrice === "number" ? metadata.originalPrice : source.price,
@@ -58,6 +59,7 @@ function mapCourse(source: ServerCourse): Course {
       id: section.id, title: section.title,
       lessons: section.lessons.map((lesson): Lesson => ({
           id: lesson.id, title: lesson.title,
+          isPreview: lesson.isPreview && lesson.durationSeconds >= 30 && lesson.durationSeconds <= 60,
           duration: lesson.mediaAssetId
             ? formatVideoDuration(lesson.durationSeconds) : duration(lesson.durationSeconds),
           type: lesson.activity?.kind === "resource" ? "resource" : lesson.type === "quiz" || lesson.type === "project" || lesson.type === "reading" ? lesson.type : "video",
@@ -71,7 +73,12 @@ function mapCourse(source: ServerCourse): Course {
 export const courseService = {
   getAllCourses: async (): Promise<Course[]> => {
     await connection();
-    const ids = listCourses(new URLSearchParams({ pageSize: "50", sort: "newest" })).items.map((item) => item.id);
+    const ids: string[] = [];
+    for (let page = 1; ; page++) {
+      const batch = listCourses(new URLSearchParams({ pageSize: "50", page: String(page), sort: "newest" }));
+      ids.push(...batch.items.map((item) => item.id));
+      if (ids.length >= batch.total || batch.items.length === 0) break;
+    }
     return ids.map((id) => mapCourse(getCourse(id)));
   },
   getCourseBySlug: async (slug: string): Promise<Course | undefined> => {
