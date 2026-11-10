@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Course } from "@/types";
 import { MICRO_COURSE_TOPICS } from "@/lib/microCourseTopics";
 import { CatalogArtwork } from "@/components/courses/CatalogArtwork";
@@ -35,12 +35,11 @@ export function Categories({ courses, categories: catalogCategories }: { courses
             className="group relative flex min-h-64 flex-col overflow-hidden rounded-2xl border border-[#E1E6ED] bg-white shadow-[0_2px_10px_rgba(23,32,51,0.03)] transition-[transform,box-shadow,border-color] duration-700 ease-out hover:-translate-y-0.5 hover:border-[#C6D0DF] hover:shadow-[0_16px_30px_rgba(23,32,51,0.10)] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D65B28]">
             <CatalogArtwork categoryId={id} className="h-28 w-full" />
             <span className="relative flex flex-1 flex-col p-5">
-              <span className="absolute right-5 top-5"><ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[#9BA8BA] transition-transform duration-700 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none" /></span>
               <span className="block text-[15px] font-extrabold leading-snug text-[#172033]">{name}</span>
               <span className="mt-1.5 block min-h-9 text-xs leading-relaxed text-[#69778C]">{subcategories.slice(0, 2).join(" · ") || "Explore courses in this subject"}</span>
               <span className="relative mt-auto flex items-center justify-between border-t border-[#EDF0F4] pt-3 text-xs font-semibold text-[#56657B]">
                 <span>{count} live · {planned} planned</span>
-                <span className="inline-flex items-center gap-1 text-[#D65B28] opacity-0 transition-opacity duration-700 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none">Explore <ArrowRight aria-hidden="true" className="h-3 w-3" /></span>
+                <span className="text-[#D65B28] opacity-0 transition-opacity duration-700 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none">Explore</span>
               </span>
             </span>
           </Link>;
