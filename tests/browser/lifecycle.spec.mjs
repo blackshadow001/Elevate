@@ -638,6 +638,19 @@ test('marketplace search, category filter, empty state and sorting change cards'
   expect(lowFirst).not.toBe(highFirst);
 });
 
+test('planned micro-courses show suggested prices without checkout', async ({ page }) => {
+  await page.goto(`${base}/courses`);
+  const upcoming = page.getByRole('region', { name: 'Upcoming micro-courses' });
+  await expect(upcoming).toContainText('100 topics');
+  await expect(upcoming).toContainText('ChatGPT for Beginners');
+  await expect(upcoming).toContainText('₹29');
+  await expect(upcoming.getByRole('button', { name: /buy|enroll|checkout/i })).toHaveCount(0);
+  await page.getByRole('textbox', { name: 'Search courses, skills, or instructors' }).fill('What is MCP?');
+  await expect(upcoming).toContainText('What is MCP?');
+  await expect(upcoming).toContainText('₹39');
+  await expect(upcoming).toContainText('1 topic');
+});
+
 test('learner logout invalidates access without uncaught page errors', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));

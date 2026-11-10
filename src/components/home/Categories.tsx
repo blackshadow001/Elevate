@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, BookOpen, BrainCircuit, BriefcaseBusiness, Code2, Heart, Megaphone, Palette, PenTool, TrendingUp, Workflow } from "lucide-react";
 import { Course } from "@/types";
+import { MICRO_COURSE_TOPICS } from "@/lib/microCourseTopics";
 
 const categoryIcons = {
   "AI & Generative AI": BrainCircuit,
@@ -54,6 +55,7 @@ export function Categories({ courses, categories: catalogCategories }: { courses
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {catalogCategories.map(({ id, name, subcategories }, index) => {
           const count = courseCounts.get(name) ?? 0;
+          const planned = MICRO_COURSE_TOPICS.filter((topic) => topic.category === name || id === topic.category.toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")).length;
           const Icon = categoryIcons[name as keyof typeof categoryIcons] ?? BookOpen;
           const style = categoryStyles[index % categoryStyles.length];
           return <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`}
@@ -69,7 +71,7 @@ export function Categories({ courses, categories: catalogCategories }: { courses
               <span className="mt-1.5 block min-h-9 text-xs leading-relaxed text-[#69778C]">{subcategories.slice(0, 2).join(" · ") || "Explore courses in this subject"}</span>
             </span>
             <span className="relative mt-4 flex items-center justify-between border-t border-[#EDF0F4] pt-3 text-xs font-semibold text-[#56657B]">
-              <span>{count} {count === 1 ? "course" : "courses"}</span>
+              <span>{count} live · {planned} planned</span>
               <span className="inline-flex items-center gap-1 text-[#D65B28] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Explore <ArrowRight aria-hidden="true" className="h-3 w-3" /></span>
             </span>
           </Link>;
