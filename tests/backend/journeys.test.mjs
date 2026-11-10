@@ -598,7 +598,8 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       language: 'English', price: 0, image: '/courses/course-1.jpg', whatYouWillLearn: ['Apply the lesson'],
       requirements: [], status: 'Draft', sections: [{ id: 'local-section', title: 'Activities', lessons: [
         { id: 'local-quiz', title: 'Quiz', type: 'quiz', duration: '1 mins', activity: { kind: 'quiz', passingPercent: 100,
-          questions: [{ prompt: 'Which answer is correct?', options: ['Correct', 'Incorrect'], correctIndex: 0 }] } },
+          questions: [{ prompt: 'Which answer is correct?', options: ['Correct', 'Incorrect'], correctIndex: 0 },
+            { type: 'fill_blank', prompt: 'Complete the phrase: Model Context ____', answer: 'Protocol' }] } },
         { id: 'local-assignment', title: 'Assignment', type: 'project', duration: '1 mins',
           activity: { kind: 'assignment', instructions: 'Explain your answer in a short paragraph.' } },
         { id: 'local-resource', title: 'Resource', type: 'reading', duration: '1 mins',
@@ -610,6 +611,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const courseId = saved.body.data.id;
     const [quizId, assignmentId, resourceId] = saved.body.data.sections[0].lessons.map((lesson) => lesson.id);
     assert.equal(saved.body.data.sections[0].lessons[0].activity.questions[0].correctIndex, 0);
+    assert.equal(saved.body.data.sections[0].lessons[0].activity.questions[1].answer, 'Protocol');
     const submitted = await call('/api/instructor/courses/save', { method: 'POST', cookie: instructor,
       body: { ...draft, id: courseId, sections: [{ ...draft.sections[0], id: saved.body.data.sections[0].id,
         lessons: draft.sections[0].lessons.map((lesson, index) => ({ ...lesson, id: [quizId, assignmentId, resourceId][index] })) }],
@@ -628,13 +630,18 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const publicCourse = await call(`/api/courses/${courseId}`);
     assert.equal(publicCourse.response.status, 200);
     assert.equal(JSON.stringify(publicCourse.body).includes('correctIndex'), false);
+    assert.equal(JSON.stringify(publicCourse.body).includes('Protocol'), false);
     assert.equal((await call(`/api/courses/${courseId}/enroll`, { method: 'POST', cookie: learner })).response.status, 200);
     assert.equal((await call(`/api/courses/${courseId}/lessons/${quizId}/progress`, { method: 'PUT', cookie: learner,
       body: { completed: true } })).response.status, 409);
-    const wrong = await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: learner, body: { response: [1] } });
+    const wrong = await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: learner, body: { response: [1, 'Wrong'] } });
     assert.equal(wrong.response.status, 200, JSON.stringify(wrong.body));
     assert.equal(wrong.body.data.passed, false);
-    const correct = await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: learner, body: { response: [0] } });
+    const wrongBlank = await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: learner,
+      body: { response: [0, 'Wrong'] } });
+    assert.equal(wrongBlank.body.data.scorePercent, 50);
+    assert.equal(wrongBlank.body.data.passed, false);
+    const correct = await call(`/api/courses/${courseId}/lessons/${quizId}/submit`, { method: 'POST', cookie: learner, body: { response: [0, '  pRoToCoL  '] } });
     assert.equal(correct.response.status, 200, JSON.stringify(correct.body));
     assert.equal(correct.body.data.passed, true);
     assert.equal((await call(`/api/courses/${courseId}/lessons/${assignmentId}/progress`, { method: 'PUT', cookie: learner,
@@ -760,12 +767,15 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
       assert.equal((await call(`/api/courses/course-1/lessons/${lessonId}/complete`, { method: 'POST', cookie: learner })).response.status, 409);
       await watch(0, 'seek');
       await watch(0, 'playing');
+      db.prepare('UPDATE video_watch_evidence SET last_reported_at_ms=last_reported_at_ms-120000 WHERE user_id=? AND lesson_id=?')
+        .run('usr_seed_learner_2', lessonId);
       for (const second of [1, 2, 3]) {
         await new Promise(resolveWait => setTimeout(resolveWait, 1100));
-        const update = await watch(second, second === 3 ? 'ended' : 'playing');
+        const update = await watch(second, second === 3 ? 'paused' : 'playing');
         assert.equal(update.response.status, 200, JSON.stringify(update.body));
         if (second === 3) assert.equal(update.body.data.canComplete, true);
       }
+      assert.equal((await watch(3, 'ended')).body.data.canComplete, true);
       const verified = await call(`/api/courses/course-1/lessons/${lessonId}/complete`, { method: 'POST', cookie: learner });
       assert.equal(verified.response.status, 200, JSON.stringify(verified.body));
       assert.equal(verified.body.data.completed, true);

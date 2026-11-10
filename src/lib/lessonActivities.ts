@@ -1,4 +1,7 @@
-export type QuizQuestion = { prompt: string; options: string[]; correctIndex?: number };
+export type MultipleChoiceQuestion = { type?: "multiple_choice"; prompt: string; options: string[]; correctIndex?: number };
+export type QuizQuestion =
+  | MultipleChoiceQuestion
+  | { type: "fill_blank"; prompt: string; answer: string };
 export type QuizActivity = { kind: "quiz"; questions: QuizQuestion[]; passingPercent: number };
 export type AssignmentActivity = { kind: "assignment"; instructions: string };
 export type ResourceActivity = { kind: "resource"; label: string; url: string; description: string };

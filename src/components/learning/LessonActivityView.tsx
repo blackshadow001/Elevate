@@ -7,7 +7,7 @@ export function LessonActivityView({ activity, courseId, lessonId, title, onComp
   activity: QuizActivity | AssignmentActivity; courseId: string; lessonId: string; title: string;
   onCompleted: () => Promise<boolean>;
 }) {
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<(number | string)[]>([]);
   const [submission, setSubmission] = useState("");
   const [result, setResult] = useState<{ passed: boolean; scorePercent?: number; passingPercent?: number } | null>(null);
   const [error, setError] = useState("");
@@ -15,7 +15,9 @@ export function LessonActivityView({ activity, courseId, lessonId, title, onComp
 
   async function submit() {
     setError("");
-    if (activity.kind === "quiz" && !activity.questions.every((_, index) => Number.isInteger(answers[index]))) {
+    if (activity.kind === "quiz" && !activity.questions.every((question, index) => question.type === "fill_blank"
+      ? typeof answers[index] === "string" && Boolean((answers[index] as string).trim())
+      : Number.isInteger(answers[index]))) {
       setError("Answer every question before submitting."); return;
     }
     if (activity.kind === "assignment" && submission.trim().length < 10) {
@@ -43,7 +45,7 @@ export function LessonActivityView({ activity, courseId, lessonId, title, onComp
         <p className="text-sm text-slate-300">Answer every question. A score of {activity.passingPercent}% is needed to complete this lesson.</p>
         {activity.questions.map((question, questionIndex) => <fieldset key={questionIndex} className="space-y-2 rounded-xl border border-white/15 p-4">
           <legend className="px-1 text-sm font-semibold">{questionIndex + 1}. {question.prompt}</legend>
-          {question.options.map((option, optionIndex) => <label key={optionIndex} className="flex cursor-pointer items-center gap-3 rounded-lg bg-white/5 p-2.5 text-sm hover:bg-white/10">
+          {question.type === "fill_blank" ? <input type="text" aria-label={`Answer to question ${questionIndex + 1}`} value={typeof answers[questionIndex] === "string" ? answers[questionIndex] : ""} onChange={(event) => setAnswers((previous) => { const next = [...previous]; next[questionIndex] = event.target.value; return next; })} maxLength={300} autoComplete="off" placeholder="Type your answer" className="w-full rounded-lg border border-white/20 bg-white p-3 text-sm text-[#172033]" /> : question.options.map((option, optionIndex) => <label key={optionIndex} className="flex cursor-pointer items-center gap-3 rounded-lg bg-white/5 p-2.5 text-sm hover:bg-white/10">
             <input type="radio" name={`quiz-${lessonId}-${questionIndex}`} checked={answers[questionIndex] === optionIndex} onChange={() => setAnswers((previous) => { const next = [...previous]; next[questionIndex] = optionIndex; return next; })} className="accent-[#FF6B35]" />
             {option}
           </label>)}

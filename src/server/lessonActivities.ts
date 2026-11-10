@@ -22,6 +22,14 @@ export function parseActivity(value: unknown, type: string, complete: boolean): 
       const item = question as Record<string, unknown>;
       const prompt = typeof item.prompt === "string" ? item.prompt.trim() : "";
       if (prompt.length > 500 || (complete && !prompt)) throw new ApiError(422, "INVALID_QUIZ", "Enter a question of up to 500 characters.");
+      if (item.type === "fill_blank") {
+        const answer = typeof item.answer === "string" ? item.answer.trim() : "";
+        if (answer.length > 300 || (complete && !answer))
+          throw new ApiError(422, "INVALID_QUIZ", "Enter a fill-in-the-blank answer of up to 300 characters.");
+        return { type: "fill_blank" as const, prompt, answer };
+      }
+      if (item.type !== undefined && item.type !== "multiple_choice")
+        throw new ApiError(422, "INVALID_QUIZ", "Unsupported question type.");
       if (!Array.isArray(item.options) || item.options.length < 2 || item.options.length > 6 ||
         item.options.some((option) => typeof option !== "string" || option.trim().length > 300 || (complete && !option.trim())))
         throw new ApiError(422, "INVALID_QUIZ", "Each question needs 2–6 answer choices.");
@@ -63,7 +71,9 @@ export function readActivity(raw: unknown): LessonActivity | null {
 
 export function publicActivity(activity: LessonActivity | null): LessonActivity | null {
   if (activity?.kind !== "quiz") return activity;
-  return { ...activity, questions: activity.questions.map(({ prompt, options }) => ({ prompt, options })) };
+  return { ...activity, questions: activity.questions.map((question) => question.type === "fill_blank"
+    ? { type: "fill_blank" as const, prompt: question.prompt, answer: "" }
+    : { prompt: question.prompt, options: question.options }) };
 }
 
 export function submitActivity(courseId: string, lessonId: string, user: SessionUser, response: unknown) {
@@ -76,12 +86,22 @@ export function submitActivity(courseId: string, lessonId: string, user: Session
     if (!lesson) throw new ApiError(404, "LESSON_NOT_FOUND", "This activity is unavailable.");
     const activity = readActivity(lesson.activity_json);
     if (activity?.kind === "quiz") {
-      if (!Array.isArray(response) || response.length !== activity.questions.length || response.some((answer) => !Number.isInteger(answer)))
+      if (!Array.isArray(response) || response.length !== activity.questions.length)
         throw new ApiError(422, "INVALID_ANSWERS", "Answer every quiz question.");
-      const answers = response as number[];
-      if (answers.some((answer, index) => answer < 0 || answer >= activity.questions[index].options.length))
-        throw new ApiError(422, "INVALID_ANSWERS", "An answer is outside the available choices.");
-      const right = answers.filter((answer, index) => answer === activity.questions[index].correctIndex).length;
+      const answers = response as (number | string)[];
+      if (answers.some((answer, index) => {
+        const question = activity.questions[index];
+        return question.type === "fill_blank"
+          ? typeof answer !== "string" || !answer.trim() || answer.length > 300
+          : !Number.isInteger(answer) || (answer as number) < 0 || (answer as number) >= question.options.length;
+      })) throw new ApiError(422, "INVALID_ANSWERS", "Answer every question using the required format.");
+      const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+      const right = answers.filter((answer, index) => {
+        const question = activity.questions[index];
+        return question.type === "fill_blank"
+          ? normalize(answer as string) === normalize(question.answer)
+          : answer === question.correctIndex;
+      }).length;
       const scorePercent = Math.round(right / activity.questions.length * 100);
       const passed = scorePercent >= activity.passingPercent;
       db.prepare("INSERT INTO lesson_activity_submissions(id,user_id,lesson_id,response_json,score_percent,passed) VALUES(?,?,?,?,?,?)")

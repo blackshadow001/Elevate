@@ -13,7 +13,6 @@ type WatchRow = {
 };
 
 export const WATCH_COMPLETION_THRESHOLD = 0.9;
-const MAX_GAP_MS = 60_000;
 
 function segmentsFrom(raw: string): Segment[] {
   const parsed: unknown = JSON.parse(raw);
@@ -81,12 +80,12 @@ export function recordVideoWatch(courseId: string, lessonId: string, user: Sessi
     const elapsedMs = sameMedia ? now - Number(previous!.last_reported_at_ms) : 0;
     const advance = position - (sameMedia ? Number(previous!.last_position_seconds) : position);
     const canCredit = sameMedia && Boolean(previous!.last_playing) && state !== "seek" &&
-      elapsedMs > 0 && elapsedMs <= MAX_GAP_MS && advance > 0 &&
+      elapsedMs > 0 && advance > 0 &&
       advance <= (elapsedMs / 1000) * rate + 0.5;
     if (canCredit) segments.push([Math.max(0, Number(previous!.last_position_seconds)), Math.min(position, duration)]);
     const merged = mergeSegments(segments);
     const reachedEnd = Boolean(sameMedia && previous!.reached_end) ||
-      state === "ended" && position >= reportedDuration - 1 &&
+      (state === "ended" || state === "paused") && position >= reportedDuration - 1 &&
       coveredSeconds(merged) >= duration * 0.85;
     const playing = state === "playing";
     db.prepare(`INSERT INTO video_watch_evidence

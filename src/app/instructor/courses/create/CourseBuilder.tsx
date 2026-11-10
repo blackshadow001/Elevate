@@ -393,7 +393,8 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Text" && !lesson.content?.trim()))) missing.push("reading lesson content");
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Quiz" &&
       (lesson.activity?.kind !== "quiz" || !lesson.activity.questions.length || lesson.activity.questions.some((question) =>
-        !question.prompt.trim() || question.options.some((option) => !option.trim()) || question.correctIndex === undefined))))) missing.push("complete quiz questions and answers");
+        !question.prompt.trim() || (question.type === "fill_blank" ? !question.answer.trim()
+          : question.options.some((option) => !option.trim()) || question.correctIndex === undefined)))))) missing.push("complete quiz questions and answers");
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Assignment" &&
       (lesson.activity?.kind !== "assignment" || !lesson.activity.instructions.trim())))) missing.push("assignment instructions");
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Resource" &&

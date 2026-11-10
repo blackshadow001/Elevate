@@ -216,22 +216,22 @@ export function VideoPlayer({
     }
   };
 
-  const handleEnded = () => {
-    setIsPlaying(false);
-    setIsEnded(true);
+  const saveEndedProgress = async () => {
     setCompletionState("saving");
-    setShowControls(true);
-    if (allowSeeking || !onWatchEvent) {
-      void Promise.resolve(onLessonEnded?.()).then(() => setCompletionState("saved"), () => setCompletionState("error"));
-      return;
-    }
-    void queueWatch("ended").then(async (result) => {
-      if (!result?.canComplete) {
+    try {
+      if (!allowSeeking && onWatchEvent && !(await queueWatch("ended"))?.canComplete) {
         setCompletionState("error");
         return;
       }
       setCompletionState(await onLessonEnded?.() === false ? "error" : "saved");
-    }).catch(() => setCompletionState("error"));
+    } catch { setCompletionState("error"); }
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setIsEnded(true);
+    setShowControls(true);
+    void saveEndedProgress();
   };
 
   useEffect(() => {
@@ -435,6 +435,10 @@ export function VideoPlayer({
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
+            {completionState === "error" && !allowSeeking && <button type="button" onClick={() => void saveEndedProgress()}
+              className="px-4 py-2.5 rounded-xl bg-[#FF6B35] text-white text-xs font-semibold hover:bg-[#E85D2A]">
+              Retry saving progress
+            </button>}
             <button
               onClick={() => {
                 if (videoRef.current) {
