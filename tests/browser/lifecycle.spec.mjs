@@ -651,6 +651,20 @@ test('planned micro-courses show suggested prices without checkout', async ({ pa
   await expect(upcoming).toContainText('1 topic');
 });
 
+test('homepage stats and roadmap steps use current catalog data', async ({ page }) => {
+  await page.goto(base);
+  const stats = page.getByRole('region', { name: 'Elevate at a glance' });
+  await expect(stats).toContainText('Published courses');
+  await expect(stats).toContainText('Guided roadmaps');
+  await expect(stats).toContainText('Upcoming Tamil topics');
+  await expect(page.getByRole('heading', { name: 'Follow a learning roadmap' })).toBeVisible();
+  await page.goto(`${base}/career-paths/ai-foundations`);
+  await expect(page.getByRole('heading', { name: 'AI Foundations' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your learning steps' })).toBeVisible();
+  await expect(page.getByText('Coming soon · suggested ₹39').first()).toBeVisible();
+  await expect(page.getByText('Courses in Demo')).toHaveCount(0);
+});
+
 test('learner logout invalidates access without uncaught page errors', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
