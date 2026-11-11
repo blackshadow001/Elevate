@@ -292,6 +292,11 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const number = certificates.body.data[0].certificateNumber;
     assert.equal((await call(`/api/certificates/verify/${number}`)).body.data.valid, true);
     assert.equal((await call('/api/certificates/verify/UNKNOWN')).body.data.valid, false);
+    const downloadPath = `/api/certificates/${earnedCertificateId}/download`;
+    assert.equal((await call(downloadPath)).response.status, 401);
+    const unavailableDownload = await call(downloadPath, { cookie: learner });
+    assert.equal(unavailableDownload.response.status, 503);
+    assert.equal(unavailableDownload.body.error.code, 'CERTIFICATE_SIGNING_UNAVAILABLE');
   });
 
   await t.test('course ratings update the published average without duplicating a learner review', async () => {
@@ -326,6 +331,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal(new Set(finishes.map((r) => r.body.data.certificateId)).size, 1);
     assert.equal((await call('/api/me/certificates', { cookie: otherLearner })).body.data.length, 1);
     assert.equal((await call(`/api/certificates/${earnedCertificateId}`, { cookie: otherLearner })).response.status, 403);
+    assert.equal((await call(`/api/certificates/${earnedCertificateId}/download`, { cookie: otherLearner })).response.status, 403);
     const wishlist = await call('/api/me/wishlist', { method: 'POST', cookie: learner, body: { courseId: 'course-free-foundations', userId: 'usr_001' } });
     assert.equal(wishlist.response.status, 201);
     assert.equal((await call('/api/me/wishlist', { cookie: otherLearner })).body.data.some((c) => c.id === 'course-free-foundations'), false);
@@ -1024,6 +1030,7 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     assert.equal((await call(`/api/admin/certificates/${certificateId}`, { method: 'PATCH', cookie: admin,
       body: { status: 'revoked' } })).response.status, 200);
     assert.equal((await call(`/api/certificates/verify/${certificates.body.data.items[0].certificate_number}`)).body.data.valid, false);
+    assert.equal((await call(`/api/certificates/${certificateId}/download`, { cookie: learner })).response.status, 403);
     assert.equal((await call(`/api/admin/certificates/${certificateId}`, { method: 'PATCH', cookie: admin,
       body: { status: 'valid' } })).response.status, 200);
     assert.equal((await call(`/api/certificates/verify/${certificates.body.data.items[0].certificate_number}`)).body.data.valid, true);

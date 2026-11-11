@@ -42,7 +42,7 @@ export function CertificateDocument({ certificate }: CertificateDocumentProps) {
 
           <div className="space-y-0.5">
             <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.28em] text-[#FF6B35]">
-              {brand.name} Demo Achievement
+              {brand.name} Achievement
             </p>
             <h1 className="text-2xl sm:text-4xl font-serif font-bold text-[#172033] tracking-tight">
               Certificate of Completion
@@ -105,7 +105,7 @@ export function CertificateDocument({ certificate }: CertificateDocumentProps) {
                 <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
               <span className="text-[9px] font-bold tracking-widest uppercase text-[#172033] mt-1.5">
-                DEMO RECORD
+                ISSUED RECORD
               </span>
             </div>
 
@@ -114,8 +114,8 @@ export function CertificateDocument({ certificate }: CertificateDocumentProps) {
               <div className="font-serif italic text-lg sm:text-xl text-[#172033] border-b border-[#CBD5E1] pb-1">
                 {brand.name}
               </div>
-              <div className="font-bold text-[#172033] text-xs">{brand.name} Demo</div>
-              <div className="text-[10px] text-[#64748B]">Prototype completion record</div>
+              <div className="font-bold text-[#172033] text-xs">{brand.name}</div>
+              <div className="text-[10px] text-[#64748B]">Issued completion record</div>
             </div>
           </div>
 

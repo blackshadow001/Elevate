@@ -25,6 +25,8 @@
 # misc
 .DS_Store
 *.pem
+*.p12
+*.pfx
 client_secret_*.json
 /aws/backups/
 

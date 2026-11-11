@@ -9,7 +9,6 @@ import { CertificateDocument } from "@/components/certificates/CertificateDocume
 import { Download, ArrowLeft, Share2, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { toPng } from "html-to-image";
-import jsPDF from "jspdf";
 import { useLearningState } from "@/lib/learningState";
 
 interface CertificateDetailClientProps {
@@ -62,7 +61,7 @@ function CertificateDetailBody({ certificate }: { certificate: Certificate }) {
       notify({
         type: "success",
         title: "Certificate Saved",
-        message: "High-resolution PNG downloaded successfully.",
+        message: "Unsigned preview image downloaded successfully.",
       });
     } catch (err) {
       console.error("PNG generation failed:", err);
@@ -76,42 +75,33 @@ function CertificateDetailBody({ certificate }: { certificate: Certificate }) {
     }
   };
 
-  // 2. Direct PDF Download (no print dialog)
   const handleDownloadPdf = async () => {
-    const el = document.getElementById("certificate-print-area");
-    if (!el) return;
-
     try {
       setDownloadingPdf(true);
-      const dataUrl = await toPng(el, {
-        quality: 1,
-        pixelRatio: 2,
-        cacheBust: true,
-      });
-
-      const width = el.offsetWidth;
-      const height = el.offsetHeight;
-
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const scale = Math.min(pageWidth / width, pageHeight / height);
-      const imageWidth = width * scale;
-      const imageHeight = height * scale;
-      pdf.addImage(dataUrl, "PNG", (pageWidth - imageWidth) / 2, (pageHeight - imageHeight) / 2, imageWidth, imageHeight);
-      pdf.save(`Certificate-${certificate.certificateId}.pdf`);
+      const response = await fetch(`/api/certificates/${encodeURIComponent(certificate.id)}/download`, { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error?.message || "Could not download the signed certificate.");
+      }
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `Certificate-${certificate.certificateId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 
       notify({
         type: "success",
         title: "PDF Saved",
-        message: "Demo certificate PDF downloaded successfully.",
+        message: "Digitally signed certificate downloaded successfully.",
       });
     } catch (err) {
-      console.error("PDF generation failed:", err);
       notify({
         type: "error",
         title: "Download Failed",
-        message: "Could not generate PDF. Please try again.",
+        message: err instanceof Error ? err.message : "Could not download the signed certificate. Please try again.",
       });
     } finally {
       setDownloadingPdf(false);
@@ -172,7 +162,7 @@ function CertificateDetailBody({ certificate }: { certificate: Certificate }) {
                 ) : (
                   <ImageIcon className="w-3.5 h-3.5 text-[#FF6B35]" />
                 )}
-                <span>{downloadingPng ? "Generating PNG..." : "Download PNG"}</span>
+                <span>{downloadingPng ? "Generating PNG..." : "Download preview PNG"}</span>
               </button>
 
               {/* Download as PDF */}
@@ -187,7 +177,7 @@ function CertificateDetailBody({ certificate }: { certificate: Certificate }) {
                 ) : (
                   <Download className="w-3.5 h-3.5" />
                 )}
-                <span>{downloadingPdf ? "Generating PDF..." : "Download PDF"}</span>
+                <span>{downloadingPdf ? "Signing PDF..." : "Download signed PDF"}</span>
               </button>
             </div>
           </div>
