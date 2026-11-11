@@ -28,7 +28,7 @@ export function Categories({ courses, categories: catalogCategories }: { courses
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {catalogCategories.map(({ id, name, subcategories }) => {
+        {catalogCategories.slice(0, 4).map(({ id, name, subcategories }) => {
           const count = courseCounts.get(name) ?? 0;
           const planned = MICRO_COURSE_TOPICS.filter((topic) => topic.category === name || id === topic.category.toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")).length;
           return <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`}

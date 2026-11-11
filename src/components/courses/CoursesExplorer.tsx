@@ -207,26 +207,31 @@ function CoursesExplorerInner({ initialCourses, initialCategories, initialCatego
 
       </div>
 
-      <section aria-label="Explore categories" className="mb-10 rounded-3xl bg-[#172033] p-5 text-white sm:p-7">
+      <section aria-label="Explore categories" className="mb-10 rounded-3xl border border-[#E5E7EB] bg-[#F7F8FA] p-5 sm:p-7">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
-          <div><p className="text-xs font-bold uppercase tracking-widest text-[#FFB899]">Explore categories</p><h2 className="mt-1 text-2xl font-extrabold">Find a subject to learn</h2></div>
-          <span className="text-xs text-slate-300">{allCourses.length} published · {MICRO_COURSE_TOPICS.length} planned</span>
+          <div><p className="text-xs font-bold uppercase tracking-widest text-[#D65B28]">Explore categories</p><h2 className="mt-1 text-2xl font-extrabold text-[#172033]">Browse every subject</h2><p className="mt-1 text-sm text-[#64748B]">See published courses and upcoming Tamil lessons in each category.</p></div>
+          <span className="text-xs font-semibold text-[#64748B]">{allCourses.length} published · {MICRO_COURSE_TOPICS.length} planned</span>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {initialCategories.map(({ id, name }) => {
             const count = allCourses.filter((course) => course.category === name).length;
-            const planned = MICRO_COURSE_TOPICS.filter((topic) => topic.category === name || id === categoryKey(topic.category)).length;
+            const plannedTopics = MICRO_COURSE_TOPICS.filter((topic) => topic.category === name || id === categoryKey(topic.category));
             const active = selectedCategories.includes(name);
             return <button key={id} type="button" onClick={() => { setSelectedCategories(active ? [] : [name]); setSelectedSubcategory(""); }}
-              aria-pressed={active} className={`rounded-xl border px-4 py-3 text-left transition-colors ${active ? "border-[#FF6B35] bg-[#FF6B35] text-white" : "border-white/15 bg-white/5 hover:border-[#FFB899] hover:bg-white/10"}`}>
-              <span className="block text-sm font-bold">{name}</span><span className="mt-1 block text-xs text-white/70">{count} live · {planned} planned</span>
+              aria-pressed={active} className={`group flex min-h-56 flex-col overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition-[transform,box-shadow,border-color] duration-700 ease-out hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(23,32,51,0.10)] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D65B28] ${active ? "border-[#FF6B35] ring-2 ring-[#FF6B35]/20" : "border-[#E1E6ED] hover:border-[#C6D0DF]"}`}>
+              <CatalogArtwork categoryId={id} className="h-24 w-full" />
+              <span className="flex flex-1 flex-col p-4">
+                <span className="text-sm font-extrabold leading-snug text-[#172033]">{name}</span>
+                <span className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#69778C]">{plannedTopics.slice(0, 2).map((topic) => topic.title).join(" · ") || "Explore courses in this subject"}</span>
+                <span className="mt-auto border-t border-[#EDF0F4] pt-3 text-xs font-semibold text-[#56657B]">{count} live · {plannedTopics.length} planned</span>
+              </span>
             </button>;
           })}
         </div>
-        {selectedCategories.length === 1 && <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/15 pt-4">
-          <span className="mr-1 text-xs font-bold text-slate-300">Explore topics</span>
+        {selectedCategories.length === 1 && <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[#E5E7EB] pt-4">
+          <span className="mr-1 text-xs font-bold text-[#475569]">Explore topics</span>
           {(initialCategories.find((item) => item.name === selectedCategories[0])?.subcategories || []).map((name) => <button key={name} type="button" onClick={() => setSelectedSubcategory(selectedSubcategory === name ? "" : name)}
-            aria-pressed={selectedSubcategory === name} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${selectedSubcategory === name ? "bg-white text-[#172033]" : "border border-white/20 text-white hover:bg-white/10"}`}>{name}</button>)}
+            aria-pressed={selectedSubcategory === name} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${selectedSubcategory === name ? "bg-[#172033] text-white" : "border border-[#D4DAE3] bg-white text-[#172033] hover:border-[#FF6B35]"}`}>{name}</button>)}
         </div>}
       </section>
 

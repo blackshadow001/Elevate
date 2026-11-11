@@ -120,7 +120,6 @@ export function adminSetPricing(courseId: string, admin: SessionUser, body: Reco
   return transaction((db) => {
     const course = db.prepare("SELECT status,price_minor FROM courses WHERE id=?").get(courseId);
     if (!course) throw new ApiError(404, "COURSE_NOT_FOUND", "Course not found.");
-    if (course.status === "published") throw new ApiError(409, "UNPUBLISH_FIRST", "Unpublish before changing an official price.");
     const base = whole(body.basePriceMinor, "Base price");
     const min = whole(body.minMarginBps, "Minimum margin", 10_000);
     const max = whole(body.maxMarginBps, "Maximum margin", 10_000);
@@ -129,6 +128,25 @@ export function adminSetPricing(courseId: string, admin: SessionUser, body: Reco
     if (base === 0 && (min !== 0 || max !== 0)) throw new ApiError(422, "INVALID_FREE_POLICY", "Free courses must have zero margin.");
     if (cap !== null && cap < finalPriceMinor(base, min)) throw new ApiError(422, "PRICE_CAP", "Price cap is below the minimum permitted final price.");
     const before = pricingForCourse(courseId);
+    if (course.status === "published") {
+      const margin = whole(body.approvedMarginBps, "Approved margin", 10_000);
+      if (margin < min || margin > max) throw new ApiError(422, "MARGIN_OUT_OF_RANGE", "Approved margin is outside the policy range.");
+      const final = finalPriceMinor(base, margin);
+      if (cap !== null && final > cap) throw new ApiError(422, "PRICE_CAP", "Final price exceeds the cap.");
+      if (!before) throw new ApiError(409, "POLICY_REQUIRED", "Published course pricing is missing. Contact support.");
+      if (before.basePriceMinor === base && before.minMarginBps === min && before.maxMarginBps === max &&
+        before.maxFinalMinor === cap && before.approvedMarginBps === margin && Number(course.price_minor) === final)
+        return before;
+      const now = new Date().toISOString();
+      db.prepare(`UPDATE course_pricing SET base_price_minor=?,currency='INR',min_margin_bps=?,max_margin_bps=?,
+        max_final_minor=?,proposed_margin_bps=?,proposed_final_minor=?,approved_margin_bps=?,
+        pricing_status='approved',updated_by=?,updated_at=? WHERE course_id=?`)
+        .run(base, min, max, cap, margin, final, margin, admin.id, now, courseId);
+      db.prepare("UPDATE courses SET price_minor=?,currency='INR',updated_at=? WHERE id=?").run(final, now, courseId);
+      const after = pricingForCourse(courseId);
+      history(db, courseId, admin.id, "pricing_updated", "Updated while published", { before, after });
+      return after;
+    }
     if (before?.basePriceMinor === base && before.minMarginBps === min && before.maxMarginBps === max && before.maxFinalMinor === cap)
       return before;
     const current = db.prepare("SELECT proposed_margin_bps FROM course_pricing WHERE course_id=?").get(courseId);

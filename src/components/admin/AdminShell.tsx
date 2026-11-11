@@ -238,11 +238,11 @@ export default function AdminShell({
         <div className="flex flex-1">
           {/* Desktop Persistent Sidebar */}
           <aside
-            className={`hidden lg:flex flex-col shrink-0 border-r border-[#E5E7EB] bg-white transition-all duration-200 ${
+            className={`sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col self-start shrink-0 overflow-hidden border-r border-[#E5E7EB] bg-white transition-all duration-200 lg:flex ${
               collapsed ? "w-16" : "w-64"
             }`}
           >
-            <div className="flex-1 overflow-y-auto py-5 px-3 space-y-6">
+            <div className="min-h-0 flex-1 overflow-y-auto py-5 px-3 space-y-6">
               {visibleGroups.map((group) => (
                 <div key={group.group}>
                   {group.group === "MORE TOOLS" ? (

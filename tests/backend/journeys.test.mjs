@@ -1214,6 +1214,25 @@ test('backend journeys and authority checks', { timeout: 90000 }, async (t) => {
     const db = new DatabaseSync(dbPath);
     try { assert.equal(db.prepare('SELECT price_minor FROM order_items WHERE order_id=?').get(order.body.data.id).price_minor, 240000); }
     finally { db.close(); }
+    const livePricePath = `/api/admin/courses/${reviewedCourseId}/pricing`;
+    const livePolicy = { basePriceMinor: 2900, minMarginBps: 0, maxMarginBps: 0, maxFinalMinor: null, approvedMarginBps: 0 };
+    assert.equal((await call(livePricePath, { method: 'PUT', cookie: instructor, body: livePolicy })).response.status, 403);
+    assert.equal((await call(livePricePath, { method: 'PUT', cookie: admin,
+      body: { ...livePolicy, maxFinalMinor: 2800 } })).response.status, 422);
+    const updatedLivePrice = await call(livePricePath, { method: 'PUT', cookie: admin, body: livePolicy });
+    assert.equal(updatedLivePrice.response.status, 200, `${JSON.stringify(updatedLivePrice.body)}\n${serverOutput.slice(-2000)}`);
+    assert.equal(updatedLivePrice.body.data.finalPriceMinor, 2900);
+    assert.equal((await call(`/api/courses/${reviewedCourseId}`)).body.data.price, 29);
+    const updatedOrder = await call('/api/orders', { method: 'POST', cookie: otherLearner, body: { courseId: reviewedCourseId } });
+    assert.equal(updatedOrder.response.status, 201, JSON.stringify(updatedOrder.body));
+    assert.equal(updatedOrder.body.data.totalMinor, 2900);
+    const liveDb = new DatabaseSync(dbPath);
+    try {
+      assert.equal(liveDb.prepare('SELECT price_minor FROM order_items WHERE order_id=?').get(order.body.data.id).price_minor, 240000);
+      assert.equal(liveDb.prepare('SELECT status FROM courses WHERE id=?').get(reviewedCourseId).status, 'published');
+      assert.equal(liveDb.prepare("SELECT COUNT(*) n FROM course_approval_history WHERE course_id=? AND action='pricing_updated' AND feedback='Updated while published'").get(reviewedCourseId).n, 1);
+    } finally { liveDb.close(); }
+    assert.equal((await call(livePricePath, { method: 'PUT', cookie: admin, body: livePolicy })).response.status, 200);
     assert.equal((await call(`/api/instructor/courses/${reviewedCourseId}`, { method: 'PATCH', cookie: instructor, body: { description: 'Bypass review' } })).response.status, 409);
     assert.equal((await call(`/api/admin/courses/${reviewedCourseId}/review`, { method: 'POST', cookie: admin, body: { action: 'unpublish' } })).response.status, 200);
     assert.equal((await call(`/api/courses/${reviewedCourseId}`)).response.status, 404);

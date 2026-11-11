@@ -111,8 +111,11 @@ export default function AdminPricingPage() {
 
   const handleSavePolicy = async () => {
     if (!selectedId) return;
-    if (!await confirm("Update this course's base price and margin limits? Any previous price approval will be cleared.",
-      { title: "Update pricing policy", confirmLabel: "Update pricing" })) return;
+    const published = selectedCourse?.status === "published";
+    if (!await confirm(published
+      ? "Save this official price for future course purchases? Existing orders keep their original price."
+      : "Update this course's base price and margin limits? Any previous price approval will be cleared.",
+      { title: published ? "Update official price" : "Update pricing policy", confirmLabel: published ? "Save price" : "Update pricing" })) return;
     setSaving(true);
     setError("");
     setSuccess("");
@@ -123,6 +126,7 @@ export default function AdminPricingPage() {
         minMarginBps: Math.round(minMargin * 100),
         maxMarginBps: Math.round(maxMargin * 100),
         maxFinalMinor: capPrice.trim() ? Math.round(Number(capPrice) * 100) : null,
+        ...(published ? { approvedMarginBps: Math.round(approvedMargin * 100) } : {}),
       };
 
       const res = await fetch(`/api/admin/courses/${selectedId}/pricing`, {
@@ -134,7 +138,7 @@ export default function AdminPricingPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "Failed to update pricing policy");
 
-      setSuccess("Pricing policy saved. Approve a margin separately before publication.");
+      setSuccess(published ? "Official price saved for future purchases." : "Pricing policy saved. Approve a margin separately before publication.");
       await loadCourses();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -354,14 +358,14 @@ export default function AdminPricingPage() {
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
-                  disabled={saving || selectedCourse.status === "published"}
+                  disabled={saving || exceedsCap}
                   onClick={handleSavePolicy}
                   className="inline-flex items-center gap-2 rounded-xl bg-[#172033] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#26344D] disabled:opacity-50 shadow-xs"
                 >
                   <Save className="h-4 w-4 text-[#FF6B35]" />
-                  <span>{saving ? "Saving Policy…" : "Commit Pricing Policy"}</span>
+                  <span>{saving ? "Saving…" : selectedCourse.status === "published" ? "Save official price" : "Commit Pricing Policy"}</span>
                 </button>
-                <button type="button" disabled={saving || selectedCourse.status === "published" || exceedsCap} onClick={handleApproveMargin} className="ml-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">Approve margin</button>
+                {selectedCourse.status !== "published" && <button type="button" disabled={saving || exceedsCap} onClick={handleApproveMargin} className="ml-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">Approve margin</button>}
               </div>
             </div>
           )}
