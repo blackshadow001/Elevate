@@ -33,9 +33,10 @@ import {
   Play, 
   CheckCircle2,
   AlertTriangle,
-  IndianRupee,
   Layers
 } from "lucide-react";
+
+const TUTOR_PRICE_OPTIONS = [29, 39, 49, 59] as const;
 
 type LessonType = "Video" | "Text" | "Quiz" | "Assignment" | "Resource";
 
@@ -399,7 +400,9 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
       (lesson.activity?.kind !== "assignment" || !lesson.activity.instructions.trim())))) missing.push("assignment instructions");
     if (sections.some((section) => section.lessons.some((lesson) => lesson.type === "Resource" &&
       (lesson.activity?.kind !== "resource" || !lesson.activity.label.trim() || !isHttpsUrl(lesson.activity.url))))) missing.push("resource names and HTTPS links");
-    if (!Number.isFinite(proposedPrice) || proposedPrice < 0) missing.push("valid proposed pricing");
+    if (basePriceMinor === null || basePriceMinor === undefined) {
+      if (!TUTOR_PRICE_OPTIONS.some((amount) => amount === pricing.price)) missing.push("a price of ₹29, ₹39, ₹49 or ₹59");
+    } else if (!Number.isFinite(proposedPrice) || proposedPrice < 0) missing.push("valid proposed pricing");
     if (basePriceMinor !== null && basePriceMinor !== undefined &&
       (Math.round(marginPercent * 100) < (initialCourse?.pricing?.minMarginBps ?? 0) ||
         Math.round(marginPercent * 100) > (initialCourse?.pricing?.maxMarginBps ?? 0))) missing.push("margin within the admin range");
@@ -1008,18 +1011,16 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
           <p className="text-xs text-[#64748B]">The admin sets the official base price and allowed margin. Your proposal is reviewed before publication. Margin is added to the base price; it is not a tutor payout.</p>
 
           <div className="max-w-xl space-y-5">
-            {basePriceMinor !== null && basePriceMinor !== undefined ? <div className="space-y-2 rounded-xl bg-[#F7F8FA] p-4 text-sm"><p>Admin base: <strong>₹{(basePriceMinor / 100).toFixed(2)}</strong></p><p>Allowed margin: {(initialCourse?.pricing?.minMarginBps ?? 0) / 100}%–{(initialCourse?.pricing?.maxMarginBps ?? 0) / 100}%</p><label htmlFor="tutor-margin" className="block text-xs font-bold">Your proposed margin %</label><input id="tutor-margin" type="number" min={(initialCourse?.pricing?.minMarginBps ?? 0) / 100} max={(initialCourse?.pricing?.maxMarginBps ?? 0) / 100} step="0.01" value={marginPercent} onChange={(event) => setMarginPercent(Number(event.target.value))} className="w-full rounded-xl border border-[#E5E7EB] px-3 py-2" /><p>Proposed final price: <strong>₹{proposedPrice.toFixed(2)}</strong></p></div> : <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase text-[#172033]">Proposed selling price (INR ₹)</label>
-              <div className="relative">
-                <IndianRupee className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                <input
-                  type="number"
-                  value={pricing.price}
-                  onChange={(e) => setPricing({ ...pricing, price: Number(e.target.value) })}
-                  className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-[#172033] focus:bg-white focus:border-[#FF6B35] focus:outline-none"
-                />
+            {basePriceMinor !== null && basePriceMinor !== undefined ? <div className="space-y-2 rounded-xl bg-[#F7F8FA] p-4 text-sm"><p>Admin base: <strong>₹{(basePriceMinor / 100).toFixed(2)}</strong></p><p>Allowed margin: {(initialCourse?.pricing?.minMarginBps ?? 0) / 100}%–{(initialCourse?.pricing?.maxMarginBps ?? 0) / 100}%</p><label htmlFor="tutor-margin" className="block text-xs font-bold">Your proposed margin %</label><input id="tutor-margin" type="number" min={(initialCourse?.pricing?.minMarginBps ?? 0) / 100} max={(initialCourse?.pricing?.maxMarginBps ?? 0) / 100} step="0.01" value={marginPercent} onChange={(event) => setMarginPercent(Number(event.target.value))} className="w-full rounded-xl border border-[#E5E7EB] px-3 py-2" /><p>Proposed final price: <strong>₹{proposedPrice.toFixed(2)}</strong></p></div> : <fieldset className="space-y-3">
+              <legend className="text-xs font-bold uppercase text-[#172033]">Proposed selling price (INR ₹)</legend>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {TUTOR_PRICE_OPTIONS.map((amount) => <label key={amount} className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition-colors ${pricing.price === amount ? "border-[#FF6B35] bg-orange-50 text-[#172033]" : "border-[#E5E7EB] bg-white text-[#475569] hover:border-[#FF6B35]"}`}>
+                  <input type="radio" name="proposed-course-price" value={amount} checked={pricing.price === amount} onChange={() => setPricing((current) => ({ ...current, price: amount, isFree: false }))} className="accent-[#FF6B35]" />
+                  ₹{amount}
+                </label>)}
               </div>
-            </div>}
+              <p className="text-xs text-[#64748B]">Choose one amount to propose. The administrator reviews the price before publication.</p>
+            </fieldset>}
 
           </div>
 
