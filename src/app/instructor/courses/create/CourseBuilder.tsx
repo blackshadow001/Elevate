@@ -14,6 +14,7 @@ import { VideoPlayer } from "@/components/learning/VideoPlayer";
 import { VideoEditingStudio } from "@/components/instructor/VideoEditingStudio";
 import { CATALOG_CATEGORIES, catalogCategory } from "@/lib/catalogTaxonomy";
 import { MICRO_COURSE_TOPICS } from "@/lib/microCourseTopics";
+import { COURSE_IMPORT_EXAMPLE, normalizeTemplatePath, parseCourseImportTemplate } from "@/lib/courseImportTemplate";
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -127,6 +128,8 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
       .then((body) => {
         if (!active || !Array.isArray(body?.data)) return;
         setCatalogCategories(body.data);
+        if (body.data.length) setQuickTemplate((current) => body.data.some((item: { name: string }) => item.name === current.category)
+          ? current : { ...current, category: body.data[0].name, subcategory: "" });
         if (!initialCourse && body.data.length) setBasicInfo((current) => body.data.some((item: { name: string }) => item.name === current.category)
           ? current : { ...current, category: body.data[0].name, subcategory: "" });
       }).catch(() => {});
@@ -153,6 +156,18 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
   const [previewFileName, setPreviewFileName] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [templateMedia, setTemplateMedia] = useState<File[]>([]);
+  const [importingTemplate, setImportingTemplate] = useState(false);
+  const [templateProgress, setTemplateProgress] = useState("");
+  const [quickTemplate, setQuickTemplate] = useState({ title: "", shortDescription: "", fullDescription: "",
+    category: "Technology & Programming", subcategory: "", level: "Beginner", language: "English", price: 29,
+    whatYouWillLearn: "", lessonTitle: "" });
+  const [quickThumbnail, setQuickThumbnail] = useState<File | null>(null);
+  const [quickVideo, setQuickVideo] = useState<File | null>(null);
+  const templateFolderInput = useRef<HTMLInputElement | null>(null);
+  const templateAbort = useRef<AbortController | null>(null);
+  useEffect(() => { templateFolderInput.current?.setAttribute("webkitdirectory", ""); }, []);
   const [showVideoStudio, setShowVideoStudio] = useState(false);
   const [videoUploadPercent, setVideoUploadPercent] = useState<number | null>(null);
   const [videoUploadStage, setVideoUploadStage] = useState<"preparing" | "uploading" | "processing" | null>(null);
@@ -236,35 +251,41 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     }));
   };
 
-  const buildCourse = (status: InstructorCourse["status"]): InstructorCourse => {
-    const lessons = sections.flatMap((section) => section.lessons);
+  const buildCourse = (status: InstructorCourse["status"], imported?: {
+    info: typeof basicInfo; sections: BuilderSection[]; pricing: typeof pricing; thumbnail: string;
+  }): InstructorCourse => {
+    const info = imported?.info ?? basicInfo;
+    const draftSections = imported?.sections ?? sections;
+    const draftPricing = imported?.pricing ?? pricing;
+    const draftThumbnail = imported?.thumbnail ?? thumbnailPreview;
+    const lessons = draftSections.flatMap((section) => section.lessons);
     const minutes = lessons.reduce((sum, lesson) => sum + (Number.parseInt(lesson.duration, 10) || 0), 0);
-    const title = basicInfo.title.trim();
+    const title = info.title.trim();
     return {
       id: courseId.current,
       slug: courseSlug.current || `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${courseId.current.slice(-8)}`,
       title,
-      subtitle: basicInfo.shortDescription.trim(),
-      description: basicInfo.fullDescription.trim(),
-      category: basicInfo.category,
-      subcategory: basicInfo.subcategory,
-      level: basicInfo.level as InstructorCourse["level"],
-      language: basicInfo.language as InstructorCourse["language"],
-      price: basePriceMinor === null || basePriceMinor === undefined ? pricing.price : proposedPrice,
+      subtitle: info.shortDescription.trim(),
+      description: info.fullDescription.trim(),
+      category: info.category,
+      subcategory: info.subcategory,
+      level: info.level as InstructorCourse["level"],
+      language: info.language as InstructorCourse["language"],
+      price: basePriceMinor === null || basePriceMinor === undefined ? draftPricing.price : proposedPrice,
       ...(basePriceMinor === null || basePriceMinor === undefined ? {} : { marginBps: Math.round(marginPercent * 100) }),
-      originalPrice: proposedPrice,
-      isFree: proposedPrice === 0,
+      originalPrice: basePriceMinor === null || basePriceMinor === undefined ? draftPricing.price : proposedPrice,
+      isFree: (basePriceMinor === null || basePriceMinor === undefined ? draftPricing.price : proposedPrice) === 0,
       rating: initialCourse?.rating || 0,
       ratingCount: initialCourse?.ratingCount || 0,
       studentsCount: initialCourse?.studentsCount || 0,
       duration: minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} mins`,
       totalLessons: lessons.length,
-      image: thumbnailPreview.startsWith("blob:") ? persistedThumbnail.current : thumbnailPreview,
+      image: draftThumbnail.startsWith("blob:") ? persistedThumbnail.current : draftThumbnail,
       instructor: initialCourse?.instructor || { id: user.id, name: user.name, avatar: user.avatar, role: "Instructor", bio: "", rating: 0, studentsCount: 0, coursesCount: 0 },
       updatedAt: new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
-      whatYouWillLearn: basicInfo.whatYouWillLearn.split("\n").map((item) => item.trim()).filter(Boolean),
-      requirements: basicInfo.requirements.split("\n").map((item) => item.trim()).filter(Boolean),
-      sections: sections.map((section) => ({
+      whatYouWillLearn: info.whatYouWillLearn.split("\n").map((item) => item.trim()).filter(Boolean),
+      requirements: info.requirements.split("\n").map((item) => item.trim()).filter(Boolean),
+      sections: draftSections.map((section) => ({
         id: section.id,
         title: section.title.trim(),
         lessons: section.lessons.map((lesson) => ({
@@ -379,8 +400,134 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
     if (file) void uploadSelectedVideo(file);
   };
 
+  const downloadCourseTemplate = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(COURSE_IMPORT_EXAMPLE, null, 2) + "\n"], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "elevate-course-template.json";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const applyCourseTemplate = async (templateValue: unknown, mediaFiles: File[]) => {
+    if (importingTemplate) return;
+    const controller = new AbortController();
+    try {
+      if (!courseId.current.startsWith("local-")) throw new Error("Open a new course to import a template. This draft already has saved content.");
+      const template = parseCourseImportTemplate(templateValue, catalogCategories);
+      const files = new Map<string, File>();
+      for (const file of mediaFiles) {
+        const relative = file.webkitRelativePath ? file.webkitRelativePath.split("/").slice(1).join("/") : file.name;
+        const key = normalizeTemplatePath(relative, "Selected media path").toLowerCase();
+        if (files.has(key)) throw new Error(`The media folder contains duplicate paths: ${relative}`);
+        files.set(key, file);
+      }
+      const findFile = (path: string) => {
+        const file = files.get(path.toLowerCase());
+        if (!file) throw new Error(`Media file not found: ${path}. Select the folder containing this path.`);
+        return file;
+      };
+      const thumbnailFile = findFile(template.thumbnailPath);
+      if (!["image/jpeg", "image/png", "image/webp"].includes(thumbnailFile.type) || thumbnailFile.size > 5_000_000)
+        throw new Error("The thumbnail must be JPG, PNG, or WebP and no larger than 5 MB.");
+      const videoFiles = template.sections.flatMap((section, sectionIndex) => section.lessons.flatMap((lesson, lessonIndex) =>
+        lesson.type === "Video" ? [{ sectionIndex, lessonIndex, file: findFile(lesson.videoPath!) }] : []));
+      if (videoFiles.some(({ file }) => !["video/mp4", "video/webm"].includes(file.type) || file.size > MAX_VIDEO_SIZE_BYTES))
+        throw new Error("Each video must be MP4 or WebM and no larger than 1 GB.");
+      const videoDurations = await Promise.all(videoFiles.map(({ file }) => measureVideoDuration(file)));
+      videoFiles.forEach(({ sectionIndex, lessonIndex }, index) => {
+        if (template.sections[sectionIndex].lessons[lessonIndex].isPreview && (videoDurations[index] < 30 || videoDurations[index] > 60))
+          throw new Error("A free preview video must be 30–60 seconds long.");
+      });
+      const info = {
+        title: template.title, shortDescription: template.shortDescription, fullDescription: template.fullDescription,
+        category: template.category, subcategory: template.subcategory, level: template.level, language: template.language,
+        requirements: template.requirements.join("\n"), whatYouWillLearn: template.whatYouWillLearn.join("\n"),
+      };
+      const importedSections: BuilderSection[] = template.sections.map((section) => ({
+        id: `sec-new-${crypto.randomUUID()}`, title: section.title,
+        lessons: section.lessons.map((lesson) => ({ id: `les-new-${crypto.randomUUID()}`, title: lesson.title,
+          duration: lesson.duration, type: lesson.type, content: lesson.content, activity: lesson.activity, isPreview: lesson.isPreview })),
+      }));
+      const importedPricing = { price: template.price, originalPrice: template.price, isFree: false };
+      setImportingTemplate(true);
+      templateAbort.current = controller;
+      setTemplateProgress("Saving course details and curriculum…");
+      setBasicInfo(info);
+      setPricing(importedPricing);
+      setSections(importedSections);
+      setActiveUploadLesson(importedSections.flatMap((section) => section.lessons).find((lesson) => lesson.type === "Video")?.id || "");
+      const saved = await saveInstructorCourse(buildCourse("Draft", { info, sections: importedSections, pricing: importedPricing, thumbnail: "" }));
+      courseId.current = saved.id;
+      courseSlug.current = saved.slug;
+      const mappedSections = importedSections.map((section, sectionIndex) => ({ ...section,
+        id: saved.sections[sectionIndex].id,
+        lessons: section.lessons.map((lesson, lessonIndex) => ({ ...lesson, id: saved.sections[sectionIndex].lessons[lessonIndex].id })),
+      }));
+      setSections(mappedSections);
+      setActiveUploadLesson(mappedSections.flatMap((section) => section.lessons).find((lesson) => lesson.type === "Video")?.id || "");
+
+      setTemplateProgress("Uploading thumbnail…");
+      const thumbnailResponse = await fetch(`/api/instructor/courses/${encodeURIComponent(saved.id)}/thumbnail`, {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": thumbnailFile.type }, body: thumbnailFile, signal: controller.signal,
+      });
+      const thumbnailResult = await thumbnailResponse.json();
+      if (!thumbnailResponse.ok) throw new Error(thumbnailResult.error?.message || "Thumbnail upload failed.");
+      persistedThumbnail.current = thumbnailResult.data.url as string;
+      setThumbnailPreview(persistedThumbnail.current);
+
+      for (const [index, item] of videoFiles.entries()) {
+        if (controller.signal.aborted) throw new Error("Template import cancelled. The saved draft can be finished manually.");
+        const lessonId = mappedSections[item.sectionIndex].lessons[item.lessonIndex].id;
+        const durationSeconds = videoDurations[index];
+        setTemplateProgress(`Uploading video ${index + 1} of ${videoFiles.length}: ${item.file.name}`);
+        const result = await uploadLessonVideo(`/api/instructor/courses/${encodeURIComponent(saved.id)}/lessons/${encodeURIComponent(lessonId)}/media`,
+          item.file, durationSeconds, () => {}, () => {}, controller.signal);
+        setSections((previous) => previous.map((section) => ({ ...section, lessons: section.lessons.map((lesson) =>
+          lesson.id === lessonId ? { ...lesson, videoUrl: result.url, duration: formatVideoDuration(durationSeconds) } : lesson) })));
+      }
+      await refreshInstructorCourses();
+      setCurrentStep(6);
+      setTemplateProgress("Template imported. Review the course, then submit it for admin approval.");
+      notify({ type: "success", title: "Course draft imported", message: "Course details, thumbnail, and videos are saved. Review the draft before submitting it." });
+    } catch (error) {
+      setTemplateProgress(error instanceof Error ? error.message : "Template import failed.");
+      notify({ type: "error", title: "Template import stopped", message: error instanceof Error ? error.message : "Check the template and media folder." });
+    } finally {
+      templateAbort.current = null;
+      setImportingTemplate(false);
+    }
+  };
+
+  const importCourseTemplate = async () => {
+    if (!templateFile || !templateMedia.length || importingTemplate) return;
+    try {
+      if (templateFile.size > 524288) throw new Error("The template must be no larger than 512 KB.");
+      await applyCourseTemplate(JSON.parse(await templateFile.text()), templateMedia);
+    } catch (error) {
+      notify({ type: "error", title: "Template not imported", message: error instanceof Error ? error.message : "Choose a valid template file." });
+    }
+  };
+
+  const createFromQuickTemplate = async () => {
+    if (!quickThumbnail || !quickVideo) {
+      notify({ type: "error", title: "Add both files", message: "Choose a thumbnail and a video before creating the draft." });
+      return;
+    }
+    await applyCourseTemplate({
+      version: 1, title: quickTemplate.title, shortDescription: quickTemplate.shortDescription,
+      fullDescription: quickTemplate.fullDescription, category: quickTemplate.category,
+      subcategory: quickTemplate.subcategory, level: quickTemplate.level, language: quickTemplate.language,
+      price: quickTemplate.price, thumbnailPath: quickThumbnail.name,
+      whatYouWillLearn: quickTemplate.whatYouWillLearn.split("\n").map((line) => line.trim()).filter(Boolean),
+      requirements: ["No prior experience required"], sections: [{ title: "Getting started", lessons: [{
+        title: quickTemplate.lessonTitle || quickTemplate.title, type: "Video", duration: "1 mins", videoPath: quickVideo.name,
+      }] }],
+    }, [quickThumbnail, quickVideo]);
+  };
+
   const handlePublishCourse = async () => {
-    if (uploadingThumbnail || uploadingVideo) {
+    if (uploadingThumbnail || uploadingVideo || importingTemplate) {
       notify({ type: "info", title: "Upload in progress", message: "Wait for the upload to finish before submitting the course." });
       return;
     }
@@ -450,7 +597,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
         <div className="flex items-center gap-2">
           <button
             type="button"
-            disabled={uploadingVideo || uploadingThumbnail}
+            disabled={uploadingVideo || uploadingThumbnail || importingTemplate}
             onClick={() => {
               void (async () => {
                 try {
@@ -468,6 +615,94 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
         </div>
       </div>
 
+      {!initialCourse && courseId.current.startsWith("local-") && <section className="rounded-3xl border border-[#F3D8C8] bg-[#FFF8F2] p-5 sm:p-7" aria-label="Quick course template">
+        <div className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#C65325]">Quick start</p>
+          <h2 className="mt-1 text-xl font-bold text-[#172033]">Fill one simple course template</h2>
+          <p className="mt-1 text-sm text-[#64748B]">Add the details and choose your files. We will create a draft and upload the video for you. You can add more lessons and questions in Curriculum before submitting it to the admin.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="text-xs font-bold text-[#172033]">Course title *
+            <input aria-label="Quick template title" value={quickTemplate.title} onChange={(event) => setQuickTemplate({ ...quickTemplate, title: event.target.value })} maxLength={200}
+              placeholder="What will learners study?" className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal" />
+          </label>
+          <label className="text-xs font-bold text-[#172033]">One-line summary *
+            <input value={quickTemplate.shortDescription} onChange={(event) => setQuickTemplate({ ...quickTemplate, shortDescription: event.target.value })} maxLength={500}
+              placeholder="A short promise to learners" className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal" />
+          </label>
+          <label className="text-xs font-bold text-[#172033] md:col-span-2">Course description *
+            <textarea value={quickTemplate.fullDescription} onChange={(event) => setQuickTemplate({ ...quickTemplate, fullDescription: event.target.value })} rows={3}
+              placeholder="Who is this for, and what will it cover?" className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal" />
+          </label>
+          <label className="text-xs font-bold text-[#172033]">Category *
+            <select value={quickTemplate.category} onChange={(event) => setQuickTemplate({ ...quickTemplate, category: event.target.value, subcategory: "" })}
+              className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal">
+              {catalogCategories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-[#172033]">Subcategory *
+            <select value={quickTemplate.subcategory} onChange={(event) => setQuickTemplate({ ...quickTemplate, subcategory: event.target.value })}
+              className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal">
+              <option value="">Choose a subcategory</option>
+              {(catalogCategories.find((category) => category.name === quickTemplate.category)?.subcategories || []).map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-[#172033]">Level
+            <select value={quickTemplate.level} onChange={(event) => setQuickTemplate({ ...quickTemplate, level: event.target.value })}
+              className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal">
+              {(["Beginner", "Intermediate", "Advanced"] as const).map((level) => <option key={level}>{level}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-[#172033]">Language
+            <select value={quickTemplate.language} onChange={(event) => setQuickTemplate({ ...quickTemplate, language: event.target.value })}
+              className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal">
+              {(["English", "Tamil", "Hindi"] as const).map((language) => <option key={language}>{language}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-[#172033] md:col-span-2">What learners will learn * <span className="font-normal text-[#64748B]">(one point per line)</span>
+            <textarea value={quickTemplate.whatYouWillLearn} onChange={(event) => setQuickTemplate({ ...quickTemplate, whatYouWillLearn: event.target.value })} rows={2}
+              placeholder="Explain the topic&#10;Use it in a practical example" className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal" />
+          </label>
+          <label className="text-xs font-bold text-[#172033]">Lesson title <span className="font-normal text-[#64748B]">(optional)</span>
+            <input value={quickTemplate.lessonTitle} onChange={(event) => setQuickTemplate({ ...quickTemplate, lessonTitle: event.target.value })}
+              placeholder="Defaults to the course title" className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white p-3 text-sm font-normal" />
+          </label>
+          <fieldset className="text-xs font-bold text-[#172033]"><legend>Price *</legend>
+            <div className="mt-2 flex flex-wrap gap-3">{TUTOR_PRICE_OPTIONS.map((price) => <label key={price} className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">
+              <input type="radio" name="quick-template-price" checked={quickTemplate.price === price} onChange={() => setQuickTemplate({ ...quickTemplate, price })} />₹{price}
+            </label>)}</div>
+          </fieldset>
+          <label className="text-xs font-bold text-[#172033]">Thumbnail image * <span className="font-normal text-[#64748B]">(JPG, PNG or WebP; 5 MB max)</span>
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setQuickThumbnail(event.target.files?.[0] || null)}
+              className="mt-1.5 block w-full rounded-xl border border-[#E5E7EB] bg-white p-2.5 text-xs font-normal" />
+          </label>
+          <label className="text-xs font-bold text-[#172033]">Lesson video * <span className="font-normal text-[#64748B]">(MP4 or WebM; 1 GB max)</span>
+            <input type="file" accept="video/mp4,video/webm" onChange={(event) => setQuickVideo(event.target.files?.[0] || null)}
+              className="mt-1.5 block w-full rounded-xl border border-[#E5E7EB] bg-white p-2.5 text-xs font-normal" />
+          </label>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button type="button" disabled={importingTemplate} onClick={() => { void createFromQuickTemplate(); }}
+            className="rounded-xl bg-[#172033] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{importingTemplate ? "Creating draft…" : "Create draft and upload video"}</button>
+          {importingTemplate && <button type="button" onClick={() => templateAbort.current?.abort()} className="text-sm font-semibold text-[#B42318]">Cancel upload</button>}
+        </div>
+        {templateProgress && <p role="status" aria-live="polite" className="mt-3 text-sm text-[#475569]">{templateProgress}</p>}
+        <details className="mt-5 border-t border-[#F3D8C8] pt-4 text-sm text-[#475569]">
+          <summary className="cursor-pointer font-semibold">Have several lessons? Import a filled template file and media folder</summary>
+          <p className="mt-2 text-xs">The file contains relative video paths, such as <code>videos/introduction.mp4</code>. Select the matching folder so your browser can upload those files.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button type="button" onClick={downloadCourseTemplate} className="rounded-lg border border-[#D9DEE7] bg-white px-3 py-2 text-xs font-semibold">Download example template</button>
+            <label className="text-xs font-semibold">Filled template <input type="file" accept="application/json,.json" onChange={(event) => setTemplateFile(event.target.files?.[0] || null)} className="mt-1 block" /></label>
+            <label className="text-xs font-semibold">Media folder <input ref={templateFolderInput} type="file" multiple onChange={(event) => setTemplateMedia(Array.from(event.target.files || []))} className="mt-1 block" /></label>
+            <button type="button" disabled={!templateFile || !templateMedia.length || importingTemplate} onClick={() => { void importCourseTemplate(); }}
+              className="rounded-lg bg-[#172033] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Import template</button>
+          </div>
+        </details>
+      </section>}
+      {!courseId.current.startsWith("local-") && templateProgress && <p role="status" aria-live="polite"
+        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-[#176B49]">{templateProgress}</p>}
+
+      <fieldset disabled={importingTemplate} className="min-w-0 space-y-8 disabled:opacity-60">
       {/* Step Progress Bar (Requirement 12) */}
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#E5E7EB] shadow-xs">
         <div className="flex items-center justify-between overflow-x-auto pb-1">
@@ -1108,6 +1343,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
         setShowVideoStudio(false);
         void uploadSelectedVideo(file, durationSeconds);
       }} />}
+      </fieldset>
     </div>
   );
 }

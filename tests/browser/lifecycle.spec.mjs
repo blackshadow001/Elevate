@@ -375,6 +375,34 @@ test('tutor video uploads privately, persists in draft and preview respects spee
   await expect(page.getByText(title)).toBeVisible();
 });
 
+test('quick course template creates a draft with its thumbnail and video', async ({ page }) => {
+  await page.goto(`${base}/login`);
+  await page.getByLabel('Email', { exact: true }).fill('john@example.com');
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await expect(page).toHaveURL(/\/instructor(?:\?|$)/);
+  await page.goto(`${base}/instructor/courses/create`);
+  const quick = page.getByRole('region', { name: 'Quick course template' });
+  const title = `Quick template ${randomBytes(4).toString('hex')}`;
+  await quick.getByRole('textbox', { name: 'Quick template title' }).fill(title);
+  await quick.getByLabel('One-line summary').fill('A guided introduction for new learners.');
+  await quick.getByLabel('Course description').fill('This short course explains a useful topic with a narrated example for beginners.');
+  await quick.getByLabel('Subcategory').selectOption('APIs & Data');
+  await quick.getByLabel('What learners will learn').fill('Explain a practical concept');
+  await quick.getByLabel('Thumbnail image').setInputFiles(resolve(root, 'public/courses/course-2.jpg'));
+  await quick.getByLabel('Lesson video').setInputFiles(resolve(root, 'public/videos/lesson-demo.webm'));
+  await quick.getByRole('button', { name: 'Create draft and upload video' }).click();
+  await expect(page.getByText('Template imported. Review the course, then submit it for admin approval.')).toBeVisible({ timeout: 60_000 });
+  const listing = (await (await page.request.get(`${base}/api/instructor/courses`)).json()).data;
+  const imported = listing.find((course) => course.title === title);
+  expect(imported).toBeTruthy();
+  const detail = (await (await page.request.get(`${base}/api/instructor/courses/${imported.id}`)).json()).data;
+  expect(detail.thumbnail).toMatch(/^\/api\/course-thumbnails\//);
+  expect(detail.sections[0].lessons[0].mediaAssetId).toBeTruthy();
+  expect(detail.price).toBe(0); // Tutor price remains a proposal until admin approval.
+  expect(detail.pricing.proposedFinalMinor).toBe(2900);
+});
+
 test('tutor video studio exports edited lesson video', async ({ page }) => {
   await page.goto(`${base}/login`);
   await page.getByLabel('Email', { exact: true }).fill('john@example.com');
