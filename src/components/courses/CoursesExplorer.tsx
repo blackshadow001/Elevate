@@ -37,6 +37,8 @@ export function CoursesExplorer({ initialCourses, initialCategories }: CoursesEx
 function CoursesExplorerInner({ initialCourses, initialCategories, initialCategory, initialSubcategory, initialSearch }: CoursesExplorerProps & { initialCategory: string | null; initialSubcategory: string; initialSearch: string }) {
   const router = useRouter();
   const allCourses = initialCourses;
+  const publishedTitles = new Set(allCourses.map((course) => course.title.trim().toLocaleLowerCase()));
+  const remainingTopics = MICRO_COURSE_TOPICS.filter((topic) => !publishedTitles.has(topic.title.toLocaleLowerCase()));
   const categoryNames = initialCategories.map(({ name }) => name);
 
   const [search, setSearch] = useState(initialSearch);
@@ -210,12 +212,12 @@ function CoursesExplorerInner({ initialCourses, initialCategories, initialCatego
       <section aria-label="Explore categories" className="mb-10 rounded-3xl border border-[#E5E7EB] bg-[#F7F8FA] p-5 sm:p-7">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
           <div><p className="text-xs font-bold uppercase tracking-widest text-[#D65B28]">Explore categories</p><h2 className="mt-1 text-2xl font-extrabold text-[#172033]">Browse every subject</h2><p className="mt-1 text-sm text-[#64748B]">See published courses and upcoming Tamil lessons in each category.</p></div>
-          <span className="text-xs font-semibold text-[#64748B]">{allCourses.length} published · {MICRO_COURSE_TOPICS.length} planned</span>
+          <span className="text-xs font-semibold text-[#64748B]">{allCourses.length} published · {remainingTopics.length} planned</span>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {initialCategories.map(({ id, name }) => {
             const count = allCourses.filter((course) => course.category === name).length;
-            const plannedTopics = MICRO_COURSE_TOPICS.filter((topic) => topic.category === name || id === categoryKey(topic.category));
+            const plannedTopics = remainingTopics.filter((topic) => topic.category === name || id === categoryKey(topic.category));
             const active = selectedCategories.includes(name);
             return <button key={id} type="button" onClick={() => { setSelectedCategories(active ? [] : [name]); setSelectedSubcategory(""); }}
               aria-pressed={active} className={`group flex min-h-56 flex-col overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition-[transform,box-shadow,border-color] duration-700 ease-out hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(23,32,51,0.10)] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D65B28] ${active ? "border-[#FF6B35] ring-2 ring-[#FF6B35]/20" : "border-[#E1E6ED] hover:border-[#C6D0DF]"}`}>

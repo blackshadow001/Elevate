@@ -11,6 +11,7 @@ export function Categories({ courses, categories: catalogCategories }: { courses
   for (const course of courses) {
     if (course.category) courseCounts.set(course.category, (courseCounts.get(course.category) ?? 0) + 1);
   }
+  const publishedTitles = new Set(courses.map((course) => course.title.trim().toLocaleLowerCase()));
 
   return <section className="relative overflow-hidden border-y border-[#E8EBF0] bg-[#F7F8FA] py-16 sm:py-20">
     <div aria-hidden="true" className="pointer-events-none absolute -left-40 top-8 h-96 w-96 rounded-full bg-[#E8EDFF]/70 blur-3xl" />
@@ -30,7 +31,9 @@ export function Categories({ courses, categories: catalogCategories }: { courses
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {catalogCategories.slice(0, 4).map(({ id, name, subcategories }) => {
           const count = courseCounts.get(name) ?? 0;
-          const planned = MICRO_COURSE_TOPICS.filter((topic) => topic.category === name || id === topic.category.toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")).length;
+          const planned = MICRO_COURSE_TOPICS.filter((topic) =>
+            (topic.category === name || id === topic.category.toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")) &&
+            !publishedTitles.has(topic.title.toLocaleLowerCase())).length;
           return <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`}
             className="group relative flex min-h-64 flex-col overflow-hidden rounded-2xl border border-[#E1E6ED] bg-white shadow-[0_2px_10px_rgba(23,32,51,0.03)] transition-[transform,box-shadow,border-color] duration-700 ease-out hover:-translate-y-0.5 hover:border-[#C6D0DF] hover:shadow-[0_16px_30px_rgba(23,32,51,0.10)] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D65B28]">
             <CatalogArtwork categoryId={id} className="h-28 w-full" />
