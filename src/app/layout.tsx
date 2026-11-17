@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   title: `${brand.name} — ${brand.tagline}`,
   applicationName: brand.name,
   description: `${brand.tagline} Explore courses, live classes, and career paths taught by experienced instructors.`,
+  verification: { google: "ouMKC2PNtQk0GIcc8iM2lIsrW5kgDeukZCK5j0wnhj0" },
   openGraph: {
     type: "website",
     siteName: brand.name,

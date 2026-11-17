@@ -4,9 +4,21 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { mockBlogPosts } from "@/data/blogPosts";
 import { ArrowLeft } from "lucide-react";
+import type { Metadata } from "next";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const post = mockBlogPosts.find((item) => item.slug === slug);
+  if (!post) return { title: "Article not found — Elevate", robots: { index: false } };
+  return {
+    title: `${post.title} — Elevate`,
+    description: post.excerpt,
+    alternates: { canonical: `https://elevate.courses/blog/${encodeURIComponent(post.slug)}` },
+  };
 }
 
 export async function generateStaticParams() {
