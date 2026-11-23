@@ -17,11 +17,11 @@ export function Hero({ courses }: { courses: Course[] }) {
             Learn with Elevate
           </div>
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.12] tracking-tight text-[#172033] sm:text-5xl lg:text-[64px]">
-            Learn skills. <br />
+            Elevate your skills. <br />
             Elevate your <span className="relative inline-block text-[#FF6B35]">future.<svg className="absolute -bottom-2 left-0 h-3 w-full text-[#FF6B35]/35" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0,15 Q50,0 100,15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" /></svg></span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#64748B] sm:text-lg lg:mx-0">
-            Explore available courses, learn from instructors, and build skills at your own pace.
+            Elevate is an online learning platform offering practical courses, live learning, and career paths in AI, technology, and business. Learn from experts and build skills at your own pace.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
             <Link href="/courses" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6B35] px-8 py-3.5 font-semibold text-white shadow-lg shadow-orange-500/20 hover:bg-[#E85D2A] sm:w-auto">

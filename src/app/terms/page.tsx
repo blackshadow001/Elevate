@@ -5,6 +5,7 @@ import { FileText } from "lucide-react";
 export const metadata = {
   title: "Terms of Service — Elevate",
   description: "Terms and conditions governing the use of the Elevate education platform.",
+  alternates: { canonical: "https://elevate.courses/terms" },
 };
 
 export default function TermsOfServicePage() {

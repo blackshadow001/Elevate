@@ -5,6 +5,7 @@ import { Shield } from "lucide-react";
 export const metadata = {
   title: "Privacy Policy — Elevate",
   description: "Elevate data protection and privacy policy practices.",
+  alternates: { canonical: "https://elevate.courses/privacy" },
 };
 
 export default function PrivacyPolicyPage() {

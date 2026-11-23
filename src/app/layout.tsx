@@ -11,19 +11,47 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:4500"),
-  title: `${brand.name} — ${brand.tagline}`,
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://elevate.courses"),
+  title: {
+    default: "Elevate — Online Learning Platform | Courses & Career Paths",
+    template: "%s — Elevate",
+  },
   applicationName: brand.name,
-  description: `${brand.tagline} Explore courses, live classes, and career paths taught by experienced instructors.`,
+  description: "Elevate is an online learning platform offering courses, live learning, and career paths in AI, technology, and business. Learn from experts and elevate your future.",
+  keywords: [
+    "Elevate",
+    "Elevate Courses",
+    "Elevate LMS",
+    "Elevate learning platform",
+    "online learning platform",
+    "practical tech courses",
+    "AI courses",
+    "Tamil tech courses",
+    "career paths",
+    "live classes",
+  ],
+  publisher: "Elevate",
+  creator: "Elevate",
+  authors: [{ name: "Elevate", url: "https://elevate.courses" }],
   verification: { google: "ouMKC2PNtQk0GIcc8iM2lIsrW5kgDeukZCK5j0wnhj0" },
+  alternates: {
+    canonical: "https://elevate.courses",
+  },
   openGraph: {
     type: "website",
-    siteName: brand.name,
-    title: `${brand.name} — ${brand.tagline}`,
-    description: brand.tagline,
-    images: [{ url: brand.logoPath, width: 1820, height: 1024, alt: `${brand.name} orange ribbon logo and wordmark` }],
+    locale: "en_US",
+    url: "https://elevate.courses",
+    siteName: "Elevate",
+    title: "Elevate — Online Learning Platform | Courses & Career Paths",
+    description: "Elevate is an online learning platform offering courses, live learning, and career paths in AI, technology, and business.",
+    images: [{ url: "/branding/elevate-orange-ribbon-logo.png", width: 1119, height: 337, alt: "Elevate — Online Learning Platform" }],
   },
-  twitter: { card: "summary_large_image", title: `${brand.name} — ${brand.tagline}`, description: brand.tagline, images: [brand.logoPath] },
+  twitter: {
+    card: "summary_large_image",
+    title: "Elevate — Online Learning Platform",
+    description: "Elevate is an online learning platform offering courses, live learning, and career paths in AI, technology, and business.",
+    images: ["/branding/elevate-orange-ribbon-logo.png"],
+  },
 };
 
 export default function RootLayout({
