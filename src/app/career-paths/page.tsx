@@ -5,8 +5,19 @@ import { RoadmapCard } from "@/components/home/CareerPaths";
 import { LEARNING_ROADMAPS } from "@/lib/learningRoadmaps";
 import { courseService } from "@/services/courseService";
 
+import type { Metadata } from "next";
+
 export const instant = false;
-export const metadata = { title: "Learning Roadmaps — Elevate", description: "Follow ordered topics and see which Elevate courses are ready to learn." };
+export const metadata: Metadata = {
+  title: "Learning Roadmaps — Elevate",
+  description: "Follow ordered career roadmaps and see which Elevate courses in AI, technology, and business are ready to learn.",
+  alternates: { canonical: "https://elevate.courses/career-paths" },
+  openGraph: {
+    title: "Learning Roadmaps — Elevate",
+    description: "Follow ordered career roadmaps and see which Elevate courses in AI, technology, and business are ready to learn.",
+    url: "https://elevate.courses/career-paths",
+  },
+};
 
 export default async function CareerPathsPage() {
   const courses = await courseService.getAllCourses();

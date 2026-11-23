@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { ShieldCheck, Heart, Sparkles, BookOpen, Users, Trophy, ArrowRight } from "lucide-react";
-import { Reveal } from "@/components/ui/Reveal";
+import { BookOpen, Users, Trophy, ArrowRight } from "lucide-react";
 
 export const metadata = {
   title: "About Us — Elevate",
-  description: "Our mission, educational philosophy, and commitment to practical career skills.",
+  description: "Learn about Elevate's mission, educational philosophy, and commitment to practical career skills in AI, technology, and business.",
+  alternates: { canonical: "https://elevate.courses/about" },
+  openGraph: {
+    title: "About Us — Elevate",
+    description: "Learn about Elevate's mission, educational philosophy, and commitment to practical career skills in AI, technology, and business.",
+    url: "https://elevate.courses/about",
+  },
 };
 
 export default function AboutPage() {

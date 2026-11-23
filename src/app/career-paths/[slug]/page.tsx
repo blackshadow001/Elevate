@@ -6,10 +6,37 @@ import { Footer } from "@/components/layout/Footer";
 import { CatalogArtwork } from "@/components/courses/CatalogArtwork";
 import { LEARNING_ROADMAPS, roadmapSteps } from "@/lib/learningRoadmaps";
 import { courseService } from "@/services/courseService";
+import type { Metadata } from "next";
 
 export const instant = false;
 
-export default async function CareerPathDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const roadmap = LEARNING_ROADMAPS.find((item) => item.slug === slug);
+  if (!roadmap) return { title: "Roadmap not found — Elevate", robots: { index: false } };
+  return {
+    title: `${roadmap.title} Roadmap — Elevate`,
+    description: roadmap.description,
+    alternates: { canonical: `https://elevate.courses/career-paths/${encodeURIComponent(roadmap.slug)}` },
+    openGraph: {
+      title: `${roadmap.title} Roadmap — Elevate`,
+      description: roadmap.description,
+      url: `https://elevate.courses/career-paths/${encodeURIComponent(roadmap.slug)}`,
+    },
+  };
+}
+
+export async function generateStaticParams() {
+  return LEARNING_ROADMAPS.map((item) => ({
+    slug: item.slug,
+  }));
+}
+
+export default async function CareerPathDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const roadmap = LEARNING_ROADMAPS.find((item) => item.slug === slug);
   if (!roadmap) notFound();

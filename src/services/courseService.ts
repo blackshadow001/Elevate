@@ -4,10 +4,11 @@ import { connection } from "next/server";
 import { Course, Category, CareerPath, Instructor, Lesson } from "@/types";
 import { ApiError } from "@/server/api";
 import { getDb } from "@/server/db";
-import { getCourse, listCourses } from "@/server/courses";
+import { getCourse } from "@/server/courses";
 import { currentUser } from "@/server/auth";
 import { formatVideoDuration } from "@/lib/videoDuration";
-import { publicActivity } from "@/server/lessonActivities";
+import { publicActivity, readActivity } from "@/server/lessonActivities";
+import { catalogCategory } from "@/lib/catalogTaxonomy";
 
 type ServerCourse = ReturnType<typeof getCourse>;
 
@@ -70,16 +71,159 @@ function mapCourse(source: ServerCourse): Course {
   };
 }
 
+function mapBatchCourse(
+  source: Record<string, unknown>,
+  sections: Array<{ id: string; title: string; lessons: Array<Lesson> }>
+): Course {
+  let metadata: Record<string, unknown> = {};
+  try { metadata = JSON.parse(String(source.metadata_json || "{}")); } catch { metadata = {}; }
+
+  const instructor: Instructor = {
+    id: String(source.instructor_id),
+    name: String(source.instructor_name),
+    role: "Instructor",
+    avatar: source.instructor_avatar ? String(source.instructor_avatar) : "",
+    headline: String(source.instructor_headline || ""),
+    bio: String(source.instructor_bio || ""),
+    rating: 0,
+    studentsCount: Number(source.instructor_learners_count || 0),
+    coursesCount: Number(source.instructor_courses_count || 0),
+  };
+
+  const level = String(source.level);
+  const language = String(source.language);
+  const price = Number(source.price_minor) / 100;
+  const reviewsCount = Number(source.reviews_count || 0);
+  const durationSeconds = Number(source.duration_seconds || 0);
+
+  return {
+    id: String(source.id),
+    slug: String(source.slug),
+    title: String(source.title),
+    subtitle: String(source.subtitle || ""),
+    description: String(source.description || ""),
+    category: catalogCategory(String(source.category)),
+    subcategory: typeof metadata.subcategory === "string" ? metadata.subcategory : "",
+    level: level === "Advanced" || level === "Intermediate" ? level : "Beginner",
+    language: language === "Hindi" || language === "Tamil" ? language : "English",
+    price,
+    originalPrice: typeof metadata.originalPrice === "number" ? metadata.originalPrice : price,
+    isFree: price === 0,
+    rating: reviewsCount > 0 ? Number(source.rating || 0) : 0,
+    ratingCount: reviewsCount,
+    studentsCount: Number(source.learners_count || 0),
+    duration: duration(durationSeconds),
+    totalLessons: sections.reduce((sum, section) => sum + section.lessons.length, 0),
+    image: source.thumbnail ? String(source.thumbnail) : "",
+    instructor,
+    updatedAt: new Date(String(source.updated_at)).toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+    whatYouWillLearn: strings(metadata.whatYouWillLearn),
+    requirements: strings(metadata.requirements),
+    sections,
+  };
+}
+
 export const courseService = {
   getAllCourses: async (): Promise<Course[]> => {
     await connection();
-    const ids: string[] = [];
-    for (let page = 1; ; page++) {
-      const batch = listCourses(new URLSearchParams({ pageSize: "50", page: String(page), sort: "newest" }));
-      ids.push(...batch.items.map((item) => item.id));
-      if (ids.length >= batch.total || batch.items.length === 0) break;
+    const db = getDb();
+
+    const courseQuery = `
+      SELECT
+        c.id, c.slug, c.title, c.subtitle, c.description, c.category, c.level, c.language,
+        c.thumbnail, c.price_minor, c.currency, c.status, c.rating, c.duration_seconds, c.lesson_count,
+        c.metadata_json, c.updated_at, c.published_at,
+        u.id as instructor_id, u.name as instructor_name, u.avatar as instructor_avatar,
+        COALESCE(ip.headline, '') as instructor_headline,
+        COALESCE(ip.bio, '') as instructor_bio,
+        COALESCE(enr.learners_count, 0) as learners_count,
+        COALESCE(rev.reviews_count, 0) as reviews_count,
+        COALESCE(inst.instructor_courses_count, 0) as instructor_courses_count,
+        COALESCE(inst.instructor_learners_count, 0) as instructor_learners_count
+      FROM courses c
+      JOIN users u ON u.id = c.instructor_id
+      LEFT JOIN instructor_profiles ip ON ip.user_id = u.id
+      LEFT JOIN (
+        SELECT course_id, COUNT(*) as learners_count FROM enrollments GROUP BY course_id
+      ) enr ON enr.course_id = c.id
+      LEFT JOIN (
+        SELECT course_id, COUNT(*) as reviews_count FROM reviews GROUP BY course_id
+      ) rev ON rev.course_id = c.id
+      LEFT JOIN (
+        SELECT
+          c2.instructor_id,
+          COUNT(DISTINCT CASE WHEN c2.status = 'published' THEN c2.id END) as instructor_courses_count,
+          COUNT(e2.id) as instructor_learners_count
+        FROM courses c2
+        LEFT JOIN enrollments e2 ON e2.course_id = c2.id
+        GROUP BY c2.instructor_id
+      ) inst ON inst.instructor_id = u.id
+      WHERE c.status = 'published' AND c.review_status = 'approved'
+      ORDER BY c.published_at DESC
+    `;
+
+    const sectionQuery = `
+      SELECT
+        s.id as section_id, s.course_id, s.title as section_title, s.position as section_position,
+        l.id as lesson_id, l.title as lesson_title, l.description as lesson_description,
+        l.activity_json, l.position as lesson_position, l.type as lesson_type,
+        l.duration_seconds as lesson_duration_seconds, l.is_preview as lesson_is_preview,
+        l.status as lesson_status, m.id as media_asset_id
+      FROM course_sections s
+      LEFT JOIN lessons l ON l.section_id = s.id AND l.status = 'published'
+      LEFT JOIN media_assets m ON m.storage_key = l.video_storage_key
+      ORDER BY s.course_id, s.position, l.position
+    `;
+
+    const courseRows = db.prepare(courseQuery).all() as Array<Record<string, unknown>>;
+    const sectionRows = db.prepare(sectionQuery).all() as Array<Record<string, unknown>>;
+
+    // Group sections and lessons by course_id
+    const sectionsByCourse = new Map<string, Map<string, { id: string; title: string; lessons: Lesson[] }>>();
+
+    for (const row of sectionRows) {
+      const courseId = String(row.course_id);
+      if (!sectionsByCourse.has(courseId)) {
+        sectionsByCourse.set(courseId, new Map());
+      }
+      const courseSections = sectionsByCourse.get(courseId)!;
+      const sectionId = String(row.section_id);
+
+      if (!courseSections.has(sectionId)) {
+        courseSections.set(sectionId, {
+          id: sectionId,
+          title: String(row.section_title),
+          lessons: [],
+        });
+      }
+
+      if (row.lesson_id) {
+        const sec = courseSections.get(sectionId)!;
+        const durationSec = Number(row.lesson_duration_seconds || 0);
+        const isPreview = Boolean(row.lesson_is_preview) && durationSec >= 30 && durationSec <= 60;
+        const mediaAssetId = row.media_asset_id ? String(row.media_asset_id) : undefined;
+        const act = publicActivity(readActivity(String(row.activity_json || "")));
+        const lType = act?.kind === "resource" ? "resource" : (row.lesson_type === "quiz" || row.lesson_type === "project" || row.lesson_type === "reading" ? String(row.lesson_type) : "video") as Lesson["type"];
+
+        sec.lessons.push({
+          id: String(row.lesson_id),
+          title: String(row.lesson_title),
+          isPreview,
+          duration: mediaAssetId ? formatVideoDuration(durationSec) : duration(durationSec),
+          type: lType,
+          content: String(row.lesson_description || ""),
+          activity: act,
+          videoUrl: mediaAssetId ? `/api/media/${mediaAssetId}/stream` : undefined,
+        });
+      }
     }
-    return ids.map((id) => mapCourse(getCourse(id)));
+
+    return courseRows.map((courseRow) => {
+      const courseId = String(courseRow.id);
+      const courseSectionsMap = sectionsByCourse.get(courseId);
+      const sections = courseSectionsMap ? Array.from(courseSectionsMap.values()) : [];
+      return mapBatchCourse(courseRow, sections);
+    });
   },
   getCourseBySlug: async (slug: string): Promise<Course | undefined> => {
     await connection();

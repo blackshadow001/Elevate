@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  experimental: {
+    agentUpgrade: "security",
+  },
   allowedDevOrigins: ["172.19.64.1", "172.31.144.1", "192.168.1.3"],
   cacheComponents: true,
   serverExternalPackages: ["razorpay"],
