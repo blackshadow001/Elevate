@@ -8,8 +8,38 @@ import { PopularCourses } from "@/components/home/PopularCourses";
 import { CTA } from "@/components/home/CTA";
 import { courseService } from "@/services/courseService";
 import { listCatalogCategories } from "@/server/catalogCategories";
+import type { Metadata } from "next";
 
 export const instant = false;
+
+const siteUrl = "https://elevate.courses";
+const description = "Explore practical online courses in AI, technology, business, marketing, and more. Learn from experts on Elevate.";
+
+export const metadata: Metadata = {
+  title: "Elevate Courses | Online Learning in AI, Technology and Business",
+  description,
+  alternates: { canonical: siteUrl },
+  openGraph: { title: "Elevate Courses | Online Learning", description, url: siteUrl },
+};
+
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${siteUrl}/#organization`,
+    name: "Elevate",
+    url: siteUrl,
+    logo: `${siteUrl}/branding/elevate-orange-ribbon-logo.png`,
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteUrl}/#website`,
+    name: "Elevate",
+    url: siteUrl,
+    publisher: { "@id": `${siteUrl}/#organization` },
+  },
+];
 
 export default async function HomePage() {
   const courses = await courseService.getAllCourses();
@@ -17,6 +47,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFDF9]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <Navbar />
       <main className="flex-1">
         <Hero courses={courses} />

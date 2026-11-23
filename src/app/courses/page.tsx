@@ -4,12 +4,14 @@ import { Footer } from "@/components/layout/Footer";
 import { CoursesExplorer } from "@/components/courses/CoursesExplorer";
 import { courseService } from "@/services/courseService";
 import { listCatalogCategories } from "@/server/catalogCategories";
+import type { Metadata } from "next";
 
 export const instant = false;
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "All Courses — Elevate",
-  description: "Browse courses currently published on Elevate.",
+  description: "Browse published online courses and upcoming topics across AI, technology, business, marketing, and more on Elevate.",
+  alternates: { canonical: "https://elevate.courses/courses" },
 };
 
 export default async function CoursesPage() {
