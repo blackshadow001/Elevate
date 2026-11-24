@@ -20,6 +20,12 @@ import {
   Columns3
 } from "lucide-react";
 
+const TABLE_CHALLENGE_MAP: Record<"employees" | "departments" | "orders", number> = {
+  employees: 0,
+  departments: 1,
+  orders: 2,
+};
+
 export default function QueryMasterPage() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const challenge: SqlKataChallenge = SQLKATA_CHALLENGES[selectedIdx];
@@ -41,9 +47,11 @@ export default function QueryMasterPage() {
     rows: [],
   });
 
-  const handleChallengeChange = (idx: number) => {
-    setSelectedIdx(idx);
-    setQuery(SQLKATA_CHALLENGES[idx].starterQuery);
+  const handleSelectTable = (table: "employees" | "departments" | "orders") => {
+    setActiveSchemaTable(table);
+    const challengeIdx = TABLE_CHALLENGE_MAP[table];
+    setSelectedIdx(challengeIdx);
+    setQuery(SQLKATA_CHALLENGES[challengeIdx].starterQuery);
     setExecutionResult({ status: "idle", columns: [], rows: [] });
   };
 
@@ -131,22 +139,15 @@ export default function QueryMasterPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <label htmlFor="sql-select" className="text-xs font-semibold text-[#64748B]">
-              Select Task:
-            </label>
-            <select
-              id="sql-select"
-              value={selectedIdx}
-              onChange={(e) => handleChallengeChange(Number(e.target.value))}
-              className="text-xs font-semibold bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#172033] focus:outline-none focus:border-[#FF6B35] shadow-sm"
-            >
-              {SQLKATA_CHALLENGES.map((c, i) => (
-                <option key={c.id} value={i}>
-                  {c.title} ({c.difficulty})
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-[#64748B]">Active Table:</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#172033] text-white shadow-xs">
+              <Table className="w-3.5 h-3.5 text-purple-400" />
+              <span className="font-mono">{activeSchemaTable}</span>
+            </span>
+            <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-purple-50 text-purple-600 border border-purple-200">
+              {challenge.difficulty}
+            </span>
           </div>
         </div>
 
@@ -167,7 +168,7 @@ export default function QueryMasterPage() {
               </div>
             </div>
 
-            {/* Schema Explorer */}
+            {/* Schema Explorer & Table Selection */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#172033] flex items-center gap-1.5">
                 <Columns3 className="w-4 h-4 text-purple-600" />
@@ -178,14 +179,15 @@ export default function QueryMasterPage() {
                   <button
                     key={table}
                     type="button"
-                    onClick={() => setActiveSchemaTable(table)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    onClick={() => handleSelectTable(table)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                       activeSchemaTable === table
-                        ? "bg-[#172033] text-white shadow-xs"
-                        : "bg-slate-100 text-[#64748B] hover:bg-slate-200"
+                        ? "bg-[#172033] text-white shadow-sm ring-2 ring-purple-500/30"
+                        : "bg-slate-100 text-[#64748B] hover:bg-slate-200 hover:text-[#172033]"
                     }`}
                   >
-                    {table}
+                    <Table className="w-3.5 h-3.5" />
+                    <span>{table}</span>
                   </button>
                 ))}
               </div>

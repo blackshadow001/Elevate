@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
@@ -39,6 +39,41 @@ export function Navbar() {
   const [mobilePracticeOpen, setMobilePracticeOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const practiceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const exploreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (practiceTimeoutRef.current) clearTimeout(practiceTimeoutRef.current);
+      if (exploreTimeoutRef.current) clearTimeout(exploreTimeoutRef.current);
+    };
+  }, []);
+
+  const handlePracticeMouseEnter = () => {
+    if (practiceTimeoutRef.current) clearTimeout(practiceTimeoutRef.current);
+    if (exploreTimeoutRef.current) clearTimeout(exploreTimeoutRef.current);
+    setExploreOpen(false);
+    setPracticeOpen(true);
+  };
+
+  const handlePracticeMouseLeave = () => {
+    practiceTimeoutRef.current = setTimeout(() => {
+      setPracticeOpen(false);
+    }, 180);
+  };
+
+  const handleExploreMouseEnter = () => {
+    if (exploreTimeoutRef.current) clearTimeout(exploreTimeoutRef.current);
+    if (practiceTimeoutRef.current) clearTimeout(practiceTimeoutRef.current);
+    setPracticeOpen(false);
+    setExploreOpen(true);
+  };
+
+  const handleExploreMouseLeave = () => {
+    exploreTimeoutRef.current = setTimeout(() => {
+      setExploreOpen(false);
+    }, 180);
+  };
   const [catalogCategories, setCatalogCategories] = useState<{ id: string; name: string }[]>(CATALOG_CATEGORIES.map(({ name }) => ({ id: name, name })));
   useEffect(() => {
     let active = true;
@@ -77,6 +112,10 @@ export function Navbar() {
           <nav className="hidden lg:flex items-center gap-6 text-[15px] font-medium text-[#172033]">
             <Link
               href="/courses"
+              onMouseEnter={() => {
+                setPracticeOpen(false);
+                setExploreOpen(false);
+              }}
               className={`hover:text-[#FF6B35] transition-colors py-1 ${
                 pathname === "/courses" ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
               }`}
@@ -85,25 +124,28 @@ export function Navbar() {
             </Link>
 
             {/* Practice Dropdown matching reference image */}
-            <div className="relative">
+            <div 
+              className="relative"
+              onMouseEnter={handlePracticeMouseEnter}
+              onMouseLeave={handlePracticeMouseLeave}
+            >
               <button
                 type="button"
-                onClick={() => setPracticeOpen(!practiceOpen)}
-                onBlur={() => setTimeout(() => setPracticeOpen(false), 250)}
+                onClick={() => setPracticeOpen((prev) => !prev)}
                 aria-expanded={practiceOpen}
                 aria-haspopup="true"
-                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none ${
+                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none cursor-pointer ${
                   pathname.startsWith("/practice") ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
                 }`}
               >
                 <span>Practice</span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${practiceOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${practiceOpen ? "rotate-180 text-[#FF6B35]" : ""}`} />
               </button>
 
               {practiceOpen && (
                 <div
                   onMouseDown={(e) => e.preventDefault()}
-                  className="absolute top-full left-0 mt-2.5 w-[380px] sm:w-[410px] bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] p-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute top-full left-0 mt-2 w-[380px] sm:w-[410px] bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] p-2.5 z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
                   <div className="space-y-1">
                     <Link
@@ -232,17 +274,34 @@ export function Navbar() {
 
             <Link
               href="/career-paths"
+              onMouseEnter={() => {
+                setPracticeOpen(false);
+                setExploreOpen(false);
+              }}
               className={`hover:text-[#FF6B35] transition-colors py-1 ${
                 pathname.startsWith("/career-paths") ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
               }`}
             >
               Career Paths
             </Link>
-            <Link href="/personal-plan" className={`py-1 transition-colors hover:text-[#FF6B35] ${pathname.startsWith("/personal-plan") ? "font-semibold text-[#FF6B35]" : "text-[#172033]"}`}>Personal Plan</Link>
+            <Link 
+              href="/personal-plan" 
+              onMouseEnter={() => {
+                setPracticeOpen(false);
+                setExploreOpen(false);
+              }}
+              className={`py-1 transition-colors hover:text-[#FF6B35] ${pathname.startsWith("/personal-plan") ? "font-semibold text-[#FF6B35]" : "text-[#172033]"}`}
+            >
+              Personal Plan
+            </Link>
 
             {/* Live Learning */}
             <Link
               href="/live"
+              onMouseEnter={() => {
+                setPracticeOpen(false);
+                setExploreOpen(false);
+              }}
               className={`hover:text-[#FF6B35] transition-colors py-1 flex items-center gap-1.5 ${
                 pathname.startsWith("/live") ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
               }`}
@@ -255,25 +314,28 @@ export function Navbar() {
             </Link>
 
             {/* Explore 2-Column Mega Dropdown (Matching Udemy Reference) */}
-            <div className="relative">
+            <div 
+              className="relative"
+              onMouseEnter={handleExploreMouseEnter}
+              onMouseLeave={handleExploreMouseLeave}
+            >
               <button
                 type="button"
-                onClick={() => setExploreOpen(!exploreOpen)}
-                onBlur={() => setTimeout(() => setExploreOpen(false), 250)}
+                onClick={() => setExploreOpen((prev) => !prev)}
                 aria-expanded={exploreOpen}
                 aria-haspopup="true"
-                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none ${
+                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none cursor-pointer ${
                   exploreOpen ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
                 }`}
               >
                 <span>Explore</span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${exploreOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${exploreOpen ? "rotate-180 text-[#FF6B35]" : ""}`} />
               </button>
 
               {exploreOpen && (
                 <div
                   onMouseDown={(e) => e.preventDefault()}
-                  className="absolute top-full -left-20 sm:left-0 mt-2.5 w-[620px] bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] overflow-hidden z-50 flex animate-in fade-in slide-in-from-top-2 duration-150 divide-x divide-[#E5E7EB]"
+                  className="absolute top-full -left-20 sm:left-0 mt-2 w-[620px] bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] overflow-hidden z-50 flex animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200 divide-x divide-[#E5E7EB] before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
                   {/* Left Column: Categories and Goals (w-60) */}
                   <div className="w-60 bg-white py-3 overflow-y-auto max-h-[500px]">
