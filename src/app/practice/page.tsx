@@ -44,9 +44,7 @@ export default function PracticeHubPage() {
 
       <main className="flex-1">
         {/* Practice Hero Banner (Full-Bleed Pure CSS/SVG/HTML) */}
-        <section className="relative w-full overflow-hidden border-b border-[#E5E7EB]/80 bg-gradient-to-b from-[#FFFBF7] via-[#FFF6ED] to-[#FFF0E5] py-12 sm:py-16 lg:py-20">
-          <PracticeHeroBannerCSS />
-        </section>
+        <PracticeHeroBannerCSS />
 
         {/* Practice Modules Grid */}
         <section id="tracks" className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
