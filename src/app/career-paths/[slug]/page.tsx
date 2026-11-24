@@ -18,14 +18,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const roadmap = LEARNING_ROADMAPS.find((item) => item.slug === slug);
   if (!roadmap) return { title: "Roadmap not found — Elevate", robots: { index: false } };
+  const canonicalUrl = `https://elevate.courses/career-paths/${encodeURIComponent(roadmap.slug)}`;
   return {
-    title: `${roadmap.title} Roadmap — Elevate`,
+    title: `${roadmap.title} Career Roadmap — Elevate`,
     description: roadmap.description,
-    alternates: { canonical: `https://elevate.courses/career-paths/${encodeURIComponent(roadmap.slug)}` },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
-      title: `${roadmap.title} Roadmap — Elevate`,
+      title: `${roadmap.title} Career Roadmap — Elevate`,
       description: roadmap.description,
-      url: `https://elevate.courses/career-paths/${encodeURIComponent(roadmap.slug)}`,
+      url: canonicalUrl,
+      siteName: "Elevate",
+      locale: "en_US",
+      type: "website",
+      images: [
+        {
+          url: "https://elevate.courses/branding/elevate-orange-ribbon-logo.png",
+          width: 1119,
+          height: 337,
+          alt: `${roadmap.title} Roadmap`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${roadmap.title} Career Roadmap — Elevate`,
+      description: roadmap.description,
+      images: ["https://elevate.courses/branding/elevate-orange-ribbon-logo.png"],
     },
   };
 }
@@ -44,7 +62,57 @@ export default async function CareerPathDetailPage({ params }: PageProps) {
   const steps = roadmapSteps(roadmap, courses);
   const available = steps.filter((step) => step.publishedCourse).length;
 
+  const canonicalUrl = `https://elevate.courses/career-paths/${encodeURIComponent(roadmap.slug)}`;
+
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "EducationalOccupationalProgram",
+      name: `${roadmap.title} Career Roadmap`,
+      description: roadmap.description,
+      provider: {
+        "@type": "EducationalOrganization",
+        name: "Elevate",
+        sameAs: "https://elevate.courses"
+      },
+      url: canonicalUrl,
+      hasCourse: steps.filter(s => s.publishedCourse).map(s => ({
+        "@type": "Course",
+        name: s.publishedCourse?.title,
+        url: `https://elevate.courses/courses/${s.publishedCourse?.slug}`
+      }))
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: "https://elevate.courses"
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Career Paths",
+          item: "https://elevate.courses/career-paths"
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: roadmap.title,
+          item: canonicalUrl
+        }
+      ]
+    }
+  ];
+
   return <div className="flex min-h-screen flex-col bg-[#FFFDF9]">
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
     <Navbar />
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6 lg:px-8">
       <Link href="/career-paths" className="inline-flex items-center gap-2 text-sm font-bold text-[#D65B28] hover:underline"><ArrowLeft aria-hidden="true" className="h-4 w-4" />All roadmaps</Link>

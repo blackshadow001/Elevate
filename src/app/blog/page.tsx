@@ -4,17 +4,71 @@ import { Footer } from "@/components/layout/Footer";
 import { mockBlogPosts } from "@/data/blogPosts";
 import { Clock } from "lucide-react";
 
-export const metadata = {
-  title: "Engineering Blog — Elevate",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Engineering & Technical Blog — Elevate",
   description: "Technical deep dives, architectural patterns, and engineering insights from Elevate instructors.",
+  alternates: { canonical: "https://elevate.courses/blog" },
+  openGraph: {
+    title: "Engineering & Technical Blog — Elevate",
+    description: "Technical deep dives, architectural patterns, and engineering insights from Elevate instructors.",
+    url: "https://elevate.courses/blog",
+    siteName: "Elevate",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "https://elevate.courses/branding/elevate-orange-ribbon-logo.png",
+        width: 1119,
+        height: 337,
+        alt: "The Elevate Technical Blog",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Engineering & Technical Blog — Elevate",
+    description: "Technical deep dives, architectural patterns, and engineering insights from Elevate instructors.",
+    images: ["https://elevate.courses/branding/elevate-orange-ribbon-logo.png"],
+  },
 };
 
 export default function BlogIndexPage() {
   const featured = mockBlogPosts[0];
   const rest = mockBlogPosts.slice(1);
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    name: "The Elevate Technical Blog",
+    description: "Articles on modern React architecture, RAG agents, full-stack performance, and design systems.",
+    url: "https://elevate.courses/blog",
+    publisher: {
+      "@type": "Organization",
+      name: "Elevate",
+      url: "https://elevate.courses",
+      logo: "https://elevate.courses/branding/elevate-orange-ribbon-logo.png"
+    },
+    blogPost: mockBlogPosts.map(post => ({
+      "@type": "BlogPosting",
+      headline: post.title,
+      description: post.excerpt,
+      url: `https://elevate.courses/blog/${post.slug}`,
+      datePublished: post.publishedAt,
+      author: {
+        "@type": "Person",
+        name: post.author.name
+      }
+    }))
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFDF9]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <Navbar />
 
       <main className="flex-1 py-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">

@@ -3,9 +3,24 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { MessageSquare, Users, Sparkles, ArrowRight, ShieldCheck, Code2 } from "lucide-react";
 
-export const metadata = {
-  title: "Discord Community — Elevate",
-  description: "Connect with over 45,000+ engineers, students, and mentors in the Elevate Discord.",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Community & Developer Network — Elevate",
+  description: "Connect with thousands of engineers, learners, and mentors in the Elevate community. Join peer study groups, participate in hackathons, and collaborate.",
+  alternates: { canonical: "https://elevate.courses/community" },
+  openGraph: {
+    title: "Community & Developer Network — Elevate",
+    description: "Connect with thousands of engineers, learners, and mentors in the Elevate community.",
+    url: "https://elevate.courses/community",
+    siteName: "Elevate",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Community & Developer Network — Elevate",
+    description: "Connect with thousands of engineers, learners, and mentors in the Elevate community.",
+  },
 };
 
 export default function CommunityPage() {

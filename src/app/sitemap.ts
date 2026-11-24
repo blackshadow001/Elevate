@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { LEARNING_ROADMAPS } from "@/lib/learningRoadmaps";
 import { courseService } from "@/services/courseService";
+import { mockBlogPosts } from "@/data/blogPosts";
 
 const siteUrl = "https://elevate.courses";
 
@@ -19,6 +20,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${siteUrl}/courses`,
       lastModified: now,
       changeFrequency: "daily",
+      priority: 0.95,
+    },
+    {
+      url: `${siteUrl}/personal-plan`,
+      lastModified: now,
+      changeFrequency: "weekly",
       priority: 0.9,
     },
     {
@@ -34,6 +41,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.85,
     },
     {
+      url: `${siteUrl}/live-classes`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/live/bootcamps`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/live/events`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/live/recordings`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    },
+    {
       url: `${siteUrl}/practice`,
       lastModified: now,
       changeFrequency: "daily",
@@ -46,13 +77,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
-      url: `${siteUrl}/practice/webforge`,
+      url: `${siteUrl}/practice/querymaster`,
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.85,
     },
     {
-      url: `${siteUrl}/practice/querymaster`,
+      url: `${siteUrl}/practice/webforge`,
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.85,
@@ -78,6 +109,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: `${siteUrl}/faq`,
       lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/help`,
+      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
     },
@@ -85,13 +122,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${siteUrl}/contact`,
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.6,
+      priority: 0.7,
     },
     {
       url: `${siteUrl}/blog`,
       lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.7,
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${siteUrl}/certificates/verify`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.75,
+    },
+    {
+      url: `${siteUrl}/careers`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.65,
+    },
+    {
+      url: `${siteUrl}/community`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.65,
     },
     {
       url: `${siteUrl}/instructor/apply`,
@@ -113,6 +168,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  const blogRoutes: MetadataRoute.Sitemap = mockBlogPosts.map((post) => ({
+    url: `${siteUrl}/blog/${post.slug}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.75,
+  }));
+
   const roadmapRoutes: MetadataRoute.Sitemap = LEARNING_ROADMAPS.map((roadmap) => ({
     url: `${siteUrl}/career-paths/${roadmap.slug}`,
     lastModified: now,
@@ -127,5 +189,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  return [...coreRoutes, ...roadmapRoutes, ...courseRoutes];
+  return [...coreRoutes, ...blogRoutes, ...roadmapRoutes, ...courseRoutes];
 }

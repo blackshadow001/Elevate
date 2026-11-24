@@ -23,10 +23,77 @@ export const metadata: Metadata = {
   description: "Sharpen your software engineering skills with Elevate Practice. Solve 100 levels of progressive algorithmic coding challenges, build frontend projects, master SQL, and debug real code in our interactive browser IDE.",
   alternates: { canonical: "https://elevate.courses/practice" },
   openGraph: {
-    title: "Practice Hub — Elevate",
+    title: "Practice Hub — Interactive Coding & Engineering Sandbox | Elevate",
     description: "100-Level Algorithmic Coding Challenges, SQL runner, web development sandbox, and online compiler on Elevate.",
     url: "https://elevate.courses/practice",
+    siteName: "Elevate",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "https://elevate.courses/branding/elevate-orange-ribbon-logo.png",
+        width: 1119,
+        height: 337,
+        alt: "Elevate Practice Hub",
+      },
+    ],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Practice Hub — Elevate",
+    description: "100-Level Algorithmic Coding Challenges, SQL runner, web development sandbox, and online compiler on Elevate.",
+    images: ["https://elevate.courses/branding/elevate-orange-ribbon-logo.png"],
+  },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "Elevate Practice Platform",
+  description: "Interactive browser coding sandbox, algorithm challenges, SQL playground, and cloud IDE.",
+  url: "https://elevate.courses/practice",
+  hasPart: [
+    {
+      "@type": "SoftwareApplication",
+      name: "CodeArena",
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Any",
+      url: "https://elevate.courses/practice/codearena",
+      description: "100-level progressive algorithmic coding challenges in JavaScript, Python, and TypeScript."
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "QueryMaster",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Any",
+      url: "https://elevate.courses/practice/querymaster",
+      description: "Interactive SQL query terminal and schema explorer for PostgreSQL and SQLite."
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "WebForge",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Any",
+      url: "https://elevate.courses/practice/webforge",
+      description: "Live responsive HTML, CSS, and React component workspace with live browser preview."
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "BugHunter",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Any",
+      url: "https://elevate.courses/practice/bughunter",
+      description: "Production code debugging simulator with real-time test verification."
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "CloudStudio",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Any",
+      url: "https://elevate.courses/practice/cloudstudio",
+      description: "Zero-setup in-browser cloud workspace with live terminal and multi-language compiler."
+    }
+  ]
 };
 
 const moduleIcons = {
@@ -40,6 +107,10 @@ const moduleIcons = {
 export default function PracticeHubPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFDF9]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <Navbar />
 
       <main className="flex-1">

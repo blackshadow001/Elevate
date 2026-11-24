@@ -9,6 +9,7 @@ export const instant = false;
 export const metadata = {
   title: "Admin Control Center | Elevate LMS",
   description: "Enterprise operations, review queue, pricing engine, and platform governance.",
+  robots: { index: false, follow: false },
 };
 
 export default async function AdminRootLayout({

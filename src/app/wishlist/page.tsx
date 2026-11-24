@@ -9,6 +9,7 @@ import { getDb } from "@/server/db";
 export const metadata = {
   title: "My Wishlist — Elevate",
   description: "Courses saved to your Elevate wishlist.",
+  robots: { index: false, follow: false },
 };
 
 export default async function WishlistPage() {

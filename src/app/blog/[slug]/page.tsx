@@ -14,10 +14,37 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const post = mockBlogPosts.find((item) => item.slug === slug);
   if (!post) return { title: "Article not found — Elevate", robots: { index: false } };
+  const canonicalUrl = `https://elevate.courses/blog/${encodeURIComponent(post.slug)}`;
+  const imageUrl = post.coverImage.startsWith("http") ? post.coverImage : `https://elevate.courses${post.coverImage}`;
+
   return {
     title: `${post.title} — Elevate`,
     description: post.excerpt,
-    alternates: { canonical: `https://elevate.courses/blog/${encodeURIComponent(post.slug)}` },
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title: `${post.title} — Elevate`,
+      description: post.excerpt,
+      url: canonicalUrl,
+      siteName: "Elevate",
+      locale: "en_US",
+      type: "article",
+      publishedTime: post.publishedAt,
+      authors: [post.author.name],
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${post.title} — Elevate`,
+      description: post.excerpt,
+      images: [imageUrl],
+    },
   };
 }
 
@@ -35,8 +62,67 @@ export default async function BlogPostDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const canonicalUrl = `https://elevate.courses/blog/${encodeURIComponent(post.slug)}`;
+  const imageUrl = post.coverImage.startsWith("http") ? post.coverImage : `https://elevate.courses${post.coverImage}`;
+
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "@id": `${canonicalUrl}#article`,
+      headline: post.title,
+      description: post.excerpt,
+      image: imageUrl,
+      datePublished: post.publishedAt,
+      dateModified: post.publishedAt,
+      author: {
+        "@type": "Person",
+        name: post.author.name,
+        jobTitle: post.author.role
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Elevate",
+        url: "https://elevate.courses",
+        logo: "https://elevate.courses/branding/elevate-orange-ribbon-logo.png"
+      },
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": canonicalUrl
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: "https://elevate.courses"
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Blog",
+          item: "https://elevate.courses/blog"
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: post.title,
+          item: canonicalUrl
+        }
+      ]
+    }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFDF9]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <Navbar />
 
       <main className="flex-1 py-12 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-8">

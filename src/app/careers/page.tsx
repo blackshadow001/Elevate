@@ -3,7 +3,25 @@ import { ArrowRight, BookOpen, Clapperboard, ShieldCheck } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
-export const metadata = { title: "Teach on Elevate | Careers" };
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Teach on Elevate — Instructor Careers & Opportunities",
+  description: "Share your industry expertise and empower learners worldwide. Apply to teach on Elevate as a course instructor and build impactful curriculum.",
+  alternates: { canonical: "https://elevate.courses/careers" },
+  openGraph: {
+    title: "Teach on Elevate — Careers",
+    description: "Share your industry expertise and empower learners worldwide. Apply to teach on Elevate.",
+    url: "https://elevate.courses/careers",
+    siteName: "Elevate",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Teach on Elevate — Careers",
+    description: "Share your industry expertise and empower learners worldwide.",
+  },
+};
 
 export default function CareersPage() {
   return <div className="min-h-screen flex flex-col bg-[#FFFDF9]"><Navbar /><main className="flex-1">
