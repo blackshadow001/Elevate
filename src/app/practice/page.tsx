@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { 
@@ -48,11 +49,24 @@ export default function PracticeHubPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border-b border-[#E5E7EB]/60 bg-gradient-to-b from-orange-50/40 via-white to-[#FFFDF9] py-12 sm:py-16 lg:py-20">
-          <div className="pointer-events-none absolute right-1/4 top-0 h-96 w-96 rounded-full bg-[#FF6B35]/8 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 left-8 h-72 w-72 rounded-full bg-blue-500/5 blur-2xl" />
+        <section className="relative overflow-hidden border-b border-[#E5E7EB]/60 bg-gradient-to-b from-orange-50/60 via-white to-[#FFFDF9] py-12 sm:py-16 lg:py-20">
+          {/* Top-Right and Ambient Background Wave Glows */}
+          <div className="pointer-events-none absolute -top-24 right-0 w-[640px] h-[640px] rounded-full bg-gradient-to-b from-orange-400/15 via-amber-200/10 to-transparent blur-3xl z-0" />
+          <div className="pointer-events-none absolute right-1/4 top-0 h-96 w-96 rounded-full bg-[#FF6B35]/8 blur-3xl z-0" />
+          
+          {/* Bottom-Left Curved Orange Wave from original banner */}
+          <div className="pointer-events-none absolute -bottom-1 -left-2 w-64 sm:w-80 md:w-96 lg:w-[440px] z-0 select-none">
+            <Image
+              src="/images/practice-bg-wave-left.webp"
+              alt=""
+              width={640}
+              height={402}
+              className="w-full h-auto object-contain object-left-bottom"
+              priority
+            />
+          </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
               {/* Left Column (7 cols): Header, Headline & Quick Stats */}
               <div className="lg:col-span-7 space-y-5">
