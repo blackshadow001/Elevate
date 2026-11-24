@@ -22,12 +22,12 @@ import { PRACTICE_MODULES } from "@/data/practiceData";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Practice Hub — CodeKata, WebKata, SQLKata & IDE | Elevate",
-  description: "Sharpen your software engineering skills with Elevate Practice. Solve algorithmic coding problems, build frontend projects, master SQL, and debug real code in our interactive browser IDE.",
+  title: "Practice Hub — CodeArena, WebForge, QueryMaster & CloudStudio | Elevate",
+  description: "Sharpen your software engineering skills with Elevate Practice. Solve 100 levels of chess-style tactical coding puzzles, build frontend projects, master SQL, and debug real code in our interactive browser IDE.",
   alternates: { canonical: "https://elevate.courses/practice" },
   openGraph: {
     title: "Practice Hub — Elevate",
-    description: "Interactive coding challenges, SQL runner, web development sandbox, and online compiler on Elevate.",
+    description: "100-Level Chess-Style Coding Puzzles, SQL runner, web development sandbox, and online compiler on Elevate.",
     url: "https://elevate.courses/practice",
   },
 };

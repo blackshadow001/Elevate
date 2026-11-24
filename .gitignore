@@ -50,3 +50,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local artifacts & recordings
+/output/
+/Recording video/
+*.tar.gz
+*.tar
+deploy-*.sh
+aws/known_hosts
+
+*.tsbuildinfo
+next-env.d.ts

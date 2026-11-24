@@ -103,7 +103,7 @@ export function Navbar() {
                 >
                   <div className="space-y-1">
                     <Link
-                      href="/practice/codekata"
+                      href="/practice/codearena"
                       onClick={() => setPracticeOpen(false)}
                       className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
                     >
@@ -113,17 +113,18 @@ export function Navbar() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
-                            CodeKata
+                            CodeArena
                           </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-blue-100/70 text-blue-700">100 Lvls</span>
                         </div>
                         <p className="text-xs text-[#64748B] leading-snug mt-0.5">
-                          Sharpen your coding skills, prepare for interviews
+                          Chess-style tactical coding puzzles from beginner to DP
                         </p>
                       </div>
                     </Link>
 
                     <Link
-                      href="/practice/webkata"
+                      href="/practice/webforge"
                       onClick={() => setPracticeOpen(false)}
                       className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
                     >
@@ -133,17 +134,18 @@ export function Navbar() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
-                            WebKata
+                            WebForge
                           </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-100/70 text-emerald-700">Sandbox</span>
                         </div>
                         <p className="text-xs text-[#64748B] leading-snug mt-0.5">
-                          Build basic frontend & backend development skills
+                          Frontend components & web UI challenges
                         </p>
                       </div>
                     </Link>
 
                     <Link
-                      href="/practice/sqlkata"
+                      href="/practice/querymaster"
                       onClick={() => setPracticeOpen(false)}
                       className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
                     >
@@ -153,17 +155,18 @@ export function Navbar() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
-                            SQLKata
+                            QueryMaster
                           </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-purple-100/70 text-purple-700">SQL</span>
                         </div>
                         <p className="text-xs text-[#64748B] leading-snug mt-0.5">
-                          Master SQL concepts in relational database management
+                          Master relational queries, JOINs & analytics
                         </p>
                       </div>
                     </Link>
 
                     <Link
-                      href="/practice/fixthecode"
+                      href="/practice/bughunter"
                       onClick={() => setPracticeOpen(false)}
                       className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
                     >
@@ -173,17 +176,18 @@ export function Navbar() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
-                            FixTheCode
+                            BugHunter
                           </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-rose-100/70 text-rose-700">Debug</span>
                         </div>
                         <p className="text-xs text-[#64748B] leading-snug mt-0.5">
-                          A series of programs curated by industry experts
+                          Find defects in production programs & submit fixes
                         </p>
                       </div>
                     </Link>
 
                     <Link
-                      href="/practice/ide"
+                      href="/practice/cloudstudio"
                       onClick={() => setPracticeOpen(false)}
                       className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
                     >
@@ -193,11 +197,12 @@ export function Navbar() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
-                            IDE - Online Compiler
+                            CloudStudio
                           </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100/70 text-amber-700">IDE</span>
                         </div>
                         <p className="text-xs text-[#64748B] leading-snug mt-0.5">
-                          Run & test your code in any programming language
+                          Run & test code in Python, JS, TS with stdin/stdout
                         </p>
                       </div>
                     </Link>
@@ -490,58 +495,58 @@ export function Navbar() {
             {mobilePracticeOpen && (
               <div className="pl-3 py-2 space-y-2.5 border-b border-[#F7F8FA] bg-slate-50/70 rounded-xl p-2.5 text-sm">
                 <Link
-                  href="/practice/codekata"
+                  href="/practice/codearena"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
                 >
                   <Code2 className="w-4 h-4 text-blue-600" />
                   <div>
-                    <div>CodeKata</div>
-                    <div className="text-[10px] text-[#64748B] font-normal">Prepare for coding interviews</div>
+                    <div>CodeArena</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">100 levels of chess-style coding puzzles</div>
                   </div>
                 </Link>
                 <Link
-                  href="/practice/webkata"
+                  href="/practice/webforge"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
                 >
                   <Terminal className="w-4 h-4 text-emerald-600" />
                   <div>
-                    <div>WebKata</div>
+                    <div>WebForge</div>
                     <div className="text-[10px] text-[#64748B] font-normal">Frontend & backend sandboxes</div>
                   </div>
                 </Link>
                 <Link
-                  href="/practice/sqlkata"
+                  href="/practice/querymaster"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
                 >
                   <Database className="w-4 h-4 text-purple-600" />
                   <div>
-                    <div>SQLKata</div>
-                    <div className="text-[10px] text-[#64748B] font-normal">Relational database queries</div>
+                    <div>QueryMaster</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Relational database SQL puzzles</div>
                   </div>
                 </Link>
                 <Link
-                  href="/practice/fixthecode"
+                  href="/practice/bughunter"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
                 >
                   <Bug className="w-4 h-4 text-rose-600" />
                   <div>
-                    <div>FixTheCode</div>
-                    <div className="text-[10px] text-[#64748B] font-normal">Debug programs curated by experts</div>
+                    <div>BugHunter</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Find & fix production defects</div>
                   </div>
                 </Link>
                 <Link
-                  href="/practice/ide"
+                  href="/practice/cloudstudio"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
                 >
                   <Braces className="w-4 h-4 text-amber-600" />
                   <div>
-                    <div>IDE - Online Compiler</div>
-                    <div className="text-[10px] text-[#64748B] font-normal">Run & test code in any language</div>
+                    <div>CloudStudio</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Run & test code in Python, JS, TS</div>
                   </div>
                 </Link>
                 <Link
