@@ -6,13 +6,13 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { 
   getElevate100PuzzleLevels, 
-  ChessPuzzleLevel, 
-  ChessCodePuzzle,
-  INITIAL_USER_CHESS_STATE,
-  ChessPuzzleUserState,
+  CodingChallenge, 
+  ChallengeLevel,
+  INITIAL_USER_CHALLENGE_STATE,
+  ChallengeUserState,
   TestCase
 } from "@/lib/puzzleEngine";
-import { evaluateChallengeCode, EvaluationOutcome } from "@/lib/codeEvaluator";
+import { evaluateChallengeCode, EvaluationOutcome, SupportedLanguage } from "@/lib/codeEvaluator";
 import { 
   Play, 
   CheckCircle2, 
@@ -49,20 +49,20 @@ export default function CodeArenaPage() {
   const allLevels = getElevate100PuzzleLevels();
 
   // Load user progress from localStorage or default
-  const [userState, setUserState] = useState<ChessPuzzleUserState>(() => {
+  const [userState, setUserState] = useState<ChallengeUserState>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("elevate_chess_puzzles_progress");
+        const saved = localStorage.getItem("elevate_coding_challenges_progress") || localStorage.getItem("elevate_chess_puzzles_progress");
         if (saved) return JSON.parse(saved);
       } catch (e) {}
     }
-    return INITIAL_USER_CHESS_STATE;
+    return INITIAL_USER_CHALLENGE_STATE;
   });
 
   // Save to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem("elevate_chess_puzzles_progress", JSON.stringify(userState));
+      localStorage.setItem("elevate_coding_challenges_progress", JSON.stringify(userState));
     } catch (e) {}
   }, [userState]);
 
@@ -71,12 +71,12 @@ export default function CodeArenaPage() {
   const [showLevelMapModal, setShowLevelMapModal] = useState<boolean>(false);
   const [conceptFilter, setConceptFilter] = useState<string>("all");
 
-  const currentLevel: ChessPuzzleLevel = allLevels[currentLevelNum - 1] || allLevels[0];
-  const currentPuzzle: ChessCodePuzzle = currentLevel.puzzles[currentPuzzleIdx] || currentLevel.puzzles[0];
+  const currentLevel: ChallengeLevel = allLevels[currentLevelNum - 1] || allLevels[0];
+  const currentPuzzle: CodingChallenge = currentLevel.puzzles[currentPuzzleIdx] || currentLevel.puzzles[0];
 
   // HackerRank Workspace State
   const [activeLeftTab, setActiveLeftTab] = useState<"problem" | "submissions" | "discussions" | "editorial">("problem");
-  const [selectedLanguage, setSelectedLanguage] = useState<"python" | "javascript" | "cpp">("python");
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("python");
   const [editorTheme, setEditorTheme] = useState<"light" | "dark">("dark");
   const [userCode, setUserCode] = useState<string>("");
   const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(true);
@@ -164,7 +164,7 @@ export default function CodeArenaPage() {
         const ratingGain = 14;
         setRatingChange(ratingGain);
 
-        setUserState((prev) => {
+        setUserState((prev: ChallengeUserState) => {
           const newStreak = prev.streak + 1;
           const newRating = prev.rating + ratingGain;
           const newSolvedCount = prev.solvedPuzzlesCount + 1;
@@ -189,7 +189,7 @@ export default function CodeArenaPage() {
       } else {
         const ratingLoss = -8;
         setRatingChange(ratingLoss);
-        setUserState((prev) => ({
+        setUserState((prev: ChallengeUserState) => ({
           ...prev,
           rating: Math.max(100, prev.rating + ratingLoss),
           streak: 0,
@@ -200,7 +200,7 @@ export default function CodeArenaPage() {
 
   const handleCompleteLevel = () => {
     const nextLevel = currentLevelNum + 1;
-    setUserState((prev) => {
+    setUserState((prev: ChallengeUserState) => {
       const newUnlocked = prev.unlockedLevels.includes(nextLevel)
         ? prev.unlockedLevels
         : [...prev.unlockedLevels, nextLevel];
@@ -234,7 +234,7 @@ export default function CodeArenaPage() {
       <Navbar />
 
       <main className="flex-1 max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex flex-col justify-between">
-        {/* Top HUD: HackerRank & Chess.com Rating / Level Roadmap */}
+        {/* Top HUD: HackerRank Rating & 100-Level Roadmap */}
         <div className="bg-white border border-[#E5E7EB] rounded-2xl px-5 py-3.5 mb-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
           {/* Level Info & Map Trigger */}
           <div className="flex items-center gap-3">
@@ -564,12 +564,14 @@ export default function CodeArenaPage() {
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Language:</span>
                   <select
                     value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value as any)}
+                    onChange={(e) => setSelectedLanguage(e.target.value as SupportedLanguage)}
                     className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#FF6B35]"
                   >
                     <option value="python">Python 3</option>
                     <option value="javascript">JavaScript (Node.js)</option>
-                    <option value="cpp">C++11</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="java">Java 17</option>
+                    <option value="cpp">C++17</option>
                   </select>
                 </div>
 

@@ -44,7 +44,7 @@ export function Footer() {
           <div className="lg:col-span-2 space-y-4">
             <Logo inverse size="large" />
             <p className="text-[#94A3B8] text-xs sm:text-sm leading-relaxed max-w-sm">
-              {brand.tagline} Master in-demand AI, software engineering, cloud, and business skills with top industry practitioners and chess-style tactical practice.
+              {brand.tagline} Master in-demand AI, software engineering, cloud, and business skills with top industry practitioners and hands-on coding practice.
             </p>
             <div className="flex items-center gap-3 pt-2 text-[#94A3B8]">
               <Link href="/community" className="w-8 h-8 rounded-full bg-[#26344D] flex items-center justify-center hover:text-white hover:bg-[#FF6B35] transition-colors" aria-label="Community updates">

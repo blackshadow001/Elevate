@@ -122,7 +122,7 @@ export function Navbar() {
                           <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-blue-100/70 text-blue-700">100 Lvls</span>
                         </div>
                         <p className="text-xs text-[#64748B] leading-snug mt-0.5">
-                          Chess-style tactical coding puzzles from beginner to DP
+                          100 progressive coding challenges from beginner to DP
                         </p>
                       </div>
                     </Link>
@@ -652,7 +652,7 @@ export function Navbar() {
                   <Code2 className="w-4 h-4 text-blue-600" />
                   <div>
                     <div>CodeArena</div>
-                    <div className="text-[10px] text-[#64748B] font-normal">100 levels of chess-style coding puzzles</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">100 levels of progressive coding challenges</div>
                   </div>
                 </Link>
                 <Link

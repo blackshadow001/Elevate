@@ -14,13 +14,13 @@ export const PRACTICE_MODULES: PracticeModule[] = [
   {
     id: "codearena",
     name: "CodeArena",
-    tagline: "100 Levels of Chess-Style Tactical Coding Puzzles",
-    description: "Solve tactical coding puzzles across 100 progressive levels from Python Beginner to Advanced Trees & Graph Nodes with live Elo rating.",
+    tagline: "100 Progressive Levels of Algorithmic Coding Challenges",
+    description: "Solve algorithmic coding challenges across 100 progressive levels from Python & JavaScript Fundamentals to Advanced Trees, Graphs & Dynamic Programming with live skill ratings.",
     path: "/practice/codearena",
     iconType: "code",
-    badge: "Chess-Style Puzzles",
+    badge: "100 Progressive Levels",
     accentColor: "from-blue-500 to-indigo-600",
-    stats: "100 Levels · 600+ Puzzles",
+    stats: "100 Levels · 600+ Challenges",
   },
   {
     id: "webforge",
@@ -47,13 +47,13 @@ export const PRACTICE_MODULES: PracticeModule[] = [
   {
     id: "bughunter",
     name: "BugHunter",
-    tagline: "100 Levels of Code Defect & Debugging Puzzles",
-    description: "Inspect real-world code snippets with subtle production bugs. Identify the defect, fix the code, and pass the automated test suites.",
+    tagline: "Real-World Code Debugging Across Multiple Languages",
+    description: "Inspect production programs with subtle syntax and logic defects across Python, JavaScript, Java, and C++. Identify the root cause, refactor the code, and pass automated validation suites.",
     path: "/practice/bughunter",
     iconType: "bug",
-    badge: "Defect Hunting",
+    badge: "Multi-Language Debugger",
     accentColor: "from-rose-500 to-pink-600",
-    stats: "100 Levels · 180+ Programs",
+    stats: "Multi-Language · Production Defects",
   },
   {
     id: "cloudstudio",
@@ -622,6 +622,97 @@ export interface FixTheCodeChallenge {
 }
 
 export const FIXTHECODE_CHALLENGES: FixTheCodeChallenge[] = [
+  // --- PYTHON CHALLENGES ---
+  {
+    id: "fix-py-1",
+    title: "Mutable Default Argument in Dictionary State",
+    language: "Python",
+    difficulty: "Easy",
+    description: "The function `record_student_grade` defines a default dictionary `grade_book={}` in the parameter list. In Python, default arguments are evaluated once at function definition time, causing all calls that rely on the default to mutate the same shared dictionary instance across users.",
+    errorLog: "StateLeakException: grade_book state persisted between separate test executions: {'Alice': 95, 'Bob': 88}.",
+    buggyCode: `def record_student_grade(student, grade, grade_book={}):
+    # BUG: Mutable default argument retains state between calls!
+    grade_book[student] = grade
+    return grade_book`,
+    solutionCode: `def record_student_grade(student, grade, grade_book=None):
+    if grade_book is None:
+        grade_book = {}
+    grade_book[student] = grade
+    return grade_book`,
+    testFunction: (code) => {
+      const hasNoneCheck = /grade_book\s*=\s*None/i.test(code) && /if\s+grade_book\s+is\s+None/i.test(code);
+      const isMutatingDict = /grade_book\s*=\s*\{\}/i.test(code);
+      if (hasNoneCheck) {
+        return { passed: true, message: "Passed! Default parameter safely initialized to None with internal instance creation." };
+      }
+      if (isMutatingDict && !code.includes("=None") && !code.includes("= None")) {
+        return { passed: false, message: "Do not use grade_book={} in the parameter definition. Use None as the sentinel default." };
+      }
+      return { passed: false, message: "Ensure grade_book defaults to None and is instantiated inside the function when None." };
+    },
+  },
+  {
+    id: "fix-py-2",
+    title: "ZeroDivision Boundary in Mean Calculator",
+    language: "Python",
+    difficulty: "Easy",
+    description: "The function `compute_batch_mean` crashes with an unhandled `ZeroDivisionError` when an empty list or collection of sensor values is passed in.",
+    errorLog: "ZeroDivisionError: division by zero in 'sum(values) / len(values)' on empty dataset values=[].",
+    buggyCode: `def compute_batch_mean(values):
+    # BUG: Does not check if values list is empty before dividing by len(values)
+    return sum(values) / len(values)`,
+    solutionCode: `def compute_batch_mean(values):
+    if not values or len(values) == 0:
+        return 0.0
+    return sum(values) / len(values)`,
+    testFunction: (code) => {
+      const hasGuard = /if\s+(not\s+values|len\(values\)\s*==\s*0)/i.test(code) || /if\s+values\s+else\s+0/i.test(code) || /if\s+len\(values\)\s*>\s*0/i.test(code);
+      if (hasGuard) {
+        return { passed: true, message: "Passed! Correctly guards against empty collections and avoids ZeroDivisionError." };
+      }
+      return { passed: false, message: "Add a condition to check if values is empty (e.g., if not values) before computing division." };
+    },
+  },
+  {
+    id: "fix-py-3",
+    title: "Binary Search Infinite Loop on Integer Midpoint",
+    language: "Python",
+    difficulty: "Medium",
+    description: "The function `binary_search` loops infinitely when searching for keys located in the upper boundary because `low` is updated to `mid` instead of `mid + 1`, preventing the search range from converging when `high - low == 1`.",
+    errorLog: "TimeLimitExceeded: Loop condition 'while low <= high' failed to terminate on target = 18.",
+    buggyCode: `def binary_search(nums, target):
+    low, high = 0, len(nums) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if nums[mid] == target:
+            return mid
+        elif nums[mid] < target:
+            # BUG: Updating low to mid instead of mid + 1 causes infinite loop
+            low = mid
+        else:
+            high = mid - 1
+    return -1`,
+    solutionCode: `def binary_search(nums, target):
+    low, high = 0, len(nums) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if nums[mid] == target:
+            return mid
+        elif nums[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+    return -1`,
+    testFunction: (code) => {
+      const hasCorrectIncrement = /low\s*=\s*mid\s*\+\s*1/i.test(code);
+      if (hasCorrectIncrement) {
+        return { passed: true, message: "Passed! Binary search range now strictly converges with low = mid + 1." };
+      }
+      return { passed: false, message: "Check line where low is updated. It should advance past mid: low = mid + 1." };
+    },
+  },
+
+  // --- JAVASCRIPT CHALLENGES ---
   {
     id: "fix-1",
     title: "Off-by-One Array Index Exception",
@@ -726,6 +817,183 @@ async function getUserDisplayName(id) {
       } catch (err: any) {
         return { passed: false, message: `Error: ${err.message}` };
       }
+    },
+  },
+
+  // --- JAVA CHALLENGES ---
+  {
+    id: "fix-java-1",
+    title: "String Value Equality via Reference Comparison",
+    language: "Java",
+    difficulty: "Easy",
+    description: "In Java, using the `==` operator on `String` references checks object identity rather than character sequence equality. This causes legitimate tokens created dynamically in heap memory to be incorrectly rejected.",
+    errorLog: "AssertionError: expected true for verifyToken(new String(\"AUTH_TOKEN\"), \"AUTH_TOKEN\"), but received false.",
+    buggyCode: `public class SecurityValidator {
+    public static boolean verifyToken(String provided, String expected) {
+        // BUG: In Java, == checks reference identity, not string content equality
+        return provided == expected;
+    }
+}`,
+    solutionCode: `public class SecurityValidator {
+    public static boolean verifyToken(String provided, String expected) {
+        return provided != null && provided.equals(expected);
+    }
+}`,
+    testFunction: (code) => {
+      const hasEquals = /\.equals\s*\(\s*expected\s*\)/i.test(code) || /expected\.equals\s*\(\s*provided\s*\)/i.test(code);
+      const hasDoubleEqual = /provided\s*==\s*expected/i.test(code);
+      if (hasEquals && !hasDoubleEqual) {
+        return { passed: true, message: "Passed! Correctly uses .equals() for string content equality in Java." };
+      }
+      return { passed: false, message: "Replace reference equality == with the .equals() method." };
+    },
+  },
+  {
+    id: "fix-java-2",
+    title: "NullPointerException in Auto-Unboxing Loop",
+    language: "Java",
+    difficulty: "Medium",
+    description: "The method `sumMetricValues` iterates over an array of `Integer` objects and accumulates their sum into an unboxed primitive `int`. When an element in the array is `null`, Java attempts auto-unboxing and throws a `NullPointerException`.",
+    errorLog: "java.lang.NullPointerException: Cannot invoke \"java.lang.Integer.intValue()\" because \"val\" is null at sumMetricValues.",
+    buggyCode: `public class MetricsEngine {
+    public static int sumMetricValues(Integer[] values) {
+        int total = 0;
+        for (Integer val : values) {
+            // BUG: Auto-unboxing val throws NullPointerException if val is null
+            total += val;
+        }
+        return total;
+    }
+}`,
+    solutionCode: `public class MetricsEngine {
+    public static int sumMetricValues(Integer[] values) {
+        int total = 0;
+        for (Integer val : values) {
+            if (val != null) {
+                total += val;
+            }
+        }
+        return total;
+    }
+}`,
+    testFunction: (code) => {
+      const hasNullCheck = /if\s*\(\s*val\s*!=\s*null\s*\)/i.test(code) || /val\s*!=\s*null\s*\?\s*val\s*:\s*0/i.test(code);
+      if (hasNullCheck) {
+        return { passed: true, message: "Passed! Null guard prevents NullPointerException during auto-unboxing." };
+      }
+      return { passed: false, message: "Add a null check (e.g. if (val != null)) before accumulating val into total." };
+    },
+  },
+
+  // --- C++ CHALLENGES ---
+  {
+    id: "fix-cpp-1",
+    title: "Integer Division Truncation in Percentage Calculation",
+    language: "C++",
+    difficulty: "Easy",
+    description: "In C++, dividing two integers (`passed / total`) yields integer division, which truncates any fractional result to 0 when `passed < total`. Multiplying by 100.0 afterward results in 0.0% instead of the accurate floating-point percentage.",
+    errorLog: "AssertionError: expected calculatePassRate(75, 100) == 75.0, but received 0.0.",
+    buggyCode: `#include <iostream>
+
+double calculatePassRate(int passed, int total) {
+    if (total <= 0) return 0.0;
+    // BUG: passed / total performs integer division, evaluating to 0
+    return (passed / total) * 100.0;
+}`,
+    solutionCode: `#include <iostream>
+
+double calculatePassRate(int passed, int total) {
+    if (total <= 0) return 0.0;
+    return (static_cast<double>(passed) / total) * 100.0;
+}`,
+    testFunction: (code) => {
+      const hasCast = /static_cast<double>\s*\(\s*passed\s*\)/i.test(code) || 
+                      /\(double\)\s*passed/i.test(code) || 
+                      /\(double\)\s*\(passed\)/i.test(code) || 
+                      /passed\s*\*\s*100\.0\s*\/\s*total/i.test(code) ||
+                      /100\.0\s*\*\s*passed\s*\/\s*total/i.test(code);
+      if (hasCast) {
+        return { passed: true, message: "Passed! Floating-point division correctly avoids integer truncation." };
+      }
+      return { passed: false, message: "Cast passed to double (or multiply by 100.0 before dividing) to prevent integer truncation." };
+    },
+  },
+  {
+    id: "fix-cpp-2",
+    title: "Mismatched Scalar Delete on Array Allocation",
+    language: "C++",
+    difficulty: "Medium",
+    description: "The function allocates memory with `new int[size]` but deallocates it using scalar `delete buf` instead of array `delete[] buf`. In C++, this causes undefined behavior, memory leaks, and sanitizer crash warnings.",
+    errorLog: "AddressSanitizer: alloc-dealloc-mismatch (operator new [] vs operator delete) on pointer 0x602000000010.",
+    buggyCode: `#include <iostream>
+
+int* createBuffer(int size) {
+    int* buf = new int[size];
+    return buf;
+}
+
+void releaseBuffer(int* buf) {
+    // BUG: Allocated with new[], but freed with scalar delete
+    delete buf;
+}`,
+    solutionCode: `#include <iostream>
+
+int* createBuffer(int size) {
+    int* buf = new int[size];
+    return buf;
+}
+
+void releaseBuffer(int* buf) {
+    delete[] buf;
+}`,
+    testFunction: (code) => {
+      const hasArrayDelete = /delete\[\]\s*buf/i.test(code);
+      if (hasArrayDelete) {
+        return { passed: true, message: "Passed! Array delete[] properly pairs with dynamic array new[] allocation." };
+      }
+      return { passed: false, message: "Use delete[] buf instead of scalar delete to deallocate an array." };
+    },
+  },
+
+  // --- TYPESCRIPT CHALLENGES ---
+  {
+    id: "fix-ts-1",
+    title: "Falsy Zero Coalescing Defect",
+    language: "TypeScript",
+    difficulty: "Easy",
+    description: "Using the logical OR operator (`||`) to provide a fallback value treats `0` as falsy, unintentionally overriding valid zero-threshold settings with the default fallback value of 10.",
+    errorLog: "AssertionError: expected getThreshold({ settings: { notificationThreshold: 0 } }) to return 0, received 10.",
+    buggyCode: `interface UserSettings {
+  notificationThreshold?: number;
+}
+
+interface UserProfile {
+  id: string;
+  settings?: UserSettings;
+}
+
+function getThreshold(user: UserProfile): number {
+  // BUG: || treats 0 as falsy, reverting valid 0 to 10
+  return user.settings?.notificationThreshold || 10;
+}`,
+    solutionCode: `interface UserSettings {
+  notificationThreshold?: number;
+}
+
+interface UserProfile {
+  id: string;
+  settings?: UserSettings;
+}
+
+function getThreshold(user: UserProfile): number {
+  return user.settings?.notificationThreshold ?? 10;
+}`,
+    testFunction: (code) => {
+      const hasNullish = /user\.settings\?\.notificationThreshold\s*\?\?\s*10/i.test(code) || /notificationThreshold\s*\?\?\s*10/i.test(code);
+      if (hasNullish) {
+        return { passed: true, message: "Passed! Nullish coalescing operator (??) preserves 0 while providing a fallback for null/undefined." };
+      }
+      return { passed: false, message: "Use the nullish coalescing operator (??) instead of logical OR (||)." };
     },
   },
 ];

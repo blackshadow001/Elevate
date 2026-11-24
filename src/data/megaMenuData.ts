@@ -81,9 +81,9 @@ export const EXPLORE_MENU_SECTIONS: Record<string, ExploreCategorySection> = {
   "practice": {
     id: "practice",
     title: "Practice with Role Play & Coding",
-    subTitle: "Solve chess-style coding puzzles and build in live sandboxes",
+    subTitle: "Solve progressive coding challenges and build in live sandboxes",
     items: [
-      { name: "CodeArena — 100-Level Chess Puzzles", href: "/practice/codearena", badge: "100 Lvls" },
+      { name: "CodeArena — 100-Level Coding Challenges", href: "/practice/codearena", badge: "100 Lvls" },
       { name: "WebForge — Frontend Sandbox", href: "/practice/webforge" },
       { name: "QueryMaster — Relational SQL Grid", href: "/practice/querymaster" },
       { name: "BugHunter — 1-Line Code Debugging", href: "/practice/bughunter" },

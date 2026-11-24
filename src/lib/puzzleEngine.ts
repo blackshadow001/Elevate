@@ -18,7 +18,9 @@ export interface TestCase {
   isHidden?: boolean;
 }
 
-export interface ChessCodePuzzle {
+export type SupportedChallengeLanguage = "python" | "javascript" | "typescript" | "java" | "cpp";
+
+export interface CodingChallenge {
   id: string;
   levelNumber: number;
   puzzleIndex: number; // 1 to 6
@@ -27,12 +29,12 @@ export interface ChessCodePuzzle {
   theme: string;
   elo: number;
   prompt: string;
-  codeContext: string; // The code "board" with the missing move or bug
-  expectedLine: string; // The winning tactical line
+  codeContext: string; // The code context with the missing invariant line
+  expectedLine: string; // The optimal algorithmic invariant line
   acceptedAlternatives: string[];
-  options: string[]; // 4 tactical choices like choosing the winning chess move
+  options: string[]; // 4 conceptual options
   hint: string;
-  analysis: string; // Chess-style move analysis explaining why this is the only winning move
+  analysis: string; // Algorithmic analysis explaining why this is the optimal approach
   language: "python" | "javascript";
 
   // HackerRank Problem Specification
@@ -54,10 +56,16 @@ export interface ChessCodePuzzle {
   starterBoilerplate: {
     python: string;
     javascript: string;
+    typescript: string;
+    java: string;
     cpp: string;
   };
   testCases: TestCase[];
 }
+
+// Backward compatibility aliases
+export type ChessCodePuzzle = CodingChallenge;
+export type ChallengeLevel = ChessPuzzleLevel;
 
 export interface ChessPuzzleLevel {
   levelNumber: number; // 1 to 100
@@ -256,7 +264,7 @@ const CHAPTERS_METADATA: {
       { title: "0/1 Knapsack Value Maximization", theme: "Bounded Capacity", snippetIdea: "dp[w] = max(dp[w], val + dp[w - weight])" },
       { title: "Longest Common Subsequence (2-String Matrix)", theme: "String DP", snippetIdea: "dp[i][j] = 1 + dp[i+1][j+1] if s1[i] == s2[j] else max(dp[i+1][j], dp[i][j+1])" },
       { title: "Edit Distance (Insert, Delete, Replace)", theme: "Matrix Transformation", snippetIdea: "dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])" },
-      { title: "Chess Knight Probability on Board", theme: "State Transition", snippetIdea: "new_board[nr][nc] += board[r][c] / 8.0" },
+      { title: "2D Grid Random Walk Probability on Board", theme: "State Transition", snippetIdea: "new_board[nr][nc] += board[r][c] / 8.0" },
     ],
   },
 ];
@@ -394,12 +402,38 @@ function getRemovableIndices(str1, str2) {
     
 }
 `,
+        typescript: `/**
+ * Complete the 'getRemovableIndices' function below.
+ * The function is expected to return an number[].
+ */
+function getRemovableIndices(str1: string, str2: string): number[] {
+    // Write your code here
+    return [];
+}
+`,
+        java: `import java.io.*;
+import java.util.*;
+
+class Solution {
+    /*
+     * Complete the 'getRemovableIndices' function below.
+     * The function is expected to return an INTEGER_ARRAY.
+     */
+    public static List<Integer> getRemovableIndices(String str1, String str2) {
+        // Write your code here
+        List<Integer> result = new ArrayList<>();
+        return result;
+    }
+}
+`,
         cpp: `#include <bits/stdc++.h>
 using namespace std;
 
 // Complete the 'getRemovableIndices' function below.
+// The function is expected to return an INTEGER_ARRAY.
 vector<int> getRemovableIndices(string str1, string str2) {
     // Write your code here
+    return {};
 }
 `
       },
@@ -477,7 +511,7 @@ vector<int> getRemovableIndices(string str1, string str2) {
       javascript: `/**
  * Complete the '${functionName}' function below.
  * @param {any} input_data
- * @param {number} k
+ * @param {number} [k=0]
  * @return {any}
  */
 function ${functionName}(input_data, k = 0) {
@@ -485,12 +519,34 @@ function ${functionName}(input_data, k = 0) {
     
 }
 `,
+      typescript: `/**
+ * Complete the '${functionName}' function below.
+ */
+function ${functionName}(input_data: any, k: number = 0): any {
+    // Write your code here
+    return input_data;
+}
+`,
+      java: `import java.io.*;
+import java.util.*;
+
+class Solution {
+    /*
+     * Complete the '${functionName}' function below.
+     */
+    public static Object ${functionName.replace(/_([a-z])/g, (_, g) => g.toUpperCase())}(Object input_data, int k) {
+        // Write your code here
+        return input_data;
+    }
+}
+`,
       cpp: `#include <bits/stdc++.h>
 using namespace std;
 
 // Complete the '${functionName}' function below.
-auto ${functionName}(vector<int> input_data, int k) {
+auto ${functionName}(vector<int> input_data, int k = 0) {
     // Write your code here
+    return input_data;
 }
 `
     },
@@ -525,46 +581,46 @@ auto ${functionName}(vector<int> input_data, int k) {
   };
 }
 
-// Helper to generate 5-7 similarity-based puzzles per level with 4 tactical choices like Chess.com
+// Helper to generate 5-7 similarity-based challenges per level with 4 conceptual options
 function generateLevelPuzzles(levelNum: number, themeItem: { title: string; theme: string; snippetIdea: string }, concept: ConceptTag, elo: number): ChessCodePuzzle[] {
   const puzzles: ChessCodePuzzle[] = [];
-  const puzzleCount = 6; // 6 puzzles per level = 600 similarity-based puzzles across all 100 levels!
+  const puzzleCount = 6; // 6 challenges per level = 600 similarity-based challenges across all 100 levels!
 
   const variations = [
     {
-      name: "The Opening Check",
-      desc: "Identify the vital foundation line to initiate the tactical solution.",
-      promptSnippet: "Find the winning opening line:",
+      name: "Problem Foundation",
+      desc: "Identify the vital foundation line to initiate the algorithmic solution.",
+      promptSnippet: "Find the foundational implementation line:",
       distractorType: "syntax",
     },
     {
-      name: "The Middle Fork",
-      desc: "Choose the correct state update when two branches converge.",
-      promptSnippet: "Find the optimal tactical update:",
+      name: "Branching State Transition",
+      desc: "Choose the correct state update when two logic branches converge.",
+      promptSnippet: "Find the optimal state transition update:",
       distractorType: "boundary",
     },
     {
-      name: "The Endgame Defense",
+      name: "Boundary & Edge Cases",
       desc: "Neutralize edge cases (empty collections, single nodes, 0 division).",
-      promptSnippet: "Find the winning boundary defense move:",
+      promptSnippet: "Find the correct boundary guard condition:",
       distractorType: "offByOne",
     },
     {
-      name: "The Counter-Tactic",
+      name: "Complement & Inversion",
       desc: "Reverse the operation or track inverse complements.",
-      promptSnippet: "Select the winning counter-tactic move:",
+      promptSnippet: "Select the optimal complement logic:",
       distractorType: "inverted",
     },
     {
-      name: "The Speed Advantage",
+      name: "Algorithmic Efficiency",
       desc: "Execute the O(1) or O(log N) transition without redundant overhead.",
-      promptSnippet: "Select the highest efficiency tactical move:",
+      promptSnippet: "Select the highest efficiency operation:",
       distractorType: "quadratic",
     },
     {
-      name: "The Checkmate Move",
-      desc: "Synthesize the complete algorithm step to lock in the victory.",
-      promptSnippet: "Find the finishing line to complete the level:",
+      name: "Optimal Resolution",
+      desc: "Synthesize the complete algorithm step to lock in the verified solution.",
+      promptSnippet: "Find the finishing line to complete the challenge:",
       distractorType: "incomplete",
     },
   ];
@@ -586,19 +642,19 @@ function generateLevelPuzzles(levelNum: number, themeItem: { title: string; them
       concept,
       theme: themeItem.theme,
       elo: puzzleElo,
-      prompt: `${themeItem.title} (${v.name})\n${v.desc}\n\n👉 Your move: ${v.promptSnippet}`,
-      codeContext: `# [Level ${levelNum} · Puzzle ${i + 1}/6 · Rating ${puzzleElo}]
+      prompt: `${themeItem.title} (${v.name})\n${v.desc}\n\n👉 Optimal Step: ${v.promptSnippet}`,
+      codeContext: `# [Level ${levelNum} · Challenge ${i + 1}/6 · Rating ${puzzleElo}]
 # Concept: ${concept.toUpperCase()} — Theme: ${themeItem.theme}
-def execute_tactical_step(input_data):
-    # Analyzing tactical scenario...
-    # [YOUR WINNING MOVE GOES HERE]
+def execute_solution_step(input_data):
+    # Analyzing scenario...
+    # [YOUR OPTIMAL CODE LINE GOES HERE]
     pass
 `,
       expectedLine: winningMove,
       acceptedAlternatives: [winningMove, winningMove.replace(/;\s*/g, "\n    ")],
       options,
       hint: `💡 Invariant: Notice the ${themeItem.theme} property. Focus on preserving invariants without off-by-one errors.`,
-      analysis: `♟️ Tactical Analysis: The move '${winningMove}' is the only line that guarantees correctness. Any deviation alters loop termination or violates node invariants, leading to runtime error.`,
+      analysis: `🔍 Algorithmic Analysis: The line '${winningMove}' is the only invariant that guarantees correctness. Any deviation alters loop termination or violates invariants, leading to runtime failure.`,
       language: "python",
       ...hrMeta,
     });
@@ -607,7 +663,7 @@ def execute_tactical_step(input_data):
   return puzzles;
 }
 
-// Generate the complete 100-Level Chess.com style Curriculum
+// Generate the complete 100-Level Curriculum
 export function getElevate100PuzzleLevels(): ChessPuzzleLevel[] {
   const levels: ChessPuzzleLevel[] = [];
 
@@ -626,7 +682,7 @@ export function getElevate100PuzzleLevels(): ChessPuzzleLevel[] {
       theme: themeItem.theme,
       difficulty: chapter.difficulty,
       baseElo,
-      description: `Solve 6 similarity-based ${chapter.concept} tactical puzzles on ${themeItem.theme}. Earn 3 stars to unlock Level ${lvl + 1}.`,
+      description: `Solve 6 progressive ${chapter.concept} challenges on ${themeItem.theme}. Earn 3 stars to unlock Level ${lvl + 1}.`,
       puzzleCount: puzzles.length,
       puzzles,
     });
@@ -635,8 +691,8 @@ export function getElevate100PuzzleLevels(): ChessPuzzleLevel[] {
   return levels;
 }
 
-// User Progress in Chess Puzzles
-export interface ChessPuzzleUserState {
+// User Progress in Coding Challenges
+export interface ChallengeUserState {
   currentLevel: number;
   unlockedLevels: number[];
   rating: number; // e.g. starts at 800
@@ -647,7 +703,7 @@ export interface ChessPuzzleUserState {
   completedPuzzles: Record<string, boolean>; // puzzleId -> true
 }
 
-export const INITIAL_USER_CHESS_STATE: ChessPuzzleUserState = {
+export const INITIAL_USER_CHALLENGE_STATE: ChallengeUserState = {
   currentLevel: 1,
   unlockedLevels: [1],
   rating: 800,
@@ -657,3 +713,6 @@ export const INITIAL_USER_CHESS_STATE: ChessPuzzleUserState = {
   starsMap: {},
   completedPuzzles: {},
 };
+
+export type ChessPuzzleUserState = ChallengeUserState;
+export const INITIAL_USER_CHESS_STATE = INITIAL_USER_CHALLENGE_STATE;
