@@ -15,7 +15,13 @@ import {
   LogOut,
   User as UserIcon,
   LayoutDashboard,
-  Presentation
+  Presentation,
+  Code2,
+  Terminal,
+  Database,
+  Bug,
+  Braces,
+  ArrowRight
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useWishlist } from "@/context/WishlistContext";
@@ -25,6 +31,8 @@ import { CATALOG_CATEGORIES } from "@/lib/catalogTaxonomy";
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  const [mobilePracticeOpen, setMobilePracticeOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [catalogCategories, setCatalogCategories] = useState<{ id: string; name: string }[]>(CATALOG_CATEGORIES.map(({ name }) => ({ id: name, name })));
@@ -51,6 +59,7 @@ export function Navbar() {
     <header onKeyDown={(event) => {
       if (event.key === "Escape") {
         setExploreOpen(false);
+        setPracticeOpen(false);
         setProfileDropdownOpen(false);
         setMobileMenuOpen(false);
       }
@@ -70,6 +79,147 @@ export function Navbar() {
             >
               Courses
             </Link>
+
+            {/* Practice Dropdown matching reference image */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPracticeOpen(!practiceOpen)}
+                onBlur={() => setTimeout(() => setPracticeOpen(false), 250)}
+                aria-expanded={practiceOpen}
+                aria-haspopup="true"
+                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none ${
+                  pathname.startsWith("/practice") ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
+                }`}
+              >
+                <span>Practice</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${practiceOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {practiceOpen && (
+                <div
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute top-full left-0 mt-2.5 w-[380px] sm:w-[410px] bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] p-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                >
+                  <div className="space-y-1">
+                    <Link
+                      href="/practice/codekata"
+                      onClick={() => setPracticeOpen(false)}
+                      className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100/80 flex items-center justify-center shrink-0 text-blue-600 group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                        <Code2 className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
+                            CodeKata
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#64748B] leading-snug mt-0.5">
+                          Sharpen your coding skills, prepare for interviews
+                        </p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/practice/webkata"
+                      onClick={() => setPracticeOpen(false)}
+                      className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100/80 flex items-center justify-center shrink-0 text-emerald-600 group-hover:scale-105 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
+                        <Terminal className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
+                            WebKata
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#64748B] leading-snug mt-0.5">
+                          Build basic frontend & backend development skills
+                        </p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/practice/sqlkata"
+                      onClick={() => setPracticeOpen(false)}
+                      className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-100/80 flex items-center justify-center shrink-0 text-purple-600 group-hover:scale-105 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-sm">
+                        <Database className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
+                            SQLKata
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#64748B] leading-snug mt-0.5">
+                          Master SQL concepts in relational database management
+                        </p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/practice/fixthecode"
+                      onClick={() => setPracticeOpen(false)}
+                      className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-100/80 flex items-center justify-center shrink-0 text-rose-600 group-hover:scale-105 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-sm">
+                        <Bug className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
+                            FixTheCode
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#64748B] leading-snug mt-0.5">
+                          A series of programs curated by industry experts
+                        </p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/practice/ide"
+                      onClick={() => setPracticeOpen(false)}
+                      className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100/80 flex items-center justify-center shrink-0 text-amber-600 group-hover:scale-105 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-sm">
+                        <Braces className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#172033] group-hover:text-[#FF6B35] transition-colors">
+                            IDE - Online Compiler
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#64748B] leading-snug mt-0.5">
+                          Run & test your code in any programming language
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+
+                  {/* Footer link to Hub */}
+                  <div className="mt-2 pt-2 border-t border-[#F1F5F9] px-2 flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-[#64748B]">
+                      5 Practice Tracks
+                    </span>
+                    <Link
+                      href="/practice"
+                      onClick={() => setPracticeOpen(false)}
+                      className="text-xs font-bold text-[#FF6B35] hover:text-[#E85D2A] flex items-center gap-1 group/hub"
+                    >
+                      <span>Explore Practice Hub</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover/hub:translate-x-0.5 transition-transform" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Link
               href="/career-paths"
@@ -323,6 +473,86 @@ export function Navbar() {
             >
               Browse All Courses
             </Link>
+
+            {/* Practice Mobile Drawer */}
+            <button
+              type="button"
+              onClick={() => setMobilePracticeOpen(!mobilePracticeOpen)}
+              aria-expanded={mobilePracticeOpen}
+              className="py-2 text-left border-b border-[#F7F8FA] flex justify-between items-center"
+            >
+              <span className="flex items-center gap-2">
+                <span>Practice</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-[#FF6B35]">5 Tracks</span>
+              </span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${mobilePracticeOpen ? "rotate-180" : ""}`} />
+            </button>
+            {mobilePracticeOpen && (
+              <div className="pl-3 py-2 space-y-2.5 border-b border-[#F7F8FA] bg-slate-50/70 rounded-xl p-2.5 text-sm">
+                <Link
+                  href="/practice/codekata"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
+                >
+                  <Code2 className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <div>CodeKata</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Prepare for coding interviews</div>
+                  </div>
+                </Link>
+                <Link
+                  href="/practice/webkata"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
+                >
+                  <Terminal className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div>WebKata</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Frontend & backend sandboxes</div>
+                  </div>
+                </Link>
+                <Link
+                  href="/practice/sqlkata"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
+                >
+                  <Database className="w-4 h-4 text-purple-600" />
+                  <div>
+                    <div>SQLKata</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Relational database queries</div>
+                  </div>
+                </Link>
+                <Link
+                  href="/practice/fixthecode"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
+                >
+                  <Bug className="w-4 h-4 text-rose-600" />
+                  <div>
+                    <div>FixTheCode</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Debug programs curated by experts</div>
+                  </div>
+                </Link>
+                <Link
+                  href="/practice/ide"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 py-1 text-xs font-semibold text-[#172033] hover:text-[#FF6B35]"
+                >
+                  <Braces className="w-4 h-4 text-amber-600" />
+                  <div>
+                    <div>IDE - Online Compiler</div>
+                    <div className="text-[10px] text-[#64748B] font-normal">Run & test code in any language</div>
+                  </div>
+                </Link>
+                <Link
+                  href="/practice"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block pt-1.5 text-[11px] font-bold text-[#FF6B35]"
+                >
+                  View All Practice Tracks →
+                </Link>
+              </div>
+            )}
             <Link href="/wishlist" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA] flex items-center justify-between">
               <span>Wishlist</span><span className="text-xs text-[#64748B]">{wishlistIds.length}</span>
             </Link>

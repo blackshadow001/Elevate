@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
           "/courses",
           "/career-paths",
           "/live",
+          "/practice",
           "/about",
           "/faq",
           "/contact",
