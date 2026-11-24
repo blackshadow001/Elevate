@@ -9,18 +9,13 @@ import {
   Bug, 
   Braces, 
   ArrowRight, 
-  Sparkles, 
-  CheckCircle2, 
   Zap, 
-  Layers, 
   Trophy, 
-  Cpu, 
   Play,
   Flame,
   ShieldCheck
 } from "lucide-react";
 import { PRACTICE_MODULES } from "@/data/practiceData";
-import { PracticeHeroWorkspace } from "@/components/practice/PracticeHeroWorkspace";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -48,67 +43,75 @@ export default function PracticeHubPage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden border-b border-[#E5E7EB]/60 bg-gradient-to-b from-orange-50/60 via-white to-[#FFFDF9] py-12 sm:py-16 lg:py-20">
-          {/* Top-Right and Ambient Background Wave Glows */}
-          <div className="pointer-events-none absolute -top-24 right-0 w-[640px] h-[640px] rounded-full bg-gradient-to-b from-orange-400/15 via-amber-200/10 to-transparent blur-3xl z-0" />
-          <div className="pointer-events-none absolute right-1/4 top-0 h-96 w-96 rounded-full bg-[#FF6B35]/8 blur-3xl z-0" />
-          
-          {/* Bottom-Left Curved Orange Wave from original banner */}
-          <div className="pointer-events-none absolute -bottom-1 -left-2 w-64 sm:w-80 md:w-96 lg:w-[440px] z-0 select-none">
+        {/* Practice Hero Banner Container */}
+        <section className="relative py-6 sm:py-8 lg:py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative w-full rounded-3xl overflow-hidden border border-[#E5E7EB]/80 shadow-md bg-[#FFFDF9] group">
+            {/* Screen Reader & Accessible SEO Content */}
+            <div className="sr-only">
+              <h1>Learn by doing. Master by practicing.</h1>
+              <p>
+                Elevate Practice Platform: Sharpen your algorithmic thinking, build fullstack web components,
+                query real relational databases, and debug production code with zero setup required.
+              </p>
+              <ul>
+                <li>1,200+ Coding Problems across 100 levels in CodeArena</li>
+                <li>5 Interactive Tracks: CodeArena, WebForge, QueryMaster, BugHunter, and CloudStudio</li>
+                <li>Instant In-Browser Execution with zero environment installation required</li>
+              </ul>
+            </div>
+
+            {/* High-DPI 2X Master Banner Asset */}
             <Image
-              src="/images/practice-bg-wave-left.webp"
-              alt=""
-              width={640}
-              height={402}
-              className="w-full h-auto object-contain object-left-bottom"
+              src="/images/practice-banner-2x.webp"
+              alt="Elevate Practice Platform — Learn by doing. Master by practicing."
+              width={2048}
+              height={682}
               priority
+              className="w-full h-auto object-cover select-none block"
             />
-          </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-              {/* Left Column (7 cols): Header, Headline & Quick Stats */}
-              <div className="lg:col-span-7 space-y-5">
-                <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-50 px-4 py-1.5 text-xs font-bold text-[#FF6B35]">
-                  <Sparkles className="h-4 w-4" />
-                  <span>Elevate Practice Platform</span>
-                </div>
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#172033] tracking-tight leading-[1.12]">
-                  Learn by doing. <br />
-                  <span className="text-[#FF6B35]">Master by practicing.</span>
-                </h1>
-                <p className="text-base sm:text-lg text-[#64748B] leading-relaxed max-w-xl">
-                  Sharpen your algorithmic thinking, build fullstack web components, query real relational databases, and debug production code with zero setup required.
-                </p>
+            {/* CSS Interactive Hot-Spots & Hover Play Area */}
+            <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+              {/* Hot-Spot 1: "1,200+ Coding Problems" Pill -> /practice/codearena */}
+              <Link
+                href="/practice/codearena"
+                title="CodeArena — 1,200+ Coding Problems"
+                className="pointer-events-auto absolute left-[7.2%] bottom-[18.2%] w-[16%] h-[9.8%] rounded-xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/40 active:scale-95 transition-all cursor-pointer"
+              />
 
-                {/* Quick stats pills */}
-                <div className="flex flex-wrap items-center gap-3 pt-2 text-xs sm:text-sm font-semibold text-[#172033]">
-                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>1,200+ Coding Problems</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
-                    <Layers className="w-4 h-4 text-blue-600" />
-                    <span>5 Interactive Tracks</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
-                    <Cpu className="w-4 h-4 text-amber-600" />
-                    <span>Instant In-Browser Execution</span>
-                  </div>
-                </div>
-              </div>
+              {/* Hot-Spot 2: "5 Interactive Tracks" Pill -> #tracks */}
+              <a
+                href="#tracks"
+                title="Explore 5 Interactive Tracks"
+                className="pointer-events-auto absolute left-[24.2%] bottom-[18.2%] w-[14.2%] h-[9.8%] rounded-xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/40 active:scale-95 transition-all cursor-pointer"
+              />
 
-              {/* Right Column (5 cols): Pure CSS Interactive 3D Laptop Workspace */}
-              <div className="lg:col-span-5 relative w-full flex items-center justify-center">
-                <PracticeHeroWorkspace />
-              </div>
+              {/* Hot-Spot 3: "Instant In-Browser Execution" Pill -> /practice/cloudstudio */}
+              <Link
+                href="/practice/cloudstudio"
+                title="CloudStudio — Instant In-Browser Execution"
+                className="pointer-events-auto absolute left-[39.4%] bottom-[18.2%] w-[17.4%] h-[9.8%] rounded-xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/40 active:scale-95 transition-all cursor-pointer"
+              />
+
+              {/* Hot-Spot 4: 3D Laptop Screen & Code Area -> /practice/codearena */}
+              <Link
+                href="/practice/codearena"
+                title="Launch CodeArena Challenge IDE"
+                className="pointer-events-auto absolute left-[57.5%] top-[14%] w-[34%] h-[70%] rounded-2xl hover:bg-orange-500/5 hover:ring-2 hover:ring-[#FF6B35]/20 active:scale-[0.99] transition-all cursor-pointer"
+              />
+
+              {/* Hot-Spot 5: Stack of Books (DSA, Web Dev, SQL, System Design) -> #tracks */}
+              <a
+                href="#tracks"
+                title="View Practice Tracks: DSA, Web Dev, SQL, System Design"
+                className="pointer-events-auto absolute right-[5%] bottom-[12%] w-[14%] h-[32%] rounded-2xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/30 active:scale-95 transition-all cursor-pointer"
+              />
             </div>
           </div>
         </section>
 
         {/* Practice Modules Grid */}
-        <section className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section id="tracks" className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-[#FF6B35] mb-1">
