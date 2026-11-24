@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { 
@@ -11,11 +10,12 @@ import {
   ArrowRight, 
   Zap, 
   Trophy, 
-  Play,
-  Flame,
-  ShieldCheck
+  Play, 
+  Flame, 
+  ShieldCheck 
 } from "lucide-react";
 import { PRACTICE_MODULES } from "@/data/practiceData";
+import { PracticeHeroBannerCSS } from "@/components/practice/PracticeHeroBannerCSS";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -43,71 +43,9 @@ export default function PracticeHubPage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* Practice Hero Banner Container */}
+        {/* Practice Hero Banner (Pure CSS/SVG/HTML) */}
         <section className="relative py-6 sm:py-8 lg:py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative w-full rounded-3xl overflow-hidden border border-[#E5E7EB]/80 shadow-md bg-[#FFFDF9] group">
-            {/* Screen Reader & Accessible SEO Content */}
-            <div className="sr-only">
-              <h1>Learn by doing. Master by practicing.</h1>
-              <p>
-                Elevate Practice Platform: Sharpen your algorithmic thinking, build fullstack web components,
-                query real relational databases, and debug production code with zero setup required.
-              </p>
-              <ul>
-                <li>1,200+ Coding Problems across 100 levels in CodeArena</li>
-                <li>5 Interactive Tracks: CodeArena, WebForge, QueryMaster, BugHunter, and CloudStudio</li>
-                <li>Instant In-Browser Execution with zero environment installation required</li>
-              </ul>
-            </div>
-
-            {/* High-DPI 2X Master Banner Asset */}
-            <Image
-              src="/images/practice-banner-2x.webp"
-              alt="Elevate Practice Platform — Learn by doing. Master by practicing."
-              width={2048}
-              height={682}
-              priority
-              className="w-full h-auto object-cover select-none block"
-            />
-
-            {/* CSS Interactive Hot-Spots & Hover Play Area */}
-            <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-              {/* Hot-Spot 1: "1,200+ Coding Problems" Pill -> /practice/codearena */}
-              <Link
-                href="/practice/codearena"
-                title="CodeArena — 1,200+ Coding Problems"
-                className="pointer-events-auto absolute left-[7.2%] bottom-[18.2%] w-[16%] h-[9.8%] rounded-xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/40 active:scale-95 transition-all cursor-pointer"
-              />
-
-              {/* Hot-Spot 2: "5 Interactive Tracks" Pill -> #tracks */}
-              <a
-                href="#tracks"
-                title="Explore 5 Interactive Tracks"
-                className="pointer-events-auto absolute left-[24.2%] bottom-[18.2%] w-[14.2%] h-[9.8%] rounded-xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/40 active:scale-95 transition-all cursor-pointer"
-              />
-
-              {/* Hot-Spot 3: "Instant In-Browser Execution" Pill -> /practice/cloudstudio */}
-              <Link
-                href="/practice/cloudstudio"
-                title="CloudStudio — Instant In-Browser Execution"
-                className="pointer-events-auto absolute left-[39.4%] bottom-[18.2%] w-[17.4%] h-[9.8%] rounded-xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/40 active:scale-95 transition-all cursor-pointer"
-              />
-
-              {/* Hot-Spot 4: 3D Laptop Screen & Code Area -> /practice/codearena */}
-              <Link
-                href="/practice/codearena"
-                title="Launch CodeArena Challenge IDE"
-                className="pointer-events-auto absolute left-[57.5%] top-[14%] w-[34%] h-[70%] rounded-2xl hover:bg-orange-500/5 hover:ring-2 hover:ring-[#FF6B35]/20 active:scale-[0.99] transition-all cursor-pointer"
-              />
-
-              {/* Hot-Spot 5: Stack of Books (DSA, Web Dev, SQL, System Design) -> #tracks */}
-              <a
-                href="#tracks"
-                title="View Practice Tracks: DSA, Web Dev, SQL, System Design"
-                className="pointer-events-auto absolute right-[5%] bottom-[12%] w-[14%] h-[32%] rounded-2xl hover:bg-orange-500/10 hover:ring-2 hover:ring-[#FF6B35]/30 active:scale-95 transition-all cursor-pointer"
-              />
-            </div>
-          </div>
+          <PracticeHeroBannerCSS />
         </section>
 
         {/* Practice Modules Grid */}
