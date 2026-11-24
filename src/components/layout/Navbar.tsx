@@ -21,16 +21,20 @@ import {
   Database,
   Bug,
   Braces,
-  ArrowRight
+  ArrowRight,
+  ChevronRight,
+  Sparkles
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { CATALOG_CATEGORIES } from "@/lib/catalogTaxonomy";
+import { EXPLORE_MENU_SECTIONS } from "@/data/megaMenuData";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
+  const [activeExploreSection, setActiveExploreSection] = useState<string>("career");
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [mobilePracticeOpen, setMobilePracticeOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -250,26 +254,150 @@ export function Navbar() {
               </span>
             </Link>
 
-            {/* Explore Dropdown */}
+            {/* Explore 2-Column Mega Dropdown (Matching Udemy Reference) */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setExploreOpen(!exploreOpen)}
-                onBlur={() => setTimeout(() => setExploreOpen(false), 200)}
+                onBlur={() => setTimeout(() => setExploreOpen(false), 250)}
                 aria-expanded={exploreOpen}
                 aria-haspopup="true"
-                className="flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none"
+                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none ${
+                  exploreOpen ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
+                }`}
               >
                 <span>Explore</span>
                 <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${exploreOpen ? "rotate-180" : ""}`} />
               </button>
 
               {exploreOpen && (
-                <div className="absolute top-full left-0 mt-2 max-h-[70vh] w-72 overflow-y-auto bg-white rounded-xl shadow-xl border border-[#E5E7EB] p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  {catalogCategories.map(({ id, name }) => <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`} onClick={() => setExploreOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#FFFDF9] hover:text-[#FF6B35] transition-colors text-sm font-medium text-[#172033]">
-                    <BookOpen className="w-4 h-4 shrink-0 text-[#FF6B35]" /><span>{name}</span>
-                  </Link>)}
+                <div
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute top-full -left-20 sm:left-0 mt-2.5 w-[620px] bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] overflow-hidden z-50 flex animate-in fade-in slide-in-from-top-2 duration-150 divide-x divide-[#E5E7EB]"
+                >
+                  {/* Left Column: Categories and Goals (w-60) */}
+                  <div className="w-60 bg-white py-3 overflow-y-auto max-h-[500px]">
+                    {/* New & Featured */}
+                    <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      New & Featured
+                    </div>
+                    <button
+                      type="button"
+                      onMouseEnter={() => setActiveExploreSection("google-ai")}
+                      onClick={() => setActiveExploreSection("google-ai")}
+                      className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold transition-colors text-left ${
+                        activeExploreSection === "google-ai"
+                          ? "bg-purple-50 text-purple-700 font-bold"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-[10px]">
+                          G
+                        </span>
+                        <span>Learn AI with Google</span>
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                    </button>
+
+                    <div className="h-px bg-slate-100 my-2 mx-3" />
+
+                    {/* Explore by goal */}
+                    <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Explore by goal
+                    </div>
+                    {[
+                      { id: "learn-ai", label: "Learn AI" },
+                      { id: "career", label: "Launch a new career" },
+                      { id: "certifications", label: "Prepare for a certification" },
+                      { id: "practice", label: "Practice with Coding & Arenas" },
+                      { id: "communities", label: "Elevate Communities" },
+                    ].map((goal) => (
+                      <button
+                        key={goal.id}
+                        type="button"
+                        onMouseEnter={() => setActiveExploreSection(goal.id)}
+                        onClick={() => setActiveExploreSection(goal.id)}
+                        className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold transition-colors text-left ${
+                          activeExploreSection === goal.id
+                            ? "bg-purple-50 text-purple-700 font-bold"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{goal.label}</span>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                      </button>
+                    ))}
+
+                    <div className="h-px bg-slate-100 my-2 mx-3" />
+
+                    {/* Categories */}
+                    <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Categories
+                    </div>
+                    {[
+                      { id: "development", label: "Development" },
+                      { id: "business", label: "Business" },
+                      { id: "finance", label: "Finance & Accounting" },
+                      { id: "it-software", label: "IT & Software" },
+                      { id: "productivity", label: "Office Productivity" },
+                      { id: "personal-dev", label: "Personal Development" },
+                      { id: "design", label: "Design" },
+                      { id: "marketing", label: "Marketing" },
+                    ].map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onMouseEnter={() => setActiveExploreSection(cat.id)}
+                        onClick={() => setActiveExploreSection(cat.id)}
+                        className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold transition-colors text-left ${
+                          activeExploreSection === cat.id
+                            ? "bg-purple-50 text-purple-700 font-bold"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{cat.label}</span>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Right Column: Dynamic Flyout Submenu (flex-1 p-5) */}
+                  <div className="flex-1 bg-[#FAF9F6]/50 p-5 overflow-y-auto max-h-[500px]">
+                    {(() => {
+                      const currentSection = EXPLORE_MENU_SECTIONS[activeExploreSection] || EXPLORE_MENU_SECTIONS["career"];
+                      return (
+                        <>
+                          <div className="mb-3.5 pb-2 border-b border-[#E5E7EB]">
+                            <h4 className="text-sm font-black text-[#172033]">
+                              {currentSection.title}
+                            </h4>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {currentSection.subTitle}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-1">
+                            {currentSection.items.map((item, idx) => (
+                              <Link
+                                key={idx}
+                                href={item.href}
+                                onClick={() => setExploreOpen(false)}
+                                className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:text-[#FF6B35] hover:bg-white hover:shadow-xs transition-all group"
+                              >
+                                <span className="group-hover:translate-x-0.5 transition-transform">{item.name}</span>
+                                {item.badge && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-100 text-[#FF6B35]">
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </Link>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
             </div>
@@ -466,11 +594,33 @@ export function Navbar() {
 
           <div className="flex flex-col space-y-3 pt-2 font-medium text-[#172033]">
             <button type="button" onClick={() => setExploreOpen(!exploreOpen)} aria-expanded={exploreOpen} className="py-2 text-left border-b border-[#F7F8FA] flex justify-between items-center">
-              Explore <ChevronDown className={`w-4 h-4 ${exploreOpen ? "rotate-180" : ""}`} />
+              <span>Explore Goals & Categories</span> <ChevronDown className={`w-4 h-4 transition-transform ${exploreOpen ? "rotate-180" : ""}`} />
             </button>
-            {exploreOpen && <div className="pl-4 flex flex-col gap-3 text-sm">
-              {catalogCategories.map(({ id, name }) => <Link key={id} href={`/courses?category=${encodeURIComponent(name)}`} onClick={() => { setMobileMenuOpen(false); setExploreOpen(false); }}>{name}</Link>)}
-            </div>}
+            {exploreOpen && (
+              <div className="pl-3 py-2 flex flex-col gap-2.5 text-xs bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <div className="font-bold text-[10px] uppercase tracking-wider text-slate-400">Goals & Accelerators</div>
+                <Link href="/courses?search=Google+Cloud+AI" onClick={() => { setMobileMenuOpen(false); setExploreOpen(false); }} className="flex items-center gap-2 font-semibold text-purple-700">
+                  <span className="w-3.5 h-3.5 rounded-full bg-purple-100 text-purple-700 text-[9px] font-bold flex items-center justify-center">G</span>
+                  <span>Learn AI with Google</span>
+                </Link>
+                <Link href="/career-paths" onClick={() => { setMobileMenuOpen(false); setExploreOpen(false); }} className="font-semibold text-slate-800 hover:text-[#FF6B35]">
+                  Launch a New Career (In-demand Careers)
+                </Link>
+                <Link href="/certificates" onClick={() => { setMobileMenuOpen(false); setExploreOpen(false); }} className="font-semibold text-slate-800 hover:text-[#FF6B35]">
+                  Prepare for a Certification
+                </Link>
+                <Link href="/practice" onClick={() => { setMobileMenuOpen(false); setExploreOpen(false); }} className="font-semibold text-slate-800 hover:text-[#FF6B35]">
+                  Practice with Coding & Arenas
+                </Link>
+                <div className="h-px bg-slate-200 my-1" />
+                <div className="font-bold text-[10px] uppercase tracking-wider text-slate-400">Categories</div>
+                {["Development", "Business", "Finance & Accounting", "IT & Software", "Office Productivity", "Design", "Marketing"].map((name) => (
+                  <Link key={name} href={`/courses?category=${encodeURIComponent(name)}`} onClick={() => { setMobileMenuOpen(false); setExploreOpen(false); }} className="text-slate-700 hover:text-[#FF6B35]">
+                    {name}
+                  </Link>
+                ))}
+              </div>
+            )}
             <Link
               href="/courses"
               onClick={() => setMobileMenuOpen(false)}

@@ -230,6 +230,87 @@ const CHAPTERS_METADATA: {
   },
 ];
 
+// Helper to generate 4 distinct, pedagogically realistic tactical options
+function generateSmartOptions(winningMove: string, concept: string): string[] {
+  const optionsSet = new Set<string>();
+  optionsSet.add(winningMove);
+
+  const variations: string[] = [];
+
+  // Comparison & boundary swaps
+  if (winningMove.includes("<=")) variations.push(winningMove.replace(/<=/g, "<"));
+  else if (winningMove.includes("<")) variations.push(winningMove.replace(/</g, "<="));
+  if (winningMove.includes(">=")) variations.push(winningMove.replace(/>=/g, ">"));
+  else if (winningMove.includes(">")) variations.push(winningMove.replace(/>/g, ">="));
+  if (winningMove.includes("==")) variations.push(winningMove.replace(/==/g, "!="));
+  if (winningMove.includes("!=")) variations.push(winningMove.replace(/!=/g, "=="));
+
+  // Arithmetic & index swaps
+  if (winningMove.includes("+ 1")) variations.push(winningMove.replace(/\+ 1/g, "+ 2"), winningMove.replace(/\+ 1/g, "- 1"));
+  if (winningMove.includes("- 1")) variations.push(winningMove.replace(/- 1/g, "- 2"), winningMove.replace(/- 1/g, "+ 1"));
+  if (winningMove.includes(" + ")) variations.push(winningMove.replace(/ \+ /g, " - "));
+  if (winningMove.includes(" - ")) variations.push(winningMove.replace(/ - /g, " + "));
+  if (winningMove.includes("*")) variations.push(winningMove.replace(/\*/g, "//"));
+  if (winningMove.includes("//")) variations.push(winningMove.replace(/\/\//g, "/"));
+
+  // Direction / pointer / state swaps
+  if (winningMove.includes("left")) variations.push(winningMove.replace(/left/g, "right"));
+  if (winningMove.includes("right")) variations.push(winningMove.replace(/right/g, "left"));
+  if (winningMove.includes("slow")) variations.push(winningMove.replace(/slow/g, "fast"));
+  if (winningMove.includes("fast")) variations.push(winningMove.replace(/fast/g, "slow"));
+  if (winningMove.includes("prev")) variations.push(winningMove.replace(/prev/g, "curr"));
+  if (winningMove.includes("curr")) variations.push(winningMove.replace(/curr/g, "next_node"));
+  if (winningMove.includes(".next")) variations.push(winningMove.replace(/\.next/g, ".prev"));
+
+  // Common collections & methods
+  if (winningMove.includes("append")) variations.push(winningMove.replace(/append/g, "extend"));
+  if (winningMove.includes("pop()")) variations.push(winningMove.replace(/pop\(\)/g, "pop(0)"));
+  if (winningMove.includes("min(")) variations.push(winningMove.replace(/min\(/g, "max("));
+  if (winningMove.includes("max(")) variations.push(winningMove.replace(/max\(/g, "min("));
+  if (winningMove.includes("True")) variations.push(winningMove.replace(/True/g, "False"));
+  if (winningMove.includes("False")) variations.push(winningMove.replace(/False/g, "True"));
+  if (winningMove.includes("int(")) variations.push(winningMove.replace(/int\(/g, "str("));
+  if (winningMove.includes("float(")) variations.push(winningMove.replace(/float\(/g, "int("));
+  if (winningMove.includes("[::-1]")) variations.push(winningMove.replace(/\[::-1\]/g, "[:1:-1]"), winningMove.replace(/\[::-1\]/g, "[::1]"));
+  if (winningMove.includes("range(")) variations.push(winningMove.replace(/range\(/g, "enumerate("));
+
+  for (const v of variations) {
+    if (v !== winningMove && v.trim().length > 0) {
+      optionsSet.add(v);
+    }
+  }
+
+  // Fallback realistic distractor patterns
+  const fallbacks: string[] = [
+    winningMove.replace(/\+/g, "-"),
+    winningMove.replace(/x/g, "str(x)"),
+    winningMove.replace(/y/g, "int(y)"),
+    winningMove.replace(/0/g, "1"),
+    winningMove.replace(/1/g, "0"),
+    winningMove.includes("return") ? winningMove.replace("return", "pass # return") : `return ${winningMove}`,
+    winningMove.replace(/\.val/g, ".next"),
+    winningMove.replace(/nums\[/g, "nums[i + "),
+    winningMove.replace(/\(/g, "(not ")
+  ];
+
+  for (const fb of fallbacks) {
+    if (optionsSet.size >= 4) break;
+    if (fb !== winningMove && fb.trim().length > 0) {
+      optionsSet.add(fb);
+    }
+  }
+
+  // If still under 4, ensure unique labeled placeholders
+  let counter = 1;
+  while (optionsSet.size < 4) {
+    optionsSet.add(`${winningMove} # alternative variant ${counter++}`);
+  }
+
+  const list = Array.from(optionsSet).slice(0, 4);
+  // Deterministic shuffle
+  return list.sort((a, b) => (a.length % 3) - (b.length % 3) || a.localeCompare(b));
+}
+
 // Helper to generate 5-7 similarity-based puzzles per level with 4 tactical choices like Chess.com
 function generateLevelPuzzles(levelNum: number, themeItem: { title: string; theme: string; snippetIdea: string }, concept: ConceptTag, elo: number): ChessCodePuzzle[] {
   const puzzles: ChessCodePuzzle[] = [];
@@ -280,13 +361,7 @@ function generateLevelPuzzles(levelNum: number, themeItem: { title: string; them
     const puzzleId = `puzzle-lvl${levelNum}-p${i + 1}`;
 
     const winningMove = themeItem.snippetIdea;
-    const optionA = winningMove;
-    const optionB = winningMove.replace(/<=/g, "<").replace(/\+=/g, "-=").replace(/left/g, "right");
-    const optionC = winningMove.replace(/\+ 1/g, "+ 2").replace(/==/g, "!=").replace(/min/g, "max");
-    const optionD = winningMove.replace(/\[i\]/g, "[i + 1]").replace(/append/g, "extend");
-
-    // Shuffle options deterministically
-    const options = [optionA, optionB, optionC, optionD].sort((a, b) => a.localeCompare(b));
+    const options = generateSmartOptions(winningMove, concept);
 
     puzzles.push({
       id: puzzleId,
