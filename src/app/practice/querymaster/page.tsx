@@ -208,7 +208,7 @@ export default function QueryMasterPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-mono">
-                      {SQL_SAMPLE_TABLES[activeSchemaTable].slice(0, 4).map((row, i) => (
+                      {SQL_SAMPLE_TABLES[activeSchemaTable].map((row, i) => (
                         <tr key={i} className="hover:bg-slate-50">
                           {Object.values(row).map((val: any, j) => (
                             <td key={j} className="p-2 text-[#334155]">{val}</td>

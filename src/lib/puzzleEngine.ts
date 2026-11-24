@@ -10,6 +10,14 @@ export type ConceptTag =
   | "algorithms" 
   | "dynamic programming";
 
+export interface TestCase {
+  id: number;
+  input: string;
+  expectedOutput: string;
+  explanation?: string;
+  isHidden?: boolean;
+}
+
 export interface ChessCodePuzzle {
   id: string;
   levelNumber: number;
@@ -26,6 +34,29 @@ export interface ChessCodePuzzle {
   hint: string;
   analysis: string; // Chess-style move analysis explaining why this is the only winning move
   language: "python" | "javascript";
+
+  // HackerRank Problem Specification
+  functionName: string;
+  problemStatement: string;
+  example: {
+    input: string;
+    output: string;
+    explanation: string;
+  };
+  functionDescription: {
+    name: string;
+    parameters: { name: string; type: string }[];
+    returns: string;
+  };
+  constraints: string[];
+  inputFormat: string;
+  outputFormat: string;
+  starterBoilerplate: {
+    python: string;
+    javascript: string;
+    cpp: string;
+  };
+  testCases: TestCase[];
 }
 
 export interface ChessPuzzleLevel {
@@ -311,6 +342,189 @@ function generateSmartOptions(winningMove: string, concept: string): string[] {
   return list.sort((a, b) => (a.length % 3) - (b.length % 3) || a.localeCompare(b));
 }
 
+// Generate HackerRank problem specification for coding challenges
+function buildHackerRankMeta(
+  themeItem: { title: string; theme: string; snippetIdea: string },
+  concept: ConceptTag,
+  levelNum: number,
+  puzzleIndex: number,
+  variationName: string
+) {
+  // If Level 1, Puzzle 1: Exact problem from the user's HackerRank screenshot!
+  if (levelNum === 1 && puzzleIndex === 1) {
+    return {
+      functionName: "getRemovableIndices",
+      problemStatement: `Given two strings, \`str1\` and \`str2\`, where \`str1\` contains exactly one character more than \`str2\`, find the indices of the characters in \`str1\` that can be removed to make \`str1\` equal to \`str2\`. Return the array of indices in increasing order. If it is not possible, return \`[-1]\`.\n\nNote: Use 0-based indexing.`,
+      example: {
+        input: `str1 = "abdggda", str2 = "abdgda"`,
+        output: `[3, 4, 5]`,
+        explanation: `Any 'g' character at positions 3, 4, or 5 can be deleted to obtain str2. Return [3, 4, 5].`
+      },
+      functionDescription: {
+        name: "getRemovableIndices",
+        parameters: [
+          { name: "str1", type: "string" },
+          { name: "str2", type: "string" }
+        ],
+        returns: "int[]: The 0-based indices of removable characters in str1 in ascending order"
+      },
+      constraints: [
+        "2 <= |str1| <= 2 * 10^5",
+        "1 <= |str2| <= 2 * 10^5",
+        "|str1| = |str2| + 1",
+        "str1 and str2 only contain lowercase English letters."
+      ],
+      inputFormat: "Two strings, str1 and str2.",
+      outputFormat: "int[]: the indices of characters that can be removed from str1 in ascending order, or [-1] if it is not possible to match str2.",
+      starterBoilerplate: {
+        python: `def get_removable_indices(str1: str, str2: str) -> list[int]:
+    # Complete the 'getRemovableIndices' function below.
+    # The function is expected to return an INTEGER_ARRAY.
+    # Write your code here
+    pass
+`,
+        javascript: `/**
+ * Complete the 'getRemovableIndices' function below.
+ * @param {string} str1
+ * @param {string} str2
+ * @return {number[]}
+ */
+function getRemovableIndices(str1, str2) {
+    // Write your code here
+    
+}
+`,
+        cpp: `#include <bits/stdc++.h>
+using namespace std;
+
+// Complete the 'getRemovableIndices' function below.
+vector<int> getRemovableIndices(string str1, string str2) {
+    // Write your code here
+}
+`
+      },
+      testCases: [
+        {
+          id: 0,
+          input: `"abdggda", "abdgda"`,
+          expectedOutput: `[3, 4, 5]`,
+          explanation: `Characters at index 3, 4, or 5 ('g') can be removed to yield "abdgda".`
+        },
+        {
+          id: 1,
+          input: `"abcde", "abce"`,
+          expectedOutput: `[3]`,
+          explanation: `Removing index 3 ('d') yields "abce".`
+        },
+        {
+          id: 2,
+          input: `"aaaaa", "aaaa"`,
+          expectedOutput: `[0, 1, 2, 3, 4]`,
+          isHidden: true,
+          explanation: `Any character can be removed.`
+        },
+        {
+          id: 3,
+          input: `"xyz", "abc"`,
+          expectedOutput: `[-1]`,
+          isHidden: true,
+          explanation: `Strings differ by multiple characters.`
+        }
+      ]
+    };
+  }
+
+  // General theme-based HackerRank specification
+  const funcBase = themeItem.title
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 3)
+    .join("_");
+  const functionName = funcBase || `solve_${concept.replace(/\s+/g, "_")}`;
+
+  return {
+    functionName,
+    problemStatement: `Implement the algorithm for **${themeItem.title}** (${variationName}) focusing on \`${concept.toUpperCase()}\`.\n\nYour solution must maintain data structure invariants and avoid common runtime pitfalls such as boundary off-by-one errors or inefficient re-allocations.`,
+    example: {
+      input: `input_data = [4, 7, 2, 9, 1]`,
+      output: `[1, 2, 4, 7, 9]`,
+      explanation: `Processes the input collection and returns the optimal transformation.`
+    },
+    functionDescription: {
+      name: functionName,
+      parameters: [
+        { name: "input_data", type: "array / collection" },
+        { name: "k", type: "integer (optional threshold)" }
+      ],
+      returns: "The transformed collection or verified boolean result"
+    },
+    constraints: [
+      "1 <= len(input_data) <= 10^5",
+      "-10^4 <= input_data[i] <= 10^4",
+      "Expected Time Complexity: O(n) or O(n log n)",
+      "Expected Space Complexity: O(1) auxiliary space"
+    ],
+    inputFormat: "An input array or structured object input_data.",
+    outputFormat: "Return the valid computed result matching the problem specification.",
+    starterBoilerplate: {
+      python: `def ${functionName}(input_data, k=0):
+    # Complete the '${functionName}' function below.
+    # Write your code here
+    pass
+`,
+      javascript: `/**
+ * Complete the '${functionName}' function below.
+ * @param {any} input_data
+ * @param {number} k
+ * @return {any}
+ */
+function ${functionName}(input_data, k = 0) {
+    // Write your code here
+    
+}
+`,
+      cpp: `#include <bits/stdc++.h>
+using namespace std;
+
+// Complete the '${functionName}' function below.
+auto ${functionName}(vector<int> input_data, int k) {
+    // Write your code here
+}
+`
+    },
+    testCases: [
+      {
+        id: 0,
+        input: `[4, 7, 2, 9, 1], 2`,
+        expectedOutput: `[1, 2, 4, 7, 9]`,
+        explanation: `Standard sample verification test case.`
+      },
+      {
+        id: 1,
+        input: `[10, -5, 20], 1`,
+        expectedOutput: `[-5, 10, 20]`,
+        explanation: `Sample verification with negative boundary values.`
+      },
+      {
+        id: 2,
+        input: `[1]`,
+        expectedOutput: `[1]`,
+        isHidden: true,
+        explanation: `Hidden test case verifying single element boundary.`
+      },
+      {
+        id: 3,
+        input: `[]`,
+        expectedOutput: `[]`,
+        isHidden: true,
+        explanation: `Hidden test case verifying empty collection.`
+      }
+    ]
+  };
+}
+
 // Helper to generate 5-7 similarity-based puzzles per level with 4 tactical choices like Chess.com
 function generateLevelPuzzles(levelNum: number, themeItem: { title: string; theme: string; snippetIdea: string }, concept: ConceptTag, elo: number): ChessCodePuzzle[] {
   const puzzles: ChessCodePuzzle[] = [];
@@ -362,6 +576,7 @@ function generateLevelPuzzles(levelNum: number, themeItem: { title: string; them
 
     const winningMove = themeItem.snippetIdea;
     const options = generateSmartOptions(winningMove, concept);
+    const hrMeta = buildHackerRankMeta(themeItem, concept, levelNum, i + 1, v.name);
 
     puzzles.push({
       id: puzzleId,
@@ -385,6 +600,7 @@ def execute_tactical_step(input_data):
       hint: `💡 Invariant: Notice the ${themeItem.theme} property. Focus on preserving invariants without off-by-one errors.`,
       analysis: `♟️ Tactical Analysis: The move '${winningMove}' is the only line that guarantees correctness. Any deviation alters loop termination or violates node invariants, leading to runtime error.`,
       language: "python",
+      ...hrMeta,
     });
   }
 

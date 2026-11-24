@@ -10,8 +10,9 @@ import {
   ChessCodePuzzle,
   INITIAL_USER_CHESS_STATE,
   ChessPuzzleUserState,
-  ConceptTag
+  TestCase
 } from "@/lib/puzzleEngine";
+import { evaluateChallengeCode, EvaluationOutcome } from "@/lib/codeEvaluator";
 import { 
   Play, 
   CheckCircle2, 
@@ -32,7 +33,16 @@ import {
   BookOpen,
   Map,
   X,
-  Check
+  Check,
+  FileCode,
+  History,
+  MessageSquare,
+  Terminal,
+  Settings,
+  Sun,
+  Moon,
+  ChevronRight,
+  ChevronDown
 } from "lucide-react";
 
 export default function CodeArenaPage() {
@@ -64,27 +74,37 @@ export default function CodeArenaPage() {
   const currentLevel: ChessPuzzleLevel = allLevels[currentLevelNum - 1] || allLevels[0];
   const currentPuzzle: ChessCodePuzzle = currentLevel.puzzles[currentPuzzleIdx] || currentLevel.puzzles[0];
 
-  const [selectedMoveOption, setSelectedMoveOption] = useState<string>("");
-  const [customMoveInput, setCustomMoveInput] = useState<string>("");
-  const [isInputModeCustom, setIsInputModeCustom] = useState<boolean>(false);
-
-  const [moveStatus, setMoveStatus] = useState<"idle" | "evaluating" | "correct" | "blunder">("idle");
-  const [feedbackMessage, setFeedbackMessage] = useState<string>("");
+  // HackerRank Workspace State
+  const [activeLeftTab, setActiveLeftTab] = useState<"problem" | "submissions" | "discussions" | "editorial">("problem");
+  const [selectedLanguage, setSelectedLanguage] = useState<"python" | "javascript" | "cpp">("python");
+  const [editorTheme, setEditorTheme] = useState<"light" | "dark">("dark");
+  const [userCode, setUserCode] = useState<string>("");
+  const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(true);
+  const [activeTestCaseTab, setActiveTestCaseTab] = useState<number>(0);
+  const [evaluationOutcome, setEvaluationOutcome] = useState<EvaluationOutcome | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [ratingChange, setRatingChange] = useState<number | null>(null);
-  const [showHint, setShowHint] = useState<boolean>(false);
-  const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
   const [levelCompletedModal, setLevelCompletedModal] = useState<boolean>(false);
+  const [editorialRevealed, setEditorialRevealed] = useState<boolean>(false);
 
-  // Reset puzzle input state on puzzle switch
+  // Submissions history
+  const [submissionsHistory, setSubmissionsHistory] = useState<{
+    id: string;
+    timestamp: string;
+    status: "Passed" | "Failed";
+    language: string;
+    runtime: string;
+  }[]>([]);
+
+  // Initialize or reset starter code when switching puzzle or language
   useEffect(() => {
-    setSelectedMoveOption("");
-    setCustomMoveInput("");
-    setMoveStatus("idle");
-    setFeedbackMessage("");
+    const starter = currentPuzzle.starterBoilerplate[selectedLanguage] || currentPuzzle.starterBoilerplate.python;
+    setUserCode(starter);
+    setEvaluationOutcome(null);
     setRatingChange(null);
-    setShowHint(false);
-    setShowAnalysis(false);
-  }, [currentLevelNum, currentPuzzleIdx]);
+    setEditorialRevealed(false);
+    setActiveTestCaseTab(0);
+  }, [currentLevelNum, currentPuzzleIdx, selectedLanguage]);
 
   // Handle Level Selection
   const handleSelectLevel = (lvlNum: number) => {
@@ -94,27 +114,56 @@ export default function CodeArenaPage() {
     setShowLevelMapModal(false);
   };
 
-  // Evaluate the move (like Chess.com)
-  const handleSubmitMove = (chosenMove?: string) => {
-    const move = (chosenMove !== undefined ? chosenMove : (isInputModeCustom ? customMoveInput : selectedMoveOption)).trim();
-    if (!move) return;
-
-    setMoveStatus("evaluating");
+  // Run Code (Runs against visible sample testcases 0 & 1)
+  const handleRunCode = () => {
+    setIsEvaluating(true);
+    setIsConsoleOpen(true);
 
     setTimeout(() => {
-      // Check if move matches expected or accepted alternatives
-      const normalize = (s: string) => s.replace(/\s+/g, " ").replace(/['"]/g, '"').trim();
-      const isCorrect = 
-        normalize(move) === normalize(currentPuzzle.expectedLine) ||
-        currentPuzzle.acceptedAlternatives.some(alt => normalize(move) === normalize(alt));
+      const sampleTestCases = currentPuzzle.testCases.filter(tc => !tc.isHidden);
+      const outcome = evaluateChallengeCode(
+        userCode,
+        selectedLanguage,
+        currentPuzzle.functionName,
+        sampleTestCases
+      );
+      setEvaluationOutcome(outcome);
+      setIsEvaluating(false);
+    }, 450);
+  };
 
-      if (isCorrect) {
+  // Submit Code (Runs against ALL testcases including hidden ones)
+  const handleSubmitCode = () => {
+    setIsEvaluating(true);
+    setIsConsoleOpen(true);
+
+    setTimeout(() => {
+      const outcome = evaluateChallengeCode(
+        userCode,
+        selectedLanguage,
+        currentPuzzle.functionName,
+        currentPuzzle.testCases
+      );
+      setEvaluationOutcome(outcome);
+      setIsEvaluating(false);
+
+      // Record submission
+      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setSubmissionsHistory(prev => [
+        {
+          id: Math.random().toString(36).substring(7),
+          timestamp: nowStr,
+          status: outcome.allPassed ? "Passed" : "Failed",
+          language: selectedLanguage.toUpperCase(),
+          runtime: `${Math.floor(Math.random() * 20 + 15)} ms`,
+        },
+        ...prev,
+      ]);
+
+      if (outcome.allPassed) {
         const ratingGain = 14;
-        setMoveStatus("correct");
         setRatingChange(ratingGain);
-        setFeedbackMessage("Excellent move! Puzzle solved (+14 Rating)");
 
-        // Update user state
         setUserState((prev) => {
           const newStreak = prev.streak + 1;
           const newRating = prev.rating + ratingGain;
@@ -131,30 +180,22 @@ export default function CodeArenaPage() {
           };
         });
 
-        // If this is the last puzzle in the level -> Level Completed!
+        // Check if level cleared
         if (currentPuzzleIdx + 1 >= currentLevel.puzzleCount) {
           setTimeout(() => {
             handleCompleteLevel();
           }, 1200);
-        } else {
-          // Auto advance to next puzzle after 1.5s
-          setTimeout(() => {
-            setCurrentPuzzleIdx((prev) => prev + 1);
-          }, 1500);
         }
       } else {
         const ratingLoss = -8;
-        setMoveStatus("blunder");
         setRatingChange(ratingLoss);
-        setFeedbackMessage("Blunder (-8 Rating). That move leads to an algorithmic defect. Try again or check the hint.");
-
         setUserState((prev) => ({
           ...prev,
           rating: Math.max(100, prev.rating + ratingLoss),
           streak: 0,
         }));
       }
-    }, 250);
+    }, 600);
   };
 
   const handleCompleteLevel = () => {
@@ -183,7 +224,6 @@ export default function CodeArenaPage() {
     }
   };
 
-  // Filtered levels for the Map Modal
   const filteredLevels = allLevels.filter((lvl) => {
     if (conceptFilter === "all") return true;
     return lvl.concept.toLowerCase().includes(conceptFilter.toLowerCase());
@@ -193,9 +233,9 @@ export default function CodeArenaPage() {
     <div className="min-h-screen flex flex-col bg-[#FFFDF9] text-[#172033]">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex flex-col justify-between">
-        {/* Top HUD: Chess.com Style Rating & Level Progress Bar */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-5 py-3.5 mb-6 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <main className="flex-1 max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex flex-col justify-between">
+        {/* Top HUD: HackerRank & Chess.com Rating / Level Roadmap */}
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-5 py-3.5 mb-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
           {/* Level Info & Map Trigger */}
           <div className="flex items-center gap-3">
             <Link
@@ -216,7 +256,7 @@ export default function CodeArenaPage() {
                 </span>
               </div>
               <h1 className="text-sm sm:text-base font-extrabold text-[#172033] truncate max-w-[280px] sm:max-w-md">
-                {currentLevel.title}
+                {currentPuzzle.title}
               </h1>
             </div>
 
@@ -230,10 +270,10 @@ export default function CodeArenaPage() {
             </button>
           </div>
 
-          {/* Center: Puzzle Progress Beads (● ● ● ○ ○ ○) */}
+          {/* Center: Puzzle Progress Beads */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-500 select-none hidden sm:inline">
-              Puzzle {currentPuzzleIdx + 1}/{currentLevel.puzzleCount}:
+              Challenge {currentPuzzleIdx + 1}/{currentLevel.puzzleCount}:
             </span>
             <div className="flex items-center gap-1.5">
               {currentLevel.puzzles.map((p, idx) => {
@@ -244,14 +284,14 @@ export default function CodeArenaPage() {
                     key={p.id}
                     type="button"
                     onClick={() => setCurrentPuzzleIdx(idx)}
-                    className={`w-3.5 h-3.5 rounded-full transition-all flex items-center justify-center text-[8px] font-bold ${
+                    className={`w-4 h-4 rounded-full transition-all flex items-center justify-center text-[9px] font-bold ${
                       isCurrent
                         ? "ring-2 ring-[#FF6B35] bg-[#FF6B35] text-white scale-125"
                         : isSolved
                         ? "bg-emerald-500 text-white"
                         : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200"
                     }`}
-                    title={`Puzzle ${idx + 1}`}
+                    title={`Challenge ${idx + 1}`}
                   >
                     {isSolved ? "✓" : idx + 1}
                   </button>
@@ -262,13 +302,11 @@ export default function CodeArenaPage() {
 
           {/* Right: Live Rating & Streak */}
           <div className="flex items-center gap-4">
-            {/* Streak Counter */}
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-50 border border-orange-200 text-[#FF6B35] text-xs font-bold">
               <Flame className="w-4 h-4 fill-current animate-bounce" />
               <span>{userState.streak} Streak</span>
             </div>
 
-            {/* Elo Rating Badge */}
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-amber-500" />
               <div className="text-right">
@@ -290,255 +328,439 @@ export default function CodeArenaPage() {
           </div>
         </div>
 
-        {/* Main Chess.com Style Puzzle Arena */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1">
-          {/* Left/Center 8 cols: The Board (Code Context & Move Choices) */}
-          <div className="lg:col-span-8 flex flex-col space-y-4">
-            {/* The Code Board */}
-            <div
-              className={`relative bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-xs flex flex-col min-h-[420px] ${
-                moveStatus === "correct"
-                  ? "border-emerald-500 ring-2 ring-emerald-500/20"
-                  : moveStatus === "blunder"
-                  ? "border-rose-500 ring-2 ring-rose-500/20 animate-shake"
-                  : "border-[#E5E7EB]"
-              }`}
-            >
-              {/* Board Header */}
-              <div className="flex items-center justify-between px-5 py-3 bg-[#F8FAFC] border-b border-[#E5E7EB] text-xs font-mono text-slate-600">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                  <span className="ml-2 font-bold text-slate-700">elevate_tactics.py</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold">
-                  Target Rating: {currentPuzzle.elo}
-                </span>
-              </div>
-
-              {/* Code Surface */}
-              <div className="p-5 flex-1 flex flex-col justify-between">
-                <div className="bg-[#0F172A] rounded-xl p-5 font-mono text-xs sm:text-sm text-slate-100 leading-relaxed overflow-x-auto shadow-inner border border-slate-800">
-                  <pre className="whitespace-pre-wrap">{currentPuzzle.codeContext}</pre>
-                </div>
-
-                {/* Tactical Prompt Box */}
-                <div className="mt-4 p-3.5 rounded-xl bg-orange-50 border border-orange-200/80 text-xs font-sans text-orange-950 flex items-start gap-2.5">
-                  <Sparkles className="w-4 h-4 text-[#FF6B35] shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="text-[#172033] block text-xs">{currentPuzzle.title}</strong>
-                    <p className="mt-0.5 text-slate-700 leading-normal">{currentPuzzle.prompt}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feedback Alert Overlay */}
-              {moveStatus === "correct" && (
-                <div className="px-5 py-3 bg-emerald-50 border-t border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between animate-in slide-in-from-bottom-2">
-                  <span className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    {feedbackMessage}
-                  </span>
-                  <span className="text-[11px] text-emerald-700 font-semibold">Auto-advancing...</span>
-                </div>
-              )}
-
-              {moveStatus === "blunder" && (
-                <div className="px-5 py-3 bg-rose-50 border-t border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between animate-in slide-in-from-bottom-2">
-                  <span className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-rose-600" />
-                    {feedbackMessage}
-                  </span>
+        {/* Main HackerRank Split Problem Solving Workspace */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[760px] items-stretch">
+          
+          {/* Left Column (5 cols): Problem Description, Tabs & Constraints */}
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-[#E5E7EB] shadow-xs flex flex-col overflow-hidden">
+            {/* HackerRank Tab Bar */}
+            <div className="flex items-center border-b border-[#E5E7EB] bg-[#F8FAFC] px-3">
+              {[
+                { id: "problem", label: "Problem", icon: FileCode },
+                { id: "submissions", label: "Submissions", icon: History },
+                { id: "discussions", label: "Discussions", icon: MessageSquare },
+                { id: "editorial", label: "Editorial", icon: Lightbulb },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeLeftTab === tab.id;
+                return (
                   <button
+                    key={tab.id}
                     type="button"
-                    onClick={() => { setMoveStatus("idle"); setSelectedMoveOption(""); }}
-                    className="text-xs underline text-rose-700 hover:text-rose-900 font-bold"
+                    onClick={() => setActiveLeftTab(tab.id as any)}
+                    className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-all ${
+                      isActive
+                        ? "border-[#FF6B35] text-[#FF6B35] bg-white"
+                        : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
                   >
-                    Try Again
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
                   </button>
-                </div>
-              )}
+                );
+              })}
             </div>
 
-            {/* Tactical Move Selector (Choose Your Move like Chess.com) */}
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#FF6B35] animate-ping" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                    Find the Winning Move:
-                  </span>
-                </div>
-
-                {/* Mode toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsInputModeCustom(!isInputModeCustom)}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-[#FF6B35] transition-colors"
-                >
-                  {isInputModeCustom ? "Switch to Tactical Choices" : "Switch to Free Code Input"}
-                </button>
-              </div>
-
-              {!isInputModeCustom ? (
-                /* 4 Tactical Move Choices */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {currentPuzzle.options.map((option, idx) => {
-                    const isSelected = selectedMoveOption === option;
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        disabled={moveStatus === "evaluating"}
-                        onClick={() => {
-                          setSelectedMoveOption(option);
-                          handleSubmitMove(option);
-                        }}
-                        className={`p-3.5 rounded-xl border-2 text-left font-mono text-xs transition-all flex items-center justify-between group ${
-                          isSelected
-                            ? "bg-[#FF6B35] border-[#FF6B35] text-white shadow-md shadow-orange-500/20"
-                            : "bg-white border-slate-200 text-slate-800 hover:border-[#FF6B35] hover:bg-orange-50/20 shadow-xs"
-                        }`}
-                      >
-                        <span className="truncate pr-2">{option}</span>
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-sans font-bold shrink-0 ${
-                          isSelected ? "bg-white text-[#FF6B35]" : "bg-slate-100 text-slate-700 group-hover:bg-[#FF6B35] group-hover:text-white"
-                        }`}>
-                          {String.fromCharCode(65 + idx)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* Free Input Area */
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={customMoveInput}
-                    onChange={(e) => setCustomMoveInput(e.target.value)}
-                    placeholder="Type the winning line of code here (e.g. left += 1; right -= 1)..."
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#FF6B35] focus:bg-white"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSubmitMove();
-                    }}
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => handleSubmitMove()}
-                      className="px-5 py-2.5 rounded-xl bg-[#FF6B35] text-white text-xs font-bold hover:bg-[#E85D2A] transition-all shadow-md shadow-orange-500/20"
-                    >
-                      Play Move ↵
-                    </button>
+            {/* Tab Contents */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6 text-xs text-slate-700 leading-relaxed max-h-[720px]">
+              {activeLeftTab === "problem" && (
+                <>
+                  {/* Title & Metadata */}
+                  <div>
+                    <h2 className="text-lg font-black text-[#172033] tracking-tight">
+                      {currentPuzzle.title}
+                    </h2>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                        {currentLevel.difficulty}
+                      </span>
+                      <span className="text-slate-500">·</span>
+                      <span className="font-mono text-slate-600">Target Rating: {currentPuzzle.elo}</span>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-slate-500 font-semibold">Max Score: 100</span>
+                    </div>
                   </div>
+
+                  {/* Problem Statement Narrative */}
+                  <div className="space-y-3">
+                    <p className="whitespace-pre-line text-slate-800 font-normal leading-relaxed text-[13px]">
+                      {currentPuzzle.problemStatement}
+                    </p>
+                  </div>
+
+                  {/* Example Box */}
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                      Example
+                    </h4>
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 font-mono text-xs">
+                      <div><strong className="text-slate-600 font-sans">Input: </strong> {currentPuzzle.example.input}</div>
+                      <div><strong className="text-slate-600 font-sans">Output: </strong> <span className="text-emerald-700 font-bold">{currentPuzzle.example.output}</span></div>
+                      <p className="font-sans text-[11px] text-slate-600 pt-1 border-t border-slate-200 mt-1">
+                        {currentPuzzle.example.explanation}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Function Description */}
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                      Function Description
+                    </h4>
+                    <p className="text-[12px] text-slate-700">
+                      Complete the function <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-orange-700 font-bold">{currentPuzzle.functionDescription.name}</code> in the editor below.
+                    </p>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-[11px]">
+                      <div className="font-semibold text-slate-700">Parameters:</div>
+                      {currentPuzzle.functionDescription.parameters.map((p, i) => (
+                        <div key={i} className="pl-2 font-mono text-slate-600">
+                          • {p.type} <span className="font-bold text-slate-800">{p.name}</span>
+                        </div>
+                      ))}
+                      <div className="font-semibold text-slate-700 pt-1">Returns:</div>
+                      <div className="pl-2 text-slate-600">
+                        • {currentPuzzle.functionDescription.returns}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Constraints */}
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                      Constraints
+                    </h4>
+                    <ul className="space-y-1 list-disc pl-5 text-[12px] font-mono text-slate-700">
+                      {currentPuzzle.constraints.map((c, i) => (
+                        <li key={i}>{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Input / Output Format */}
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Input Format</h4>
+                      <p className="text-[12px] text-slate-700 mt-1">{currentPuzzle.inputFormat}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Output Format</h4>
+                      <p className="text-[12px] text-slate-700 mt-1">{currentPuzzle.outputFormat}</p>
+                    </div>
+                  </div>
+
+                  {/* Sample Test Case 0 */}
+                  <div className="space-y-2 pt-2 border-t border-slate-200">
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Sample Test Case 0</h4>
+                    <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div className="text-[10px] font-sans font-bold text-slate-500 uppercase">Sample Input</div>
+                        <div className="mt-1 text-slate-800">{currentPuzzle.testCases[0]?.input}</div>
+                      </div>
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div className="text-[10px] font-sans font-bold text-slate-500 uppercase">Sample Output</div>
+                        <div className="mt-1 text-emerald-700 font-bold">{currentPuzzle.testCases[0]?.expectedOutput}</div>
+                      </div>
+                    </div>
+                    {currentPuzzle.testCases[0]?.explanation && (
+                      <p className="text-[11px] text-slate-600 italic">
+                        Explanation: {currentPuzzle.testCases[0].explanation}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {activeLeftTab === "submissions" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-[#172033]">Submission History</h3>
+                  {submissionsHistory.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-500">
+                      No submissions recorded yet for this challenge. Click "Submit Code" to test against all test cases.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {submissionsHistory.map((sub) => (
+                        <div key={sub.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                          <div>
+                            <span className={`font-bold ${sub.status === "Passed" ? "text-emerald-600" : "text-rose-600"}`}>
+                              {sub.status === "Passed" ? "✓ Accepted" : "✗ Wrong Answer"}
+                            </span>
+                            <div className="text-[11px] text-slate-400 mt-0.5">{sub.timestamp} · {sub.language}</div>
+                          </div>
+                          <span className="font-mono text-slate-600 text-[11px]">{sub.runtime}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeLeftTab === "discussions" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-[#172033]">Community Discussions</h3>
+                  <div className="space-y-3">
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-800">Deepak S. · 2 days ago</strong>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-bold">O(N) Solution</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Remember to consider when characters at multiple adjacent indices are identical. You can remove any of the duplicates!
+                      </p>
+                    </div>
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-800">Ananya R. · 4 days ago</strong>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">Corner Case</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Make sure to handle the case where the difference happens at the very end of the string.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeLeftTab === "editorial" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-[#172033]">Editorial & Algorithmic Analysis</h3>
+                  {!editorialRevealed ? (
+                    <div className="p-6 text-center bg-amber-50/60 rounded-2xl border border-amber-200/80 space-y-3">
+                      <Lightbulb className="w-8 h-8 text-amber-500 mx-auto" />
+                      <div>
+                        <h4 className="font-bold text-amber-900">Are you sure you want to reveal the hint?</h4>
+                        <p className="text-[11px] text-amber-700 mt-1">Try to solve the challenge on your own first to maximize problem-solving muscle memory.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditorialRevealed(true)}
+                        className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold text-xs hover:bg-amber-700 shadow-xs"
+                      >
+                        Reveal Editorial Hint
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in">
+                      <div className="font-bold text-[#172033]">Algorithmic Invariant:</div>
+                      <p className="text-slate-700">{currentPuzzle.hint}</p>
+                      <div className="pt-2 border-t border-slate-200">
+                        <div className="font-bold text-[#172033]">Complexity Target:</div>
+                        <p className="text-slate-600 text-[11px]">{currentPuzzle.analysis}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right 4 cols: Chess.com Style Analysis HUD */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Action Bar */}
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs space-y-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Tactical Tools
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {/* Hint Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowHint(!showHint)}
-                  className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                    showHint
-                      ? "bg-amber-100 border-amber-300 text-amber-900"
-                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  <Lightbulb className="w-4 h-4 text-amber-500" />
-                  <span>{showHint ? "Hide Hint" : "Get Hint"}</span>
-                </button>
-
-                {/* Analysis / Solution */}
-                <button
-                  type="button"
-                  onClick={() => setShowAnalysis(!showAnalysis)}
-                  className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                    showAnalysis
-                      ? "bg-blue-100 border-blue-300 text-blue-900"
-                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4 text-blue-600" />
-                  <span>{showAnalysis ? "Hide Solution" : "Move Analysis"}</span>
-                </button>
-              </div>
-
-              {/* Hint Content */}
-              {showHint && (
-                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed animate-in fade-in">
-                  {currentPuzzle.hint}
+          {/* Right Column (7 cols): HackerRank Code Editor & Test Cases Console */}
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E5E7EB] shadow-xs flex flex-col overflow-hidden">
+            {/* Editor Top Toolbar */}
+            <div className="flex items-center justify-between border-b border-[#E5E7EB] px-4 py-2.5 bg-[#F8FAFC]">
+              <div className="flex items-center gap-3">
+                {/* Language Selector */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Language:</span>
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value as any)}
+                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#FF6B35]"
+                  >
+                    <option value="python">Python 3</option>
+                    <option value="javascript">JavaScript (Node.js)</option>
+                    <option value="cpp">C++11</option>
+                  </select>
                 </div>
-              )}
 
-              {/* Analysis Content */}
-              {showAnalysis && (
-                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 leading-relaxed space-y-1.5 animate-in fade-in">
-                  <div className="font-bold text-[#172033]">Winning Move:</div>
-                  <div className="font-mono text-emerald-700 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200">
-                    {currentPuzzle.expectedLine}
+                {/* Theme Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setEditorTheme(editorTheme === "dark" ? "light" : "dark")}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-white"
+                >
+                  {editorTheme === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
+                  <span>{editorTheme === "dark" ? "Light" : "Dark"}</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const starter = currentPuzzle.starterBoilerplate[selectedLanguage] || currentPuzzle.starterBoilerplate.python;
+                    setUserCode(starter);
+                  }}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1"
+                  title="Reset to starter code"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset Code</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Code Editor Surface with Line Numbers */}
+            <div className={`relative flex-1 flex flex-col font-mono text-xs overflow-hidden ${
+              editorTheme === "dark" ? "bg-[#0F172A] text-slate-100" : "bg-white text-slate-900"
+            }`}>
+              <div className="flex-1 flex overflow-hidden">
+                {/* Line Numbers Gutter */}
+                <div className={`py-4 px-3 select-none text-right font-mono text-xs ${
+                  editorTheme === "dark" ? "bg-[#090D16] text-slate-600 border-r border-slate-800" : "bg-slate-50 text-slate-400 border-r border-slate-200"
+                }`}>
+                  {Array.from({ length: Math.max(18, userCode.split("\n").length + 2) }).map((_, i) => (
+                    <div key={i} className="leading-5 h-5">{i + 1}</div>
+                  ))}
+                </div>
+
+                {/* Editable Code Textarea */}
+                <textarea
+                  value={userCode}
+                  onChange={(e) => setUserCode(e.target.value)}
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  className={`w-full h-full p-4 font-mono text-xs leading-5 focus:outline-none resize-none overflow-auto whitespace-pre bg-transparent ${
+                    editorTheme === "dark" ? "text-emerald-400" : "text-slate-900"
+                  }`}
+                  placeholder="// Complete the function below..."
+                />
+              </div>
+
+              {/* Bottom Action Bar: Run Code & Submit Code (HackerRank Style) */}
+              <div className={`p-3 border-t flex items-center justify-between ${
+                editorTheme === "dark" ? "bg-[#090D16] border-slate-800" : "bg-[#F8FAFC] border-slate-200"
+              }`}>
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-200 font-semibold"
+                  >
+                    <Terminal className="w-3.5 h-3.5" />
+                    <span>Test Cases Console</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isConsoleOpen ? "rotate-180" : ""}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* Run Code */}
+                  <button
+                    type="button"
+                    disabled={isEvaluating}
+                    onClick={handleRunCode}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 font-bold text-xs transition-all shadow-xs flex items-center gap-1.5"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Run Code</span>
+                  </button>
+
+                  {/* Submit Code */}
+                  <button
+                    type="button"
+                    disabled={isEvaluating}
+                    onClick={handleSubmitCode}
+                    className="px-5 py-2 rounded-xl bg-[#FF6B35] text-white hover:bg-[#E85D2A] font-bold text-xs transition-all shadow-md shadow-orange-500/20 flex items-center gap-1.5"
+                  >
+                    <span>Submit Code</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Cases Console Drawer (HackerRank Style) */}
+            {isConsoleOpen && (
+              <div className="border-t border-[#E5E7EB] bg-white p-4 space-y-3 max-h-60 overflow-y-auto">
+                <div className="flex items-center justify-between">
+                  {/* Testcase Tabs */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto">
+                    {currentPuzzle.testCases.map((tc, idx) => {
+                      const res = evaluationOutcome?.results.find(r => r.testCaseId === tc.id);
+                      return (
+                        <button
+                          key={tc.id}
+                          type="button"
+                          onClick={() => setActiveTestCaseTab(idx)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                            activeTestCaseTab === idx
+                              ? "bg-slate-900 text-white"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          {res && (
+                            <span className={res.status === "passed" ? "text-emerald-400" : "text-rose-400"}>
+                              {res.status === "passed" ? "✓" : "✗"}
+                            </span>
+                          )}
+                          <span>Testcase {tc.id} {tc.isHidden ? "(Hidden)" : ""}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className="text-[11px] text-slate-600 pt-1">{currentPuzzle.analysis}</p>
+
+                  {evaluationOutcome && (
+                    <div className="text-xs font-bold">
+                      {evaluationOutcome.allPassed ? (
+                        <span className="text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>All {evaluationOutcome.totalCount} Testcases Passed!</span>
+                        </span>
+                      ) : (
+                        <span className="text-rose-600 flex items-center gap-1">
+                          <XCircle className="w-4 h-4" />
+                          <span>Failed ({evaluationOutcome.passedCount}/{evaluationOutcome.totalCount} passed)</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
 
-              {/* Skip to Next Puzzle */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentPuzzleIdx + 1 < currentLevel.puzzleCount) {
-                    setCurrentPuzzleIdx(currentPuzzleIdx + 1);
-                  } else {
-                    handleCompleteLevel();
-                  }
-                }}
-                className="w-full py-2.5 rounded-xl bg-[#172033] hover:bg-[#FF6B35] text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs"
-              >
-                <span>Next Puzzle</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+                {/* Selected Testcase Details */}
+                {(() => {
+                  const currentTC = currentPuzzle.testCases[activeTestCaseTab] || currentPuzzle.testCases[0];
+                  const res = evaluationOutcome?.results.find(r => r.testCaseId === currentTC.id);
 
-            {/* Level Stats Card */}
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>Level Overview</span>
-                <span className="text-[#FF6B35]">Level {currentLevelNum}/100</span>
+                  return (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs font-mono">
+                      {currentTC.isHidden && !evaluationOutcome?.allPassed ? (
+                        <div className="p-4 text-center text-slate-500 font-sans">
+                          🔒 Hidden test case (Executed on "Submit Code" to test algorithm edge conditions).
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="p-2 bg-white rounded-lg border border-slate-200">
+                            <span className="text-[10px] font-sans font-bold text-slate-400 uppercase">Input</span>
+                            <div className="mt-1 text-slate-800 break-all">{currentTC.input}</div>
+                          </div>
+                          <div className="p-2 bg-white rounded-lg border border-slate-200">
+                            <span className="text-[10px] font-sans font-bold text-slate-400 uppercase">Your Output</span>
+                            <div className={`mt-1 font-bold break-all ${
+                              res?.status === "passed" ? "text-emerald-600" : res?.status === "error" ? "text-rose-600" : "text-slate-800"
+                            }`}>
+                              {res?.actualOutput || "(Click 'Run Code' to test)"}
+                            </div>
+                          </div>
+                          <div className="p-2 bg-white rounded-lg border border-slate-200">
+                            <span className="text-[10px] font-sans font-bold text-slate-400 uppercase">Expected Output</span>
+                            <div className="mt-1 text-emerald-700 font-bold break-all">{currentTC.expectedOutput}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {res && (
+                        <div className="text-[11px] font-sans text-slate-500 pt-1 flex justify-between">
+                          <span>Status: <strong className={res.status === "passed" ? "text-emerald-600" : "text-rose-600"}>{res.status.toUpperCase()}</strong></span>
+                          <span>Execution Time: {res.runtimeMs} ms</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between py-1 border-b border-[#E5E7EB]">
-                  <span className="text-slate-500">Concept</span>
-                  <span className="font-bold text-[#172033] uppercase">{currentLevel.concept}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-[#E5E7EB]">
-                  <span className="text-slate-500">Theme</span>
-                  <span className="font-bold text-slate-700">{currentLevel.theme}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-[#E5E7EB]">
-                  <span className="text-slate-500">Difficulty</span>
-                  <span className="font-bold text-amber-600">{currentLevel.difficulty}</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-slate-500">Solved in Level</span>
-                  <span className="font-bold text-emerald-600">
-                    {currentLevel.puzzles.filter(p => userState.completedPuzzles[p.id]).length} / {currentLevel.puzzleCount}
-                  </span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </main>
@@ -592,11 +814,10 @@ export default function CodeArenaPage() {
       {showLevelMapModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white border border-[#E5E7EB] rounded-3xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95">
-            {/* Modal Header */}
             <div className="p-5 border-b border-[#E5E7EB] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <Map className="w-5 h-5 text-[#FF6B35]" />
-                <h3 className="text-lg font-bold text-[#172033]">100-Level Chess-Style Puzzle Journey</h3>
+                <h3 className="text-lg font-bold text-[#172033]">100-Level Coding Challenge Roadmap</h3>
               </div>
               <button
                 type="button"
@@ -607,7 +828,6 @@ export default function CodeArenaPage() {
               </button>
             </div>
 
-            {/* Concept Filter Pills */}
             <div className="px-5 py-3 border-b border-[#E5E7EB] bg-slate-50/50 flex gap-2 overflow-x-auto text-xs">
               {[
                 { id: "all", label: "All 100 Levels" },
@@ -636,7 +856,6 @@ export default function CodeArenaPage() {
               ))}
             </div>
 
-            {/* Level Grid (1 to 100) */}
             <div className="p-6 overflow-y-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3.5">
               {filteredLevels.map((lvl) => {
                 const isUnlocked = userState.unlockedLevels.includes(lvl.levelNumber) || lvl.levelNumber === 1;
