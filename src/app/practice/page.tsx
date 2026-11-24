@@ -43,8 +43,8 @@ export default function PracticeHubPage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* Practice Hero Banner (Pure CSS/SVG/HTML) */}
-        <section className="relative py-6 sm:py-8 lg:py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Practice Hero Banner (Full-Bleed Pure CSS/SVG/HTML) */}
+        <section className="relative w-full overflow-hidden border-b border-[#E5E7EB]/80 bg-gradient-to-b from-[#FFFBF7] via-[#FFF6ED] to-[#FFF0E5] py-12 sm:py-16 lg:py-20">
           <PracticeHeroBannerCSS />
         </section>
 
