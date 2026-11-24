@@ -54,6 +54,46 @@ body {
   outline-offset: 3px;
 }
 
+/* Floating animations for 3D Badges (Opt-in via prefers-reduced-motion: no-preference) */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(-3deg);
+  }
+}
+
+@keyframes floatMedium {
+  0%, 100% {
+    transform: translateY(0px) rotate(6deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(9deg);
+  }
+}
+
+@keyframes floatFast {
+  0%, 100% {
+    transform: translateY(0px) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-float-slow {
+    animation: floatSlow 5s ease-in-out infinite;
+  }
+  .animate-float-medium {
+    animation: floatMedium 4s ease-in-out infinite 0.5s;
+  }
+  .animate-float-fast {
+    animation: floatFast 3.5s ease-in-out infinite 1s;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -19,6 +19,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { PRACTICE_MODULES } from "@/data/practiceData";
+import { PracticeHeroWorkspace } from "@/components/practice/PracticeHeroWorkspace";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -47,38 +48,46 @@ export default function PracticeHubPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border-b border-[#E5E7EB]/60 bg-gradient-to-b from-orange-50/40 via-white to-[#FFFDF9] py-16 sm:py-24">
+        <section className="relative overflow-hidden border-b border-[#E5E7EB]/60 bg-gradient-to-b from-orange-50/40 via-white to-[#FFFDF9] py-12 sm:py-16 lg:py-20">
           <div className="pointer-events-none absolute right-1/4 top-0 h-96 w-96 rounded-full bg-[#FF6B35]/8 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-24 left-8 h-72 w-72 rounded-full bg-blue-500/5 blur-2xl" />
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <div className="max-w-3xl space-y-5">
-              <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-50 px-4 py-1.5 text-xs font-bold text-[#FF6B35]">
-                <Sparkles className="h-4 w-4" />
-                <span>Elevate Practice Platform</span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#172033] tracking-tight leading-[1.12]">
-                Learn by doing. <br />
-                <span className="text-[#FF6B35]">Master by practicing.</span>
-              </h1>
-              <p className="text-base sm:text-lg text-[#64748B] leading-relaxed max-w-2xl">
-                Sharpen your algorithmic thinking, build fullstack web components, query real relational databases, and debug production code with zero setup required.
-              </p>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+              {/* Left Column (7 cols): Header, Headline & Quick Stats */}
+              <div className="lg:col-span-7 space-y-5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-50 px-4 py-1.5 text-xs font-bold text-[#FF6B35]">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Elevate Practice Platform</span>
+                </div>
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#172033] tracking-tight leading-[1.12]">
+                  Learn by doing. <br />
+                  <span className="text-[#FF6B35]">Master by practicing.</span>
+                </h1>
+                <p className="text-base sm:text-lg text-[#64748B] leading-relaxed max-w-xl">
+                  Sharpen your algorithmic thinking, build fullstack web components, query real relational databases, and debug production code with zero setup required.
+                </p>
 
-              {/* Quick stats pills */}
-              <div className="flex flex-wrap items-center gap-3 pt-2 text-xs sm:text-sm font-semibold text-[#172033]">
-                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-sm">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>1,200+ Coding Problems</span>
+                {/* Quick stats pills */}
+                <div className="flex flex-wrap items-center gap-3 pt-2 text-xs sm:text-sm font-semibold text-[#172033]">
+                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>1,200+ Coding Problems</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
+                    <Layers className="w-4 h-4 text-blue-600" />
+                    <span>5 Interactive Tracks</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
+                    <Cpu className="w-4 h-4 text-amber-600" />
+                    <span>Instant In-Browser Execution</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-sm">
-                  <Layers className="w-4 h-4 text-blue-600" />
-                  <span>5 Interactive Tracks</span>
-                </div>
-                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E7EB] shadow-sm">
-                  <Cpu className="w-4 h-4 text-amber-600" />
-                  <span>Instant In-Browser Execution</span>
-                </div>
+              </div>
+
+              {/* Right Column (5 cols): Pure CSS Interactive 3D Laptop Workspace */}
+              <div className="lg:col-span-5 relative w-full flex items-center justify-center">
+                <PracticeHeroWorkspace />
               </div>
             </div>
           </div>
