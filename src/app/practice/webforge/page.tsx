@@ -5,18 +5,15 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { WEBKATA_CHALLENGES, WebKataChallenge } from "@/data/practiceData";
-import { 
-  Terminal, 
-  ArrowLeft, 
-  Play, 
-  RotateCcw, 
-  CheckCircle2, 
-  Eye, 
-  Code, 
-  Sparkles, 
+import {
+  Terminal,
+  ArrowLeft,
+  Play,
+  RotateCcw,
+  CheckCircle2,
   Monitor,
   CheckSquare,
-  Layers
+  Lightbulb,
 } from "lucide-react";
 
 export default function WebForgePage() {
@@ -27,17 +24,20 @@ export default function WebForgePage() {
   const [htmlCode, setHtmlCode] = useState(challenge.initialHtml);
   const [cssCode, setCssCode] = useState(challenge.initialCss);
   const [jsCode, setJsCode] = useState(challenge.initialJs);
+  const [showHint, setShowHint] = useState(false);
 
   const [previewDoc, setPreviewDoc] = useState("");
   const [validationResult, setValidationResult] = useState<{
     status: "idle" | "passed" | "failed";
     message?: string;
+    checks?: { label: string; ok: boolean }[];
   }>({ status: "idle" });
 
   useEffect(() => {
     setHtmlCode(challenge.initialHtml);
     setCssCode(challenge.initialCss);
     setJsCode(challenge.initialJs);
+    setShowHint(false);
     setValidationResult({ status: "idle" });
   }, [challenge]);
 
@@ -80,23 +80,49 @@ export default function WebForgePage() {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlCode, "text/html");
-      const hasContent = doc.body.innerHTML.trim().length > 0;
-      
-      if (hasContent) {
+      const checks: { label: string; ok: boolean }[] = [];
+
+      for (const rule of challenge.validationRules) {
+        const matches = doc.querySelectorAll(rule.selector);
+        const required = rule.minCount ?? 1;
+        checks.push({
+          label: rule.message,
+          ok: matches.length >= required,
+        });
+      }
+
+      // Check JS syntax validity
+      let jsValid = true;
+      let jsError = "";
+      try {
+        new Function(jsCode);
+      } catch (err: unknown) {
+        jsValid = false;
+        jsError = err instanceof Error ? err.message : "JavaScript syntax error";
+      }
+      checks.push({
+        label: jsValid ? "JavaScript syntax valid" : `JS Syntax Error: ${jsError}`,
+        ok: jsValid,
+      });
+
+      const failed = checks.filter((c) => !c.ok);
+      if (failed.length === 0) {
         setValidationResult({
           status: "passed",
-          message: "Component successfully validated! Passed DOM hierarchy and interaction checks.",
+          message: `All ${checks.length} DOM, selector, and JS checks passed cleanly!`,
+          checks,
         });
       } else {
         setValidationResult({
           status: "failed",
-          message: "Empty HTML template detected. Please complete the tasks.",
+          message: `${failed.length} requirement(s) not satisfied yet: ${failed[0].label}`,
+          checks,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setValidationResult({
         status: "failed",
-        message: err.message || "Failed to validate DOM elements.",
+        message: err instanceof Error ? err.message : "Failed to validate DOM elements.",
       });
     }
   };
@@ -136,7 +162,7 @@ export default function WebForgePage() {
               id="challenge-select"
               value={selectedIdx}
               onChange={(e) => setSelectedIdx(Number(e.target.value))}
-              className="text-xs font-semibold bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#172033] focus:outline-none focus:border-[#FF6B35] shadow-sm"
+              className="text-xs font-semibold bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#172033] focus:outline-none focus:border-[#FF6B35] shadow-sm cursor-pointer"
             >
               {WEBKATA_CHALLENGES.map((c, i) => (
                 <option key={c.id} value={i}>
@@ -163,10 +189,27 @@ export default function WebForgePage() {
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#172033] flex items-center gap-1.5">
-                <CheckSquare className="w-4 h-4 text-[#FF6B35]" />
-                <span>Implementation Checklist</span>
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#172033] flex items-center gap-1.5">
+                  <CheckSquare className="w-4 h-4 text-[#FF6B35]" />
+                  <span>Implementation Checklist</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowHint((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 hover:text-amber-800 cursor-pointer"
+                >
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  <span>{showHint ? "Hide Hint" : "Hint"}</span>
+                </button>
+              </div>
+
+              {showHint && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                  {challenge.hint}
+                </div>
+              )}
+
               <div className="space-y-2">
                 {challenge.tasks.map((task, i) => (
                   <div key={i} className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#334155]">
@@ -184,7 +227,7 @@ export default function WebForgePage() {
               <button
                 type="button"
                 onClick={handleValidate}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-[#172033] hover:bg-[#FF6B35] transition-all shadow-md"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-[#172033] hover:bg-[#FF6B35] transition-all shadow-md cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Validate Component</span>
@@ -192,13 +235,23 @@ export default function WebForgePage() {
 
               {validationResult.status !== "idle" && (
                 <div
-                  className={`p-3 rounded-xl text-xs font-medium border ${
+                  className={`p-3 rounded-xl text-xs font-medium border space-y-2 ${
                     validationResult.status === "passed"
                       ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                       : "bg-rose-50 border-rose-200 text-rose-800"
                   }`}
                 >
-                  {validationResult.message}
+                  <div className="font-bold">{validationResult.message}</div>
+                  {validationResult.checks && (
+                    <ul className="space-y-1 text-[11px] pt-1 border-t border-black/10">
+                      {validationResult.checks.map((c, idx) => (
+                        <li key={idx} className="flex items-center gap-1.5">
+                          <span>{c.ok ? "✓" : "✗"}</span>
+                          <span>{c.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>
@@ -214,7 +267,7 @@ export default function WebForgePage() {
                       key={tab}
                       type="button"
                       onClick={() => setActiveCodeTab(tab)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold uppercase transition-all ${
+                      className={`px-3 py-1 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer ${
                         activeCodeTab === tab
                           ? "bg-[#172033] text-white"
                           : "text-[#64748B] hover:bg-slate-100 hover:text-[#172033]"
@@ -230,14 +283,14 @@ export default function WebForgePage() {
                     type="button"
                     onClick={handleReset}
                     title="Reset Code"
-                    className="p-1.5 text-[#64748B] hover:text-[#FF6B35] rounded-lg hover:bg-slate-100"
+                    className="p-1.5 text-[#64748B] hover:text-[#FF6B35] rounded-lg hover:bg-slate-100 cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                   <button
                     type="button"
                     onClick={refreshPreview}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#FF6B35] text-white text-xs font-bold hover:bg-[#E85D2A]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#FF6B35] text-white text-xs font-bold hover:bg-[#E85D2A] cursor-pointer"
                   >
                     <Play className="w-3 h-3 fill-current" />
                     <span>Run</span>

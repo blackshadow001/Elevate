@@ -39,14 +39,14 @@ export function Hero({ courses }: { courses: Course[] }) {
         </div>
 
         <div className="relative mx-auto w-full max-w-[460px] px-3 pb-10 pt-6 sm:px-5 lg:col-span-5 lg:pb-0">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[28px] border-4 border-white bg-slate-100 shadow-2xl sm:aspect-square lg:aspect-[4/5]">
+          <div className="group relative aspect-[4/5] overflow-hidden rounded-[28px] border-4 border-white bg-slate-100 shadow-2xl sm:aspect-square lg:aspect-[4/5]">
             <Image
               src="/home/students-collaborating.jpg"
               alt="Students collaborating around laptops"
               fill
               priority
               sizes="(max-width: 1024px) 90vw, 460px"
-              className="object-cover"
+              className="object-cover scale-[1.08] transition-transform duration-700 ease-out group-hover:scale-100 motion-reduce:transform-none"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#172033]/60 via-transparent to-transparent" />
           </div>

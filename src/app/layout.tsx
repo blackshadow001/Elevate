@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { AccessibilityWidget } from "@/components/layout/AccessibilityWidget";
+import { ElevateChatbot } from "@/components/chat/ElevateChatbot";
 import { brand } from "@/lib/brand";
 
 const inter = Inter({
@@ -37,6 +39,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://elevate.courses",
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -64,8 +77,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         <Providers>
           {children}
+          <Suspense fallback={null}>
+            <ElevateChatbot />
+          </Suspense>
         </Providers>
-        <AccessibilityWidget siteUrl={process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:4500"} />
+        <AccessibilityWidget siteUrl={process.env.NEXT_PUBLIC_SITE_URL || "https://elevate.courses"} />
       </body>
     </html>
   );

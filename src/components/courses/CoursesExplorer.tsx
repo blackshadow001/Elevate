@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Course } from "@/types";
 import { CourseCard } from "@/components/courses/CourseCard";
+import { CoursesPromoBanner } from "@/components/courses/CoursesPromoBanner";
 import { CourseCardSkeleton } from "@/components/ui/Skeleton";
 import { CatalogArtwork } from "@/components/courses/CatalogArtwork";
 import { Reveal } from "@/components/ui/Reveal";
@@ -177,7 +178,7 @@ function CoursesExplorerInner({ initialCourses, initialCategories, initialCatego
   return (
     <div className="py-10">
       {/* Search Header Banner */}
-      <div className="mb-10 text-center max-w-2xl mx-auto">
+      <div className="mb-8 text-center max-w-2xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#172033] tracking-tight">
           All Courses
         </h1>
@@ -208,6 +209,15 @@ function CoursesExplorerInner({ initialCourses, initialCategories, initialCatego
         </div>
 
       </div>
+
+      {/* Interactive Promotional Banners Carousel */}
+      <CoursesPromoBanner
+        totalCoursesCount={allCourses.length + remainingTopics.length}
+        onSelectCategory={(categoryName) => {
+          setSelectedCategories([categoryName]);
+          setSelectedSubcategory("");
+        }}
+      />
 
       <section aria-label="Explore categories" className="mb-10 rounded-3xl border border-[#E5E7EB] bg-[#F7F8FA] p-5 sm:p-7">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">

@@ -2,6 +2,30 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  compress: true,
+  poweredByHeader: false,
+  images: {
+    minimumCacheTTL: 3600,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/(branding|home|practice)/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+    ];
+  },
   experimental: {
     agentUpgrade: "security",
   },

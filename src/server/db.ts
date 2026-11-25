@@ -10,7 +10,15 @@ export function getDb(): DatabaseSync {
     throw new Error("DATABASE_URL must be a SQLite file URL. Run migrations before starting the API.");
   }
   const db = new DatabaseSync(url.slice(5));
-  db.exec("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;");
+  db.exec(`
+    PRAGMA foreign_keys=ON;
+    PRAGMA journal_mode=WAL;
+    PRAGMA synchronous=NORMAL;
+    PRAGMA busy_timeout=5000;
+    PRAGMA cache_size=-65536;
+    PRAGMA temp_store=MEMORY;
+    PRAGMA mmap_size=268435456;
+  `);
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations'").get()) {
     db.close();
     throw new Error("Database is not migrated. Run npm run db:migrate.");

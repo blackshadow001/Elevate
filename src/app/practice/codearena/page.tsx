@@ -704,12 +704,23 @@ export default function CodeArenaPage() {
                   </div>
 
                   {evaluationOutcome && (
-                    <div className="text-xs font-bold">
+                    <div className="text-xs font-bold flex items-center gap-3">
                       {evaluationOutcome.allPassed ? (
-                        <span className="text-emerald-600 flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>All {evaluationOutcome.totalCount} Testcases Passed!</span>
-                        </span>
+                        <>
+                          <span className="text-emerald-600 flex items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>All {evaluationOutcome.totalCount} Testcases Passed!</span>
+                          </span>
+                          {currentPuzzleIdx + 1 < currentLevel.puzzleCount && (
+                            <button
+                              type="button"
+                              onClick={() => setCurrentPuzzleIdx(currentPuzzleIdx + 1)}
+                              className="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors cursor-pointer"
+                            >
+                              Next Challenge →
+                            </button>
+                          )}
+                        </>
                       ) : (
                         <span className="text-rose-600 flex items-center gap-1">
                           <XCircle className="w-4 h-4" />

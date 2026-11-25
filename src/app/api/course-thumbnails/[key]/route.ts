@@ -10,7 +10,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
     if (thumbnailKey(url) !== key) throw new ApiError(404, "THUMBNAIL_NOT_FOUND", "Thumbnail not found.");
     const row = getDb().prepare("SELECT instructor_id,status,review_status FROM courses WHERE thumbnail=? LIMIT 1").get(url);
     if (!row) throw new ApiError(404, "THUMBNAIL_NOT_FOUND", "Thumbnail not found.");
-    if (row.status !== "published" || row.review_status !== "approved") {
+    const isPublicPublished = row.status === "published" && row.review_status === "approved";
+    if (!isPublicPublished) {
       const user = await currentUser();
       if (!user || (user.role !== "admin" && user.id !== row.instructor_id))
         throw new ApiError(404, "THUMBNAIL_NOT_FOUND", "Thumbnail not found.");
@@ -19,7 +20,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
     const extension = key.split(".").pop();
     const mimeType = extension === "jpg" ? "image/jpeg" : extension === "png" ? "image/png" : "image/webp";
     return new Response(thumbnailStream(key), { headers: {
-      "Content-Type": mimeType, "Content-Length": String(file.size), "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+      "Content-Type": mimeType,
+      "Content-Length": String(file.size),
+      "Cache-Control": isPublicPublished
+        ? "public, max-age=86400, stale-while-revalidate=604800"
+        : "private, no-store",
+      "X-Content-Type-Options": "nosniff",
     } });
   });
 }

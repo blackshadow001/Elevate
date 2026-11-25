@@ -117,8 +117,51 @@ export default function PracticeHubPage() {
         {/* Practice Hero Banner (Full-Bleed Pure CSS/SVG/HTML) */}
         <PracticeHeroBannerCSS />
 
+        {/* Daily Coding Challenge (Dedicated Standalone Section) */}
+        <section id="daily-challenge" className="pt-12 sm:pt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172033] via-[#1E293B] to-[#0F172A] p-7 sm:p-10 text-white shadow-xl border border-slate-800">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+              <div className="space-y-4 max-w-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-[#FF6B35] shrink-0">
+                    <Flame className="w-6 h-6 fill-current text-orange-400" />
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    Daily Streak
+                  </span>
+                  <span className="text-xs font-bold text-slate-400">
+                    Day 1 Streak
+                  </span>
+                </div>
+
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                    Daily Coding Challenge
+                  </h2>
+                  <p className="text-xs sm:text-sm text-orange-300 font-semibold mt-1">
+                    Earn 50 XP &amp; Practice Badges
+                  </p>
+                  <p className="text-sm text-slate-300 leading-relaxed mt-2.5">
+                    Keep your problem-solving momentum sharp every day. Solve today’s curated challenge in CodeKata or SQLKata.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 shrink-0 lg:pl-6 lg:border-l lg:border-slate-700/60">
+                <Link
+                  href="/practice/codekata"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-[#E85D2A] transition-all"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>Solve Today&apos;s Problem</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Practice Modules Grid */}
-        <section id="tracks" className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <section id="tracks" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-[#FF6B35] mb-1">
@@ -133,13 +176,13 @@ export default function PracticeHubPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div className="flex flex-wrap justify-center gap-6 sm:gap-8">
             {PRACTICE_MODULES.map((module) => {
               const IconComponent = moduleIcons[module.iconType];
               return (
                 <div
                   key={module.id}
-                  className="group relative flex flex-col justify-between bg-white rounded-3xl border border-[#E5E7EB] p-7 shadow-sm hover:shadow-xl hover:border-orange-200 transition-all duration-300"
+                  className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.4rem)] group relative flex flex-col justify-between bg-white rounded-3xl border border-[#E5E7EB] p-7 shadow-sm hover:shadow-xl hover:border-orange-200 transition-all duration-300"
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-3">
@@ -179,37 +222,6 @@ export default function PracticeHubPage() {
                 </div>
               );
             })}
-
-            {/* Daily Challenge Card */}
-            <div className="relative flex flex-col justify-between rounded-3xl bg-gradient-to-br from-[#172033] via-[#1E293B] to-[#0F172A] p-7 text-white shadow-xl border border-slate-800">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-[#FF6B35]">
-                    <Flame className="w-6 h-6 fill-current text-orange-400" />
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                    Daily Streak
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Daily Coding Challenge</h3>
-                  <p className="text-xs text-orange-300 font-medium mt-1">Earn 50 XP & Practice Badges</p>
-                  <p className="text-sm text-slate-300 leading-relaxed mt-2.5">
-                    Keep your problem-solving momentum sharp every day. Solve today’s curated challenge in CodeKata or SQLKata.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-8 pt-5 border-t border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Day 1 Streak</span>
-                <Link
-                  href="/practice/codekata"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-[#E85D2A] transition-all"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Solve Today's Problem</span>
-                </Link>
-              </div>
-            </div>
           </div>
         </section>
 

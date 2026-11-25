@@ -468,116 +468,385 @@ vector<int> getRemovableIndices(string str1, string str2) {
     };
   }
 
-  // General theme-based HackerRank specification
-  const funcBase = themeItem.title
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 3)
-    .join("_");
-  const functionName = funcBase || `solve_${concept.replace(/\s+/g, "_")}`;
+  // Concept-matched authentic problem bank so every level has genuine, runnable specs & test cases
+  interface SpecTemplate {
+    functionName: string;
+    problemStatement: string;
+    example: { input: string; output: string; explanation: string };
+    parameters: { name: string; type: string }[];
+    returns: string;
+    constraints: string[];
+    inputFormat: string;
+    outputFormat: string;
+    pythonParams: string;
+    jsParams: string;
+    tsParams: string;
+    tsReturn: string;
+    javaSig: string;
+    javaReturnStub: string;
+    cppSig: string;
+    cppReturnStub: string;
+    testCases: TestCase[];
+  }
+
+  const CONCEPT_SPECS: Record<ConceptTag, SpecTemplate[]> = {
+    "python beginner": [
+      {
+        functionName: "sumEvenNumbers",
+        problemStatement: "Given an integer array `nums`, calculate and return the sum of all even integers in the array. Ignore odd numbers and handle negative even numbers properly.",
+        example: { input: "nums = [1, 2, 3, 4, 6]", output: "12", explanation: "Even numbers are 2, 4, 6. Their sum is 2 + 4 + 6 = 12." },
+        parameters: [{ name: "nums", type: "int[]" }],
+        returns: "int: Total sum of all even numbers",
+        constraints: ["0 <= nums.length <= 10^5", "-10^4 <= nums[i] <= 10^4"],
+        inputFormat: "An integer array nums.",
+        outputFormat: "Return a single integer representing the sum of even values.",
+        pythonParams: "nums: list[int]",
+        jsParams: "nums",
+        tsParams: "nums: number[]",
+        tsReturn: "number",
+        javaSig: "public static int sumEvenNumbers(int[] nums)",
+        javaReturnStub: "0",
+        cppSig: "int sumEvenNumbers(vector<int> nums)",
+        cppReturnStub: "0",
+        testCases: [
+          { id: 0, input: "[1, 2, 3, 4, 6]", expectedOutput: "12", explanation: "2 + 4 + 6 = 12" },
+          { id: 1, input: "[1, 3, 5, 7]", expectedOutput: "0", explanation: "No even numbers present." },
+          { id: 2, input: "[-2, -4, 5, 8]", expectedOutput: "2", isHidden: true },
+          { id: 3, input: "[]", expectedOutput: "0", isHidden: true },
+        ],
+      },
+      {
+        functionName: "reverseWords",
+        problemStatement: "Given a string `s`, return the string with the order of characters reversed while preserving case and punctuation.",
+        example: { input: 's = "elevate"', output: '"etavele"', explanation: "Reversing all characters produces 'etavele'." },
+        parameters: [{ name: "s", type: "string" }],
+        returns: "string: Reversed character sequence",
+        constraints: ["0 <= s.length <= 10^5"],
+        inputFormat: "A string s.",
+        outputFormat: "Return the reversed string.",
+        pythonParams: "s: str",
+        jsParams: "s",
+        tsParams: "s: string",
+        tsReturn: "string",
+        javaSig: "public static String reverseWords(String s)",
+        javaReturnStub: '""',
+        cppSig: "string reverseWords(string s)",
+        cppReturnStub: '""',
+        testCases: [
+          { id: 0, input: '"elevate"', expectedOutput: '"etavele"' },
+          { id: 1, input: '"abc123"', expectedOutput: '"321cba"' },
+          { id: 2, input: '"racecar"', expectedOutput: '"racecar"', isHidden: true },
+          { id: 3, input: '""', expectedOutput: '""', isHidden: true },
+        ],
+      },
+    ],
+    "python intermediate": [
+      {
+        functionName: "countUniqueWords",
+        problemStatement: "Given a list of string tokens `words`, return the count of distinct words ignoring case sensitivity.",
+        example: { input: 'words = ["Code", "code", "SQL", "Web"]', output: "3", explanation: "Unique lowercase tokens: 'code', 'sql', 'web'." },
+        parameters: [{ name: "words", type: "string[]" }],
+        returns: "int: Count of unique case-insensitive tokens",
+        constraints: ["0 <= words.length <= 10^4"],
+        inputFormat: "An array of strings words.",
+        outputFormat: "An integer count.",
+        pythonParams: "words: list[str]",
+        jsParams: "words",
+        tsParams: "words: string[]",
+        tsReturn: "number",
+        javaSig: "public static int countUniqueWords(List<String> words)",
+        javaReturnStub: "0",
+        cppSig: "int countUniqueWords(vector<string> words)",
+        cppReturnStub: "0",
+        testCases: [
+          { id: 0, input: '["Code", "code", "SQL", "Web"]', expectedOutput: "3" },
+          { id: 1, input: '["a", "b", "c"]', expectedOutput: "3" },
+          { id: 2, input: "[]", expectedOutput: "0", isHidden: true },
+        ],
+      },
+    ],
+    arrays: [
+      {
+        functionName: "maxSubarraySum",
+        problemStatement: "Given an integer array `nums`, find the contiguous subarray (containing at least one number) which has the largest sum and return its sum using Kadane's algorithm in O(N) time.",
+        example: { input: "nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]", output: "6", explanation: "Subarray [4, -1, 2, 1] has the largest sum = 6." },
+        parameters: [{ name: "nums", type: "int[]" }],
+        returns: "int: Maximum contiguous subarray sum",
+        constraints: ["1 <= nums.length <= 10^5", "-10^4 <= nums[i] <= 10^4"],
+        inputFormat: "Non-empty integer array nums.",
+        outputFormat: "Single integer maximum sum.",
+        pythonParams: "nums: list[int]",
+        jsParams: "nums",
+        tsParams: "nums: number[]",
+        tsReturn: "number",
+        javaSig: "public static int maxSubarraySum(int[] nums)",
+        javaReturnStub: "0",
+        cppSig: "int maxSubarraySum(vector<int> nums)",
+        cppReturnStub: "0",
+        testCases: [
+          { id: 0, input: "[-2, 1, -3, 4, -1, 2, 1, -5, 4]", expectedOutput: "6" },
+          { id: 1, input: "[5, 4, -1, 7, 8]", expectedOutput: "23" },
+          { id: 2, input: "[-3, -1, -7]", expectedOutput: "-1", isHidden: true },
+          { id: 3, input: "[1]", expectedOutput: "1", isHidden: true },
+        ],
+      },
+      {
+        functionName: "moveZeroes",
+        problemStatement: "Given an integer array `nums`, move all `0`'s to the end of it while maintaining the relative order of the non-zero elements, and return the resulting array.",
+        example: { input: "nums = [0, 1, 0, 3, 12]", output: "[1, 3, 12, 0, 0]", explanation: "Non-zero order [1, 3, 12] is preserved while zeroes move to the end." },
+        parameters: [{ name: "nums", type: "int[]" }],
+        returns: "int[]: Reordered array",
+        constraints: ["0 <= nums.length <= 10^4"],
+        inputFormat: "Integer array nums.",
+        outputFormat: "Array with zeroes moved to the end.",
+        pythonParams: "nums: list[int]",
+        jsParams: "nums",
+        tsParams: "nums: number[]",
+        tsReturn: "number[]",
+        javaSig: "public static int[] moveZeroes(int[] nums)",
+        javaReturnStub: "nums",
+        cppSig: "vector<int> moveZeroes(vector<int> nums)",
+        cppReturnStub: "{}",
+        testCases: [
+          { id: 0, input: "[0, 1, 0, 3, 12]", expectedOutput: "[1, 3, 12, 0, 0]" },
+          { id: 1, input: "[0]", expectedOutput: "[0]" },
+          { id: 2, input: "[4, 2, 0, 1]", expectedOutput: "[4, 2, 1, 0]", isHidden: true },
+        ],
+      },
+    ],
+    "hash maps": [
+      {
+        functionName: "twoSum",
+        problemStatement: "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target` in O(N) time using a hash map.",
+        example: { input: "nums = [2, 7, 11, 15], target = 9", output: "[0, 1]", explanation: "nums[0] + nums[1] == 2 + 7 == 9." },
+        parameters: [{ name: "nums", type: "int[]" }, { name: "target", type: "int" }],
+        returns: "int[]: Pair of 0-based indices",
+        constraints: ["2 <= nums.length <= 10^4", "Exactly one valid solution exists."],
+        inputFormat: "An integer array nums and an integer target.",
+        outputFormat: "Array of two indices [i, j].",
+        pythonParams: "nums: list[int], target: int",
+        jsParams: "nums, target",
+        tsParams: "nums: number[], target: number",
+        tsReturn: "number[]",
+        javaSig: "public static int[] twoSum(int[] nums, int target)",
+        javaReturnStub: "new int[]{}",
+        cppSig: "vector<int> twoSum(vector<int> nums, int target)",
+        cppReturnStub: "{}",
+        testCases: [
+          { id: 0, input: "[2, 7, 11, 15], 9", expectedOutput: "[0, 1]" },
+          { id: 1, input: "[3, 2, 4], 6", expectedOutput: "[1, 2]" },
+          { id: 2, input: "[3, 3], 6", expectedOutput: "[0, 1]", isHidden: true },
+        ],
+      },
+    ],
+    stacks: [
+      {
+        functionName: "isValidBrackets",
+        problemStatement: "Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, determine if the input string brackets close in the correct LIFO order.",
+        example: { input: 's = "({[]})"', output: "true", explanation: "All brackets open and close cleanly using a stack." },
+        parameters: [{ name: "s", type: "string" }],
+        returns: "boolean: true if balanced, false otherwise",
+        constraints: ["1 <= s.length <= 10^4"],
+        inputFormat: "Bracket string s.",
+        outputFormat: "Boolean true or false.",
+        pythonParams: "s: str",
+        jsParams: "s",
+        tsParams: "s: string",
+        tsReturn: "boolean",
+        javaSig: "public static boolean isValidBrackets(String s)",
+        javaReturnStub: "false",
+        cppSig: "bool isValidBrackets(string s)",
+        cppReturnStub: "false",
+        testCases: [
+          { id: 0, input: '"({[]})"', expectedOutput: "true" },
+          { id: 1, input: '"()[]{}"', expectedOutput: "true" },
+          { id: 2, input: '"(]"', expectedOutput: "false", isHidden: true },
+          { id: 3, input: '"((("', expectedOutput: "false", isHidden: true },
+        ],
+      },
+    ],
+    nodes: [
+      {
+        functionName: "isListPalindrome",
+        problemStatement: "Given the node values of a singly linked list serialized as an array `values`, determine whether the sequence reads identical forwards and backwards.",
+        example: { input: "values = [1, 2, 2, 1]", output: "true", explanation: "[1, 2, 2, 1] mirrors evenly from both ends." },
+        parameters: [{ name: "values", type: "int[]" }],
+        returns: "boolean: true if palindrome sequence",
+        constraints: ["1 <= values.length <= 10^5"],
+        inputFormat: "Array representation of linked list node values.",
+        outputFormat: "Boolean true or false.",
+        pythonParams: "values: list[int]",
+        jsParams: "values",
+        tsParams: "values: number[]",
+        tsReturn: "boolean",
+        javaSig: "public static boolean isListPalindrome(int[] values)",
+        javaReturnStub: "false",
+        cppSig: "bool isListPalindrome(vector<int> values)",
+        cppReturnStub: "false",
+        testCases: [
+          { id: 0, input: "[1, 2, 2, 1]", expectedOutput: "true" },
+          { id: 1, input: "[1, 2]", expectedOutput: "false" },
+          { id: 2, input: "[7]", expectedOutput: "true", isHidden: true },
+        ],
+      },
+    ],
+    search: [
+      {
+        functionName: "binarySearch",
+        problemStatement: "Given a sorted integer array `nums` in ascending order and a `target` integer, return the 0-based index of `target` if present, or `-1` otherwise, in O(log N) time.",
+        example: { input: "nums = [-1, 0, 3, 5, 9, 12], target = 9", output: "4", explanation: "9 exists at index 4." },
+        parameters: [{ name: "nums", type: "int[]" }, { name: "target", type: "int" }],
+        returns: "int: Index of target or -1",
+        constraints: ["1 <= nums.length <= 10^4", "All elements in nums are strictly increasing."],
+        inputFormat: "Sorted array nums and integer target.",
+        outputFormat: "Integer index or -1.",
+        pythonParams: "nums: list[int], target: int",
+        jsParams: "nums, target",
+        tsParams: "nums: number[], target: number",
+        tsReturn: "number",
+        javaSig: "public static int binarySearch(int[] nums, int target)",
+        javaReturnStub: "-1",
+        cppSig: "int binarySearch(vector<int> nums, int target)",
+        cppReturnStub: "-1",
+        testCases: [
+          { id: 0, input: "[-1, 0, 3, 5, 9, 12], 9", expectedOutput: "4" },
+          { id: 1, input: "[-1, 0, 3, 5, 9, 12], 2", expectedOutput: "-1" },
+          { id: 2, input: "[5], 5", expectedOutput: "0", isHidden: true },
+        ],
+      },
+    ],
+    trees: [
+      {
+        functionName: "isValidBstInorder",
+        problemStatement: "Given an array `inorder` produced by an inorder traversal of a binary tree, verify whether it satisfies the strict Binary Search Tree (BST) invariant (`a < b` for every adjacent pair).",
+        example: { input: "inorder = [2, 5, 7, 10, 14]", output: "true", explanation: "Every element is strictly greater than the previous one." },
+        parameters: [{ name: "inorder", type: "int[]" }],
+        returns: "boolean: true if strictly increasing BST traversal",
+        constraints: ["0 <= inorder.length <= 10^4"],
+        inputFormat: "Array of integers representing inorder traversal.",
+        outputFormat: "Boolean true or false.",
+        pythonParams: "inorder: list[int]",
+        jsParams: "inorder",
+        tsParams: "inorder: number[]",
+        tsReturn: "boolean",
+        javaSig: "public static boolean isValidBstInorder(int[] inorder)",
+        javaReturnStub: "false",
+        cppSig: "bool isValidBstInorder(vector<int> inorder)",
+        cppReturnStub: "false",
+        testCases: [
+          { id: 0, input: "[2, 5, 7, 10, 14]", expectedOutput: "true" },
+          { id: 1, input: "[5, 1, 4, 3, 6]", expectedOutput: "false" },
+          { id: 2, input: "[4, 4, 8]", expectedOutput: "false", isHidden: true },
+        ],
+      },
+    ],
+    algorithms: [
+      {
+        functionName: "countConnectedComponents",
+        problemStatement: "Given `n` vertices (0 to n-1) and a list of undirected `edges`, return the number of connected components in the graph using BFS or DFS traversal.",
+        example: { input: "n = 5, edges = [[0, 1], [1, 2], [3, 4]]", output: "2", explanation: "Component {0,1,2} and Component {3,4}." },
+        parameters: [{ name: "n", type: "int" }, { name: "edges", type: "int[][]" }],
+        returns: "int: Total connected components",
+        constraints: ["1 <= n <= 2000"],
+        inputFormat: "Integer n and array of edge pairs edges.",
+        outputFormat: "Integer count of components.",
+        pythonParams: "n: int, edges: list[list[int]]",
+        jsParams: "n, edges",
+        tsParams: "n: number, edges: number[][]",
+        tsReturn: "number",
+        javaSig: "public static int countConnectedComponents(int n, int[][] edges)",
+        javaReturnStub: "0",
+        cppSig: "int countConnectedComponents(int n, vector<vector<int>> edges)",
+        cppReturnStub: "0",
+        testCases: [
+          { id: 0, input: "5, [[0, 1], [1, 2], [3, 4]]", expectedOutput: "2" },
+          { id: 1, input: "4, [[0, 1], [1, 2], [2, 3]]", expectedOutput: "1" },
+          { id: 2, input: "3, []", expectedOutput: "3", isHidden: true },
+        ],
+      },
+    ],
+    "dynamic programming": [
+      {
+        functionName: "climbStairs",
+        problemStatement: "You are climbing a staircase that takes `n` steps to reach the top. Each time you can either climb `1` or `2` steps. Compute in how many distinct ways you can reach the top.",
+        example: { input: "n = 3", output: "3", explanation: "Three paths: (1+1+1), (1+2), and (2+1)." },
+        parameters: [{ name: "n", type: "int" }],
+        returns: "int: Distinct ways to reach step n",
+        constraints: ["1 <= n <= 45"],
+        inputFormat: "Positive integer n.",
+        outputFormat: "Integer number of ways.",
+        pythonParams: "n: int",
+        jsParams: "n",
+        tsParams: "n: number",
+        tsReturn: "number",
+        javaSig: "public static int climbStairs(int n)",
+        javaReturnStub: "0",
+        cppSig: "int climbStairs(int n)",
+        cppReturnStub: "0",
+        testCases: [
+          { id: 0, input: "3", expectedOutput: "3" },
+          { id: 1, input: "5", expectedOutput: "8" },
+          { id: 2, input: "1", expectedOutput: "1", isHidden: true },
+          { id: 3, input: "6", expectedOutput: "13", isHidden: true },
+        ],
+      },
+    ],
+  };
+
+  const bank = CONCEPT_SPECS[concept] || CONCEPT_SPECS.arrays;
+  const spec = bank[(levelNum + puzzleIndex) % bank.length];
+  const pyName = spec.functionName.replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
 
   return {
-    functionName,
-    problemStatement: `Implement the algorithm for **${themeItem.title}** (${variationName}) focusing on \`${concept.toUpperCase()}\`.\n\nYour solution must maintain data structure invariants and avoid common runtime pitfalls such as boundary off-by-one errors or inefficient re-allocations.`,
-    example: {
-      input: `input_data = [4, 7, 2, 9, 1]`,
-      output: `[1, 2, 4, 7, 9]`,
-      explanation: `Processes the input collection and returns the optimal transformation.`
-    },
+    functionName: spec.functionName,
+    problemStatement: `**${themeItem.title} (${variationName})**\n\n${spec.problemStatement}`,
+    example: spec.example,
     functionDescription: {
-      name: functionName,
-      parameters: [
-        { name: "input_data", type: "array / collection" },
-        { name: "k", type: "integer (optional threshold)" }
-      ],
-      returns: "The transformed collection or verified boolean result"
+      name: spec.functionName,
+      parameters: spec.parameters,
+      returns: spec.returns,
     },
-    constraints: [
-      "1 <= len(input_data) <= 10^5",
-      "-10^4 <= input_data[i] <= 10^4",
-      "Expected Time Complexity: O(n) or O(n log n)",
-      "Expected Space Complexity: O(1) auxiliary space"
-    ],
-    inputFormat: "An input array or structured object input_data.",
-    outputFormat: "Return the valid computed result matching the problem specification.",
+    constraints: spec.constraints,
+    inputFormat: spec.inputFormat,
+    outputFormat: spec.outputFormat,
     starterBoilerplate: {
-      python: `def ${functionName}(input_data, k=0):
-    # Complete the '${functionName}' function below.
-    # Write your code here
+      python: `def ${pyName}(${spec.pythonParams}):
+    # Complete '${spec.functionName}' for ${themeItem.title}
+    # Hint: ${themeItem.snippetIdea}
     pass
 `,
       javascript: `/**
- * Complete the '${functionName}' function below.
- * @param {any} input_data
- * @param {number} [k=0]
- * @return {any}
+ * Complete '${spec.functionName}' for ${themeItem.title}
  */
-function ${functionName}(input_data, k = 0) {
-    // Write your code here
+function ${spec.functionName}(${spec.jsParams}) {
+    // Write your solution here
     
 }
 `,
-      typescript: `/**
- * Complete the '${functionName}' function below.
- */
-function ${functionName}(input_data: any, k: number = 0): any {
-    // Write your code here
-    return input_data;
+      typescript: `function ${spec.functionName}(${spec.tsParams}): ${spec.tsReturn} {
+    // Write your solution here
+    return ${spec.javaReturnStub === "nums" ? "nums" : spec.javaReturnStub};
 }
 `,
-      java: `import java.io.*;
-import java.util.*;
+      java: `import java.util.*;
 
 class Solution {
-    /*
-     * Complete the '${functionName}' function below.
-     */
-    public static Object ${functionName.replace(/_([a-z])/g, (_, g) => g.toUpperCase())}(Object input_data, int k) {
-        // Write your code here
-        return input_data;
+    ${spec.javaSig} {
+        // Write your solution here
+        return ${spec.javaReturnStub};
     }
 }
 `,
       cpp: `#include <bits/stdc++.h>
 using namespace std;
 
-// Complete the '${functionName}' function below.
-auto ${functionName}(vector<int> input_data, int k = 0) {
-    // Write your code here
-    return input_data;
+${spec.cppSig} {
+    // Write your solution here
+    return ${spec.cppReturnStub};
 }
-`
+`,
     },
-    testCases: [
-      {
-        id: 0,
-        input: `[4, 7, 2, 9, 1], 2`,
-        expectedOutput: `[1, 2, 4, 7, 9]`,
-        explanation: `Standard sample verification test case.`
-      },
-      {
-        id: 1,
-        input: `[10, -5, 20], 1`,
-        expectedOutput: `[-5, 10, 20]`,
-        explanation: `Sample verification with negative boundary values.`
-      },
-      {
-        id: 2,
-        input: `[1]`,
-        expectedOutput: `[1]`,
-        isHidden: true,
-        explanation: `Hidden test case verifying single element boundary.`
-      },
-      {
-        id: 3,
-        input: `[]`,
-        expectedOutput: `[]`,
-        isHidden: true,
-        explanation: `Hidden test case verifying empty collection.`
-      }
-    ]
+    testCases: spec.testCases,
   };
 }
 

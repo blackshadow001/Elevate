@@ -4,7 +4,20 @@ import { Footer } from "@/components/layout/Footer";
 import { courseService } from "@/services/courseService";
 import { CourseCard } from "@/components/courses/CourseCard";
 
-export const metadata = { title: "Beginner Programs — Elevate" };
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Beginner Programs & Foundational Courses — Elevate",
+  description: "Start learning from scratch with Elevate's curated beginner-friendly courses in AI, programming, web development, and business.",
+  alternates: { canonical: "https://elevate.courses/programs/beginner" },
+  openGraph: {
+    title: "Beginner Programs — Elevate",
+    description: "Start learning from scratch with Elevate's curated beginner-friendly courses.",
+    url: "https://elevate.courses/programs/beginner",
+    siteName: "Elevate",
+    type: "website",
+  },
+};
 export const instant = false;
 export default async function BeginnerProgramsPage() {
   const beginnerCourses = (await courseService.getAllCourses()).filter((course) => course.level === "Beginner");

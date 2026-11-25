@@ -34,7 +34,7 @@ export function CourseThumbnail({
           }}
           onLoad={() => setImgLoaded(true)}
           onError={() => setImgError(true)}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 z-[1]"
+          className="absolute inset-0 w-full h-full object-cover scale-[1.08] transition-transform duration-500 ease-out group-hover:scale-100 hover:scale-100 motion-reduce:transform-none z-[1]"
         />
       )}
 

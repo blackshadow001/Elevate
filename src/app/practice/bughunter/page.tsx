@@ -1,45 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { 
-  FIXTHECODE_CHALLENGES, 
-  FixTheCodeChallenge 
+import {
+  FIXTHECODE_CHALLENGES,
 } from "@/data/practiceData";
-import { 
-  Bug, 
-  ArrowLeft, 
-  Play, 
-  RotateCcw, 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
-  Sparkles, 
+import {
+  Bug,
+  ArrowLeft,
+  Play,
+  RotateCcw,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
   Wrench,
-  Check,
-  Code2,
-  Terminal,
-  Filter
+  Filter,
+  Lightbulb,
+  Eye,
+  Trophy,
 } from "lucide-react";
 
-const SUPPORTED_LANGUAGES = ["All", "Python", "JavaScript", "Java", "C++", "TypeScript"] as const;
+const SUPPORTED_LANGUAGES = ["All", "Python", "JavaScript", "TypeScript", "Java", "C++"] as const;
 
 export default function BugHunterPage() {
   const [selectedLanguage, setSelectedLanguage] = useState<string>("All");
+  const [solvedIds, setSolvedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("elevate_bughunter_solved");
+      if (saved) setSolvedIds(JSON.parse(saved));
+    } catch {}
+  }, []);
 
   const filteredChallenges = selectedLanguage === "All"
     ? FIXTHECODE_CHALLENGES
-    : FIXTHECODE_CHALLENGES.filter(c => c.language.toLowerCase() === selectedLanguage.toLowerCase());
+    : FIXTHECODE_CHALLENGES.filter((c) => c.language.toLowerCase() === selectedLanguage.toLowerCase());
 
   const [selectedChallengeId, setSelectedChallengeId] = useState<string>(FIXTHECODE_CHALLENGES[0].id);
 
-  // Derive active challenge
-  const activeChallenge = FIXTHECODE_CHALLENGES.find(c => c.id === selectedChallengeId) || filteredChallenges[0] || FIXTHECODE_CHALLENGES[0];
+  const activeChallenge =
+    FIXTHECODE_CHALLENGES.find((c) => c.id === selectedChallengeId) ||
+    filteredChallenges[0] ||
+    FIXTHECODE_CHALLENGES[0];
 
   const [code, setCode] = useState(activeChallenge.buggyCode);
   const [isTesting, setIsTesting] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [result, setResult] = useState<{
     status: "idle" | "passed" | "failed";
     message?: string;
@@ -47,22 +56,25 @@ export default function BugHunterPage() {
 
   const handleChallengeChange = (challengeId: string) => {
     setSelectedChallengeId(challengeId);
-    const target = FIXTHECODE_CHALLENGES.find(c => c.id === challengeId);
+    const target = FIXTHECODE_CHALLENGES.find((c) => c.id === challengeId);
     if (target) {
       setCode(target.buggyCode);
+      setShowHint(false);
       setResult({ status: "idle" });
     }
   };
 
   const handleLanguageChange = (lang: string) => {
     setSelectedLanguage(lang);
-    const newFiltered = lang === "All"
-      ? FIXTHECODE_CHALLENGES
-      : FIXTHECODE_CHALLENGES.filter(c => c.language.toLowerCase() === lang.toLowerCase());
-    
+    const newFiltered =
+      lang === "All"
+        ? FIXTHECODE_CHALLENGES
+        : FIXTHECODE_CHALLENGES.filter((c) => c.language.toLowerCase() === lang.toLowerCase());
+
     if (newFiltered.length > 0) {
       setSelectedChallengeId(newFiltered[0].id);
       setCode(newFiltered[0].buggyCode);
+      setShowHint(false);
       setResult({ status: "idle" });
     }
   };
@@ -82,25 +94,42 @@ export default function BugHunterPage() {
           status: testOutcome.passed ? "passed" : "failed",
           message: testOutcome.message,
         });
-      } catch (err: any) {
+
+        if (testOutcome.passed) {
+          setSolvedIds((prev) => {
+            if (prev.includes(activeChallenge.id)) return prev;
+            const next = [...prev, activeChallenge.id];
+            try {
+              localStorage.setItem("elevate_bughunter_solved", JSON.stringify(next));
+            } catch {}
+            return next;
+          });
+        }
+      } catch (err: unknown) {
         setResult({
           status: "failed",
-          message: err.message || "Execution exception thrown.",
+          message: err instanceof Error ? err.message : "Execution exception thrown.",
         });
       } finally {
         setIsTesting(false);
       }
-    }, 250);
+    }, 150);
   };
 
   const getLanguageColor = (lang: string) => {
     switch (lang.toLowerCase()) {
-      case "python": return "bg-blue-50 text-blue-700 border-blue-200";
-      case "javascript": return "bg-amber-50 text-amber-700 border-amber-200";
-      case "typescript": return "bg-cyan-50 text-cyan-700 border-cyan-200";
-      case "java": return "bg-orange-50 text-orange-700 border-orange-200";
-      case "c++": return "bg-purple-50 text-purple-700 border-purple-200";
-      default: return "bg-slate-50 text-slate-700 border-slate-200";
+      case "python":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "javascript":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "typescript":
+        return "bg-cyan-50 text-cyan-700 border-cyan-200";
+      case "java":
+        return "bg-orange-50 text-orange-700 border-orange-200";
+      case "c++":
+        return "bg-purple-50 text-purple-700 border-purple-200";
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200";
     }
   };
 
@@ -132,7 +161,11 @@ export default function BugHunterPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                <Trophy className="w-3.5 h-3.5" />
+                <span>{solvedIds.length}/{FIXTHECODE_CHALLENGES.length} Fixed</span>
+              </span>
               <label htmlFor="bug-select" className="text-xs font-semibold text-[#64748B]">
                 Select Defect:
               </label>
@@ -140,11 +173,11 @@ export default function BugHunterPage() {
                 id="bug-select"
                 value={activeChallenge.id}
                 onChange={(e) => handleChallengeChange(e.target.value)}
-                className="text-xs font-semibold bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#172033] focus:outline-none focus:border-[#FF6B35] shadow-xs"
+                className="text-xs font-semibold bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#172033] focus:outline-none focus:border-[#FF6B35] shadow-xs cursor-pointer"
               >
-                {filteredChallenges.map((c, i) => (
+                {filteredChallenges.map((c) => (
                   <option key={c.id} value={c.id}>
-                    [{c.language}] {c.title} ({c.difficulty})
+                    {solvedIds.includes(c.id) ? "✓ " : ""}[{c.language}] {c.title} ({c.difficulty})
                   </option>
                 ))}
               </select>
@@ -158,25 +191,28 @@ export default function BugHunterPage() {
               <span>Language:</span>
             </span>
             {SUPPORTED_LANGUAGES.map((lang) => {
-              const count = lang === "All" 
-                ? FIXTHECODE_CHALLENGES.length 
-                : FIXTHECODE_CHALLENGES.filter(c => c.language.toLowerCase() === lang.toLowerCase()).length;
+              const count =
+                lang === "All"
+                  ? FIXTHECODE_CHALLENGES.length
+                  : FIXTHECODE_CHALLENGES.filter((c) => c.language.toLowerCase() === lang.toLowerCase()).length;
               const isActive = selectedLanguage === lang;
               return (
                 <button
                   key={lang}
                   type="button"
                   onClick={() => handleLanguageChange(lang)}
-                  className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all flex items-center gap-1.5 ${
-                    isActive 
-                      ? "bg-[#FF6B35] text-white border-[#FF6B35] shadow-xs" 
+                  className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isActive
+                      ? "bg-[#FF6B35] text-white border-[#FF6B35] shadow-xs"
                       : "bg-white text-[#475569] border-[#E2E8F0] hover:border-slate-300 hover:bg-slate-50"
                   }`}
                 >
                   <span>{lang}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
                     {count}
                   </span>
                 </button>
@@ -221,8 +257,35 @@ export default function BugHunterPage() {
               <ul className="text-xs text-[#475569] space-y-2 list-disc list-inside">
                 <li>Identify the root cause of the logic or syntax defect in the editor.</li>
                 <li>Refactor the implementation while preserving original function signatures.</li>
-                <li>Verify your fix by running the unit test suite below.</li>
+                <li>Verify your fix by running the automated unit test suite.</li>
               </ul>
+            </div>
+
+            {/* Hint & Solution Controls */}
+            <div className="pt-2 border-t border-slate-100 space-y-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowHint((v) => !v)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
+                >
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  <span>{showHint ? "Hide Hint" : "Show Debugging Hint"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCode(activeChallenge.solutionCode)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-[#172033] hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Load Fix</span>
+                </button>
+              </div>
+              {showHint && (
+                <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900">
+                  <strong>Hint:</strong> {activeChallenge.hint}
+                </div>
+              )}
             </div>
           </div>
 
@@ -242,7 +305,7 @@ export default function BugHunterPage() {
                   type="button"
                   onClick={handleReset}
                   title="Reset to Buggy State"
-                  className="p-1.5 text-[#64748B] hover:text-[#FF6B35] rounded-lg hover:bg-slate-100"
+                  className="p-1.5 text-[#64748B] hover:text-[#FF6B35] rounded-lg hover:bg-slate-100 cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
@@ -284,11 +347,11 @@ export default function BugHunterPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const curIdx = filteredChallenges.findIndex(c => c.id === activeChallenge.id);
+                      const curIdx = filteredChallenges.findIndex((c) => c.id === activeChallenge.id);
                       const nextChallenge = filteredChallenges[(curIdx + 1) % filteredChallenges.length];
                       if (nextChallenge) handleChallengeChange(nextChallenge.id);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shrink-0 ml-3"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shrink-0 ml-3 cursor-pointer"
                   >
                     Next Defect →
                   </button>

@@ -13,7 +13,8 @@ const server = createServer((request, response) => { void handle(request, respon
 // A 1 GB upload can take much longer than Node's default five-minute request limit.
 // Caddy still limits body size and aborts idle clients before requests reach this server.
 server.requestTimeout = 3 * 60 * 60 * 1000;
-server.headersTimeout = 60 * 1000;
+server.keepAliveTimeout = 65 * 1000;
+server.headersTimeout = 66 * 1000;
 server.listen(port, '0.0.0.0', () => {
   console.log(`Elevate listening on port ${port}; request timeout ${server.requestTimeout}ms`);
   let cleaning = false;

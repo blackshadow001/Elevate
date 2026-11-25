@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ asse
         "Content-Length": String(end - start + 1),
         "Accept-Ranges": "bytes",
         ...(range ? { "Content-Range": `bytes ${start}-${end}/${total}` } : {}),
-        "Cache-Control": "private, no-store",
+        "Cache-Control": "private, max-age=3600",
         "X-Content-Type-Options": "nosniff",
       },
     });

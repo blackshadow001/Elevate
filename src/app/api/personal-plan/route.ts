@@ -1,9 +1,9 @@
-import { safe } from "@/server/api";
+import { safeCached } from "@/server/api";
 import { getDb } from "@/server/db";
 import { personalPlanCheckoutAvailable } from "@/server/personalPlan";
 
 export async function GET() {
-  return safe(async () => {
+  return safeCached(async () => {
     const db = getDb();
     const settings = db.prepare("SELECT monthly_price_minor,annual_price_minor FROM personal_plan_settings WHERE id=1").get();
     const selectedCourses = db.prepare(`SELECT c.id,c.slug,c.title,c.thumbnail,c.category FROM personal_plan_courses p
@@ -15,5 +15,5 @@ export async function GET() {
       annualPriceMinor: settings?.annual_price_minor ?? null, includedCourses: selectedCourses,
       includedCourseCount: selectedCourses.length,
       checkoutAvailable: personalPlanCheckoutAvailable() && selectedCourses.length > 0 };
-  });
+  }, 30, 120);
 }

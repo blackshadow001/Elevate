@@ -9,6 +9,7 @@ import { currentUser } from "@/server/auth";
 import { formatVideoDuration } from "@/lib/videoDuration";
 import { publicActivity, readActivity } from "@/server/lessonActivities";
 import { catalogCategory } from "@/lib/catalogTaxonomy";
+import { cachedAsync } from "@/server/cache";
 
 type ServerCourse = ReturnType<typeof getCourse>;
 
@@ -126,6 +127,7 @@ function mapBatchCourse(
 export const courseService = {
   getAllCourses: async (): Promise<Course[]> => {
     await connection();
+    return cachedAsync("courses:published-all", 30_000, async () => {
     const db = getDb();
 
     const courseQuery = `
@@ -223,6 +225,7 @@ export const courseService = {
       const courseSectionsMap = sectionsByCourse.get(courseId);
       const sections = courseSectionsMap ? Array.from(courseSectionsMap.values()) : [];
       return mapBatchCourse(courseRow, sections);
+    });
     });
   },
   getCourseBySlug: async (slug: string): Promise<Course | undefined> => {

@@ -10,6 +10,18 @@ export function json(data: unknown, status = 200): Response {
   return Response.json({ data }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+export function cachedJson(data: unknown, sMaxAge = 30, swr = 120): Response {
+  return Response.json(
+    { data },
+    {
+      status: 200,
+      headers: {
+        "Cache-Control": `public, max-age=15, s-maxage=${sMaxAge}, stale-while-revalidate=${swr}`,
+      },
+    }
+  );
+}
+
 export function errorResponse(error: unknown): Response {
   unstable_rethrow(error);
   if (error instanceof ApiError) {
@@ -24,6 +36,20 @@ export async function safe<T>(handler: () => Promise<T | Response> | T | Respons
   try {
     const result = await handler();
     return result instanceof Response ? result : json(result);
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function safeCached<T>(
+  handler: () => Promise<T | Response> | T | Response,
+  sMaxAge = 30,
+  swr = 120
+): Promise<Response> {
+  await connection();
+  try {
+    const result = await handler();
+    return result instanceof Response ? result : cachedJson(result, sMaxAge, swr);
   } catch (error) {
     return errorResponse(error);
   }

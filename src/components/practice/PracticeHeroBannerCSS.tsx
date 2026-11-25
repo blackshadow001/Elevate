@@ -11,7 +11,7 @@ import {
   Check, 
   Bug, 
   Database, 
-  BarChart3, 
+  Terminal, 
   Code2, 
   Braces 
 } from "lucide-react";
@@ -176,45 +176,55 @@ export function PracticeHeroBannerCSS() {
               {/* -----------------------------------------------------------------
                   5 FLOATING 3D ICON BADGES
                   ----------------------------------------------------------------- */}
-              {/* Badge 1 (Top Left): Code </> */}
-              <div 
+              {/* Badge 1 (Top Left): Code </> -> CodeArena */}
+              <Link 
+                href="/practice/codearena"
+                aria-label="CodeArena — Algorithmic Code Practice"
                 className="absolute -top-5 left-2 sm:left-4 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-orange-400 via-[#FF6B35] to-orange-600 shadow-xl shadow-orange-500/35 border-2 border-white/50 flex items-center justify-center text-white font-black text-sm sm:text-base hover:scale-110 hover:-translate-y-1 transition-transform cursor-pointer"
-                title="Algorithmic Code Practice"
+                title="CodeArena — Algorithmic Code Practice"
               >
                 <Code2 className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-xs" />
-              </div>
+              </Link>
 
-              {/* Badge 2 (Middle Left): Braces {} */}
-              <div 
+              {/* Badge 2 (Middle Left): Braces {} -> CloudStudio */}
+              <Link 
+                href="/practice/cloudstudio"
+                aria-label="CloudStudio — Cloud IDE & Compiler Playground"
                 className="absolute top-20 -left-4 sm:-left-5 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-xl shadow-purple-500/35 border-2 border-white/50 flex items-center justify-center text-white font-black hover:scale-110 hover:-translate-y-1 transition-transform cursor-pointer"
-                title="Modern Syntax & Frameworks"
+                title="CloudStudio — Cloud IDE & Compiler Playground"
               >
                 <Braces className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-xs" />
-              </div>
+              </Link>
 
-              {/* Badge 3 (Bottom Left): Database Cylinder */}
-              <div 
+              {/* Badge 3 (Bottom Left): Database Cylinder -> QueryMaster */}
+              <Link 
+                href="/practice/querymaster"
+                aria-label="QueryMaster — SQL & Database Puzzles"
                 className="absolute top-44 -left-3 sm:-left-3 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 shadow-xl shadow-blue-500/35 border-2 border-white/50 flex items-center justify-center text-white hover:scale-110 hover:-translate-y-1 transition-transform cursor-pointer"
-                title="Relational SQL QueryMaster"
+                title="QueryMaster — SQL & Database Puzzles"
               >
                 <Database className="w-5 h-5 drop-shadow-xs" />
-              </div>
+              </Link>
 
-              {/* Badge 4 (Top Right): Bug Icon */}
-              <div 
+              {/* Badge 4 (Top Right): Bug Icon -> BugHunter */}
+              <Link 
+                href="/practice/bughunter"
+                aria-label="BugHunter — Multi-Language Debugger"
                 className="absolute -top-4 right-5 sm:right-7 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-rose-400 to-red-500 shadow-xl shadow-rose-500/35 border-2 border-white/50 flex items-center justify-center text-white hover:scale-110 hover:-translate-y-1 transition-transform cursor-pointer"
-                title="BugHunter Defect Fixing"
+                title="BugHunter — Multi-Language Debugger"
               >
                 <Bug className="w-5 h-5 drop-shadow-xs" />
-              </div>
+              </Link>
 
-              {/* Badge 5 (Middle Right): Bar Chart */}
-              <div 
-                className="absolute top-28 -right-3 sm:-right-4 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-xl shadow-violet-500/35 border-2 border-white/50 flex items-center justify-center text-white hover:scale-110 hover:-translate-y-1 transition-transform cursor-pointer"
-                title="Runtime Performance Analysis"
+              {/* Badge 5 (Middle Right): Terminal >_ -> WebForge */}
+              <Link 
+                href="/practice/webforge"
+                aria-label="WebForge — Web & Fullstack UI Sandbox"
+                className="absolute top-28 -right-3 sm:-right-4 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/35 border-2 border-white/50 flex items-center justify-center text-white hover:scale-110 hover:-translate-y-1 transition-transform cursor-pointer"
+                title="WebForge — Web & Fullstack UI Sandbox"
               >
-                <BarChart3 className="w-5 h-5 drop-shadow-xs" />
-              </div>
+                <Terminal className="w-5 h-5 drop-shadow-xs" />
+              </Link>
 
               {/* -----------------------------------------------------------------
                   THE 3D LAPTOP
