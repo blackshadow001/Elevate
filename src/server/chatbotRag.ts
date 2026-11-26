@@ -749,9 +749,86 @@ async function computeChatResponse(
     };
   }
 
+  const isUnpurchasedCourseInDashboard =
+    /\b(dashboard|library)\b/.test(lower) &&
+    (/\b(haven'?t|have not|not|didn'?t|did not|never|without)\s+(bought|buy|purchased|purchase|paid|pay|enrolled|enroll)\b/.test(
+      lower
+    ) ||
+      /\b(extra|unknown|unfamiliar|unexpected|random|free)\b.*\b(course|courses)\b/.test(
+        lower
+      ));
+
+  if (isUnpurchasedCourseInDashboard) {
+    const unexpectedCourseCards: ChatCard[] = [
+      {
+        title: "Check Profile & Order History",
+        subtitle:
+          "Review your paid orders, account email, and security settings to confirm which courses were billed.",
+        meta: "Account & Receipts",
+        href: "/profile",
+        badge: "Verify Orders",
+      },
+      {
+        title: "Personal Plan Included Courses",
+        subtitle:
+          "Active Personal Plan subscriptions automatically unlock included courses on your dashboard.",
+        meta: "Subscription Sync",
+        href: "/personal-plan/account",
+        badge: "Personal Plan",
+      },
+      {
+        title: "Contact Learner Support",
+        subtitle:
+          "Notice an unexpected enrollment or charge? Reach support@elevate.courses within 24h.",
+        meta: "support@elevate.courses",
+        href: "/contact",
+        badge: "24h Support",
+      },
+    ];
+
+    const unexpectedContext = [
+      makeChunk({
+        id: "platform-unexpected-course-dashboard",
+        kind: "platform",
+        title: "Why an Unpurchased Course Appears on Dashboard",
+        text: "dashboard explore more courses personal plan free course profile orders unpurchased",
+        href: "/profile",
+        badge: "Dashboard Help",
+        meta: "Elevate Dashboard Structure",
+        cardSubtitle:
+          "Courses can appear on /dashboard for 3 normal reasons: (1) the bottom 'Explore More Courses' section shows unpurchased catalog suggestions (not charged), (2) an active Personal Plan automatically unlocks included courses, or (3) a Free starter course was enrolled. Check /profile for receipts or /contact for help.",
+      }),
+      ...kb.chunks.filter((c) =>
+        ["platform-personal-plan-account", "platform-contact"].includes(c.id)
+      ),
+    ];
+
+    const llmResult = await callConfiguredLlm(
+      query,
+      history,
+      unexpectedContext,
+      formatPlatformSummary(kb)
+    );
+
+    const deterministicUnexpectedReply =
+      "A course you didn't directly buy can appear on your dashboard for three common reasons:\n1. **Explore More Courses**: The bottom section of /dashboard displays unpurchased catalog suggestions to discover—these have not been charged.\n2. **Personal Plan or Free Enrollment**: If you have an active Personal Plan (/personal-plan/account), included pro courses are added automatically; ₹0 Free courses also enroll without checkout.\n3. **Order & Account Check**: Check your receipts and active email in your Profile (/profile). If anything looks unfamiliar or you notice an unexpected charge, contact support@elevate.courses via /contact immediately.";
+
+    return {
+      reply: llmResult ? llmResult.text : deterministicUnexpectedReply,
+      cards: unexpectedCourseCards,
+      followUps: [
+        "Tell me about Personal Plan",
+        "Contact support",
+        "Recommend top courses",
+      ],
+      mode: llmResult ? llmResult.source : "local-rag",
+    };
+  }
+
   const isPurchaseOrDashboardIssue =
+    !isUnpurchasedCourseInDashboard &&
     /\b(bought|purchase|purchased|paid|payment|razorpay|order|orders)\b/.test(lower) &&
-    /\b(not|missing|no|didnt|didn't|cant|can't|unable|where|dashboard|library|showing|show|access|sync|unlock)\b/.test(
+    /\b(missing|not showing|not visible|didn'?t appear|did not appear|unable to see|not unlocked|cannot find|can'?t find|where is)\b/.test(
       lower
     );
 
@@ -982,7 +1059,7 @@ export async function generateChatResponse(
   // That guarantees 20,000 simultaneous queries on shared/popular questions complete with <1ms overhead.
   const canUseAnswerCache = history.length <= 1;
   if (canUseAnswerCache) {
-    const cacheKey = `chat:ans:v2:${normalizeCacheKey(query)}`;
+    const cacheKey = `chat:ans:v3:${normalizeCacheKey(query)}`;
     return cachedAsync(cacheKey, 10 * 60 * 1000, () =>
       computeChatResponse(query, history)
     );
