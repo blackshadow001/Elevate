@@ -35,6 +35,8 @@ interface KnowledgeChunk {
   kind: "course" | "practice" | "qa" | "blog" | "platform";
   title: string;
   text: string;
+  titleTokens: Set<string>;
+  bodyTokens: Set<string>;
   href: string;
   badge: string;
   meta: string;
@@ -58,6 +60,10 @@ const SYNONYMS: Record<string, string[]> = {
   cert: ["certificate", "certification", "verify", "credential"],
   teach: ["instructor", "tutor", "mentor", "apply"],
   bug: ["bughunter", "debug", "debugging", "fix"],
+  bought: ["purchase", "purchased", "order", "payment", "enrollment", "dashboard"],
+  purchased: ["order", "payment", "enrollment", "dashboard"],
+  paid: ["payment", "razorpay", "order", "enrollment"],
+  dashboard: ["learning", "library", "enrollment", "courses"],
 };
 
 const STOP_WORDS = new Set([
@@ -67,16 +73,34 @@ const STOP_WORDS = new Set([
   "is",
   "are",
   "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "am",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "done",
+  "will",
+  "would",
+  "could",
+  "should",
+  "can",
+  "may",
+  "might",
+  "must",
   "what",
   "which",
   "who",
+  "whom",
   "how",
-  "can",
-  "could",
-  "should",
-  "would",
-  "do",
-  "does",
+  "when",
+  "where",
+  "why",
   "i",
   "me",
   "my",
@@ -84,36 +108,76 @@ const STOP_WORDS = new Set([
   "your",
   "we",
   "our",
+  "he",
+  "she",
+  "it",
+  "its",
+  "they",
+  "them",
+  "their",
+  "this",
+  "that",
+  "these",
+  "those",
+  "there",
+  "here",
   "for",
   "to",
   "of",
   "in",
   "on",
+  "at",
+  "by",
+  "from",
+  "into",
+  "onto",
   "with",
   "about",
   "and",
   "or",
+  "but",
+  "not",
+  "no",
+  "nor",
+  "so",
+  "yet",
+  "still",
+  "just",
+  "very",
+  "too",
+  "also",
+  "only",
+  "already",
+  "then",
+  "than",
   "tell",
   "show",
+  "showing",
   "find",
   "give",
   "want",
   "need",
+  "get",
+  "got",
   "please",
   "explain",
   "help",
   "top",
   "recommend",
   "open",
+  "see",
 ]);
 
-function expandTokens(raw: string): string[] {
-  const base = raw
+function tokenizeWords(raw: string): string[] {
+  return raw
     .toLowerCase()
     .replace(/[^a-z0-9+#.\s]/g, " ")
     .split(/\s+/)
     .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
+}
 
+function expandTokens(raw: string): string[] {
+  const base = tokenizeWords(raw);
   const expanded = new Set<string>(base);
   for (const token of base) {
     const extra = SYNONYMS[token];
@@ -136,8 +200,18 @@ function formatInr(price: number): string {
   return price <= 0 ? "Free" : `₹${price.toLocaleString("en-IN")}`;
 }
 
+function makeChunk(
+  item: Omit<KnowledgeChunk, "titleTokens" | "bodyTokens">
+): KnowledgeChunk {
+  return {
+    ...item,
+    titleTokens: new Set(tokenizeWords(item.title)),
+    bodyTokens: new Set(tokenizeWords(`${item.title} ${item.text}`)),
+  };
+}
+
 function buildKnowledgeBase() {
-  return cachedSync("chatbot:kb-v2", 60_000, () => {
+  return cachedSync("chatbot:kb-v3", 60_000, () => {
     const db = getDb();
     const { items: courses, total: totalCourses } = listCourses(
       new URLSearchParams({ sort: "popular", pageSize: "50" })
@@ -163,85 +237,97 @@ function buildKnowledgeBase() {
     const chunks: KnowledgeChunk[] = [];
 
     for (const course of courses) {
-      chunks.push({
-        id: `course-${course.id}`,
-        kind: "course",
-        title: course.title,
-        text: `${course.title} ${course.subtitle} ${course.description} ${course.category} ${course.level} ${course.language} instructor ${course.instructor.name}`,
-        href: `/courses/${encodeURIComponent(course.slug)}`,
-        badge: course.category,
-        meta: `${formatInr(course.price)} · ${course.lessonCount} lessons · ${course.level} · ${course.language}`,
-        cardSubtitle:
-          course.subtitle ||
-          course.description.slice(0, 120) ||
-          `${course.level} course in ${course.language}`,
-      });
+      chunks.push(
+        makeChunk({
+          id: `course-${course.id}`,
+          kind: "course",
+          title: course.title,
+          text: `${course.title} ${course.subtitle} ${course.description} ${course.category} ${course.level} ${course.language} instructor ${course.instructor.name}`,
+          href: `/courses/${encodeURIComponent(course.slug)}`,
+          badge: course.category,
+          meta: `${formatInr(course.price)} · ${course.lessonCount} lessons · ${course.level} · ${course.language}`,
+          cardSubtitle:
+            course.subtitle ||
+            course.description.slice(0, 120) ||
+            `${course.level} course in ${course.language}`,
+        })
+      );
     }
 
     for (const mod of PRACTICE_MODULES) {
-      chunks.push({
-        id: `practice-${mod.id}`,
-        kind: "practice",
-        title: mod.name,
-        text: `${mod.name} ${mod.tagline} ${mod.description} ${mod.stats} interactive practice coding challenge lab`,
-        href: mod.path,
-        badge: mod.badge,
-        meta: mod.stats,
-        cardSubtitle: mod.description,
-      });
+      chunks.push(
+        makeChunk({
+          id: `practice-${mod.id}`,
+          kind: "practice",
+          title: mod.name,
+          text: `${mod.name} ${mod.tagline} ${mod.description} ${mod.stats} interactive practice coding challenge lab`,
+          href: mod.path,
+          badge: mod.badge,
+          meta: mod.stats,
+          cardSubtitle: mod.description,
+        })
+      );
     }
 
     for (const post of mockBlogPosts) {
-      chunks.push({
-        id: `blog-${post.id}`,
-        kind: "blog",
-        title: post.title,
-        text: `${post.title} ${post.excerpt} ${post.category} ${post.tags.join(" ")} ${post.keyTakeaways.join(" ")}`,
-        href: `/blog/${post.slug}`,
-        badge: `${post.category} Guide`,
-        meta: `${post.readTime} · ${post.level}`,
-        cardSubtitle: post.excerpt,
-      });
+      chunks.push(
+        makeChunk({
+          id: `blog-${post.id}`,
+          kind: "blog",
+          title: post.title,
+          text: `${post.title} ${post.excerpt} ${post.category} ${post.tags.join(" ")} ${post.keyTakeaways.join(" ")}`,
+          href: `/blog/${post.slug}`,
+          badge: `${post.category} Guide`,
+          meta: `${post.readTime} · ${post.level}`,
+          cardSubtitle: post.excerpt,
+        })
+      );
 
       for (const sec of post.sections) {
         if (sec.qaItems) {
           for (const qa of sec.qaItems) {
-            chunks.push({
-              id: `qa-${post.id}-${qa.number}`,
-              kind: "qa",
-              title: qa.question,
-              text: `${qa.question} ${qa.answer} ${post.tags.join(" ")} ${post.category}`,
-              href: `/blog/${post.slug}#${sec.id}`,
-              badge: `Q${qa.number} · ${qa.difficulty}`,
-              meta: `${post.title} · ${qa.difficulty}`,
-              cardSubtitle: qa.answer,
-            });
+            chunks.push(
+              makeChunk({
+                id: `qa-${post.id}-${qa.number}`,
+                kind: "qa",
+                title: qa.question,
+                text: `${qa.question} ${qa.answer} ${post.tags.join(" ")} ${post.category}`,
+                href: `/blog/${post.slug}#${sec.id}`,
+                badge: `Q${qa.number} · ${qa.difficulty}`,
+                meta: `${post.title} · ${qa.difficulty}`,
+                cardSubtitle: qa.answer,
+              })
+            );
           }
         } else {
-          chunks.push({
-            id: `sec-${post.id}-${sec.id}`,
-            kind: "blog",
-            title: `${sec.title} (${post.title})`,
-            text: `${sec.title} ${sec.paragraphs.join(" ")} ${post.tags.join(" ")}`,
-            href: `/blog/${post.slug}#${sec.id}`,
-            badge: post.category,
-            meta: `${post.readTime} · Section Guide`,
-            cardSubtitle: sec.paragraphs[0] || post.excerpt,
-          });
+          chunks.push(
+            makeChunk({
+              id: `sec-${post.id}-${sec.id}`,
+              kind: "blog",
+              title: `${sec.title} (${post.title})`,
+              text: `${sec.title} ${sec.paragraphs.join(" ")} ${post.tags.join(" ")}`,
+              href: `/blog/${post.slug}#${sec.id}`,
+              badge: post.category,
+              meta: `${post.readTime} · Section Guide`,
+              cardSubtitle: sec.paragraphs[0] || post.excerpt,
+            })
+          );
         }
       }
 
       for (const faq of post.faqs) {
-        chunks.push({
-          id: `blogfaq-${post.id}-${faq.question.slice(0, 20)}`,
-          kind: "qa",
-          title: faq.question,
-          text: `${faq.question} ${faq.answer} ${post.tags.join(" ")}`,
-          href: `/blog/${post.slug}#frequently-asked-questions`,
-          badge: `${post.category} FAQ`,
-          meta: post.title,
-          cardSubtitle: faq.answer,
-        });
+        chunks.push(
+          makeChunk({
+            id: `blogfaq-${post.id}-${faq.question.slice(0, 20)}`,
+            kind: "qa",
+            title: faq.question,
+            text: `${faq.question} ${faq.answer} ${post.tags.join(" ")}`,
+            href: `/blog/${post.slug}#frequently-asked-questions`,
+            badge: `${post.category} FAQ`,
+            meta: post.title,
+            cardSubtitle: faq.answer,
+          })
+        );
       }
     }
 
@@ -252,7 +338,18 @@ function buildKnowledgeBase() {
       ? `₹${(Number(planSettings.annual_price_minor) / 100).toLocaleString("en-IN")}/year`
       : "annual billing";
 
-    chunks.push(
+    const platformChunks: Array<Omit<KnowledgeChunk, "titleTokens" | "bodyTokens">> = [
+      {
+        id: "platform-dashboard-missing-course",
+        kind: "platform",
+        title: "Purchased Course Not Showing on Dashboard",
+        text: "bought purchased paid course order razorpay dashboard missing library enrollment access email account verify payment",
+        href: "/dashboard",
+        badge: "Order & Access Help",
+        meta: "My Learning Dashboard",
+        cardSubtitle:
+          "Check that you are signed into the same email used at checkout, refresh your Learning Dashboard, or contact support@elevate.courses with your Razorpay order ID for quick reconciliation.",
+      },
       {
         id: "platform-personal-plan",
         kind: "platform",
@@ -267,10 +364,21 @@ function buildKnowledgeBase() {
             : "Flexible subscription access to selected curated courses and certificates.",
       },
       {
+        id: "platform-personal-plan-account",
+        kind: "platform",
+        title: "Manage Personal Plan Subscription",
+        text: "personal plan account billing renewal subscription reconcile active courses",
+        href: "/personal-plan/account",
+        badge: "Subscription Status",
+        meta: "Billing & Reconciliation",
+        cardSubtitle:
+          "Inspect active subscription billing dates, cancel renewal, or sync Personal Plan course access.",
+      },
+      {
         id: "platform-certificates",
         kind: "platform",
         title: "Verified Certificates & Credential Verification",
-        text: "certificate verification verify credential completion download proof pdf employer",
+        text: "certificate verification verify credential completion download proof pdf employer qr code",
         href: "/certificates/verify",
         badge: "Certificates",
         meta: "Public Verification Portal",
@@ -291,15 +399,30 @@ function buildKnowledgeBase() {
       {
         id: "platform-contact",
         kind: "platform",
-        title: "Support, Billing & Enterprise Contact",
-        text: "contact support help refund billing login password enterprise team invoice sla faq",
+        title: "Contact Learner Support & Order Desk",
+        text: "contact support help refund billing login password enterprise team invoice sla payment order",
         href: "/contact",
         badge: "24h Support",
         meta: "support@elevate.courses · Mon–Fri",
         cardSubtitle:
-          "Get direct help with enrollments, certificates, billing, or team licensing within 24 business hours.",
-      }
-    );
+          "Send your payment receipt or order reference to support@elevate.courses for fast enrollment resolution within 24 business hours.",
+      },
+      {
+        id: "platform-faq",
+        kind: "platform",
+        title: "Frequently Asked Questions (Payments, Access & Labs)",
+        text: "faq razorpay upi card netbanking lifetime self-paced courses access help",
+        href: "/faq",
+        badge: "FAQ & Help",
+        meta: "Instant Answers",
+        cardSubtitle:
+          "Answers covering Razorpay UPI/card payments, lifetime course access, browser coding labs, and verification.",
+      },
+    ];
+
+    for (const item of platformChunks) {
+      chunks.push(makeChunk(item));
+    }
 
     return {
       courses,
@@ -323,10 +446,13 @@ function scoreChunks(
   const lowerQuery = query.toLowerCase();
   const contextTokens = expandTokens(`${query} ${historyText}`);
 
-  const wantsCourses =
-    /\b(course|courses|catalog|enroll|syllabus|class|classes)\b/.test(
+  const wantsPurchaseHelp =
+    /\b(bought|purchase|purchased|paid|payment|razorpay|order|orders|dashboard|missing|not showing|not visible|unable to see|access|enrolled|enrollment|refund|billing|receipt)\b/.test(
       lowerQuery
-    ) &&
+    );
+  const wantsCourses =
+    !wantsPurchaseHelp &&
+    /\b(course|courses|catalog|syllabus|class|classes)\b/.test(lowerQuery) &&
     !/\b(interview|question|difference|explain|what is|how does|blog|article)\b/.test(
       lowerQuery
     );
@@ -335,6 +461,7 @@ function scoreChunks(
       lowerQuery
     );
   const wantsTechnicalQa =
+    !wantsPurchaseHelp &&
     /\b(what|why|how|difference|compare|explain|when|vs|meaning)\b|\?/.test(
       lowerQuery
     );
@@ -342,29 +469,40 @@ function scoreChunks(
   return chunks
     .map((chunk) => {
       const titleLower = chunk.title.toLowerCase();
-      const bodyLower = chunk.text.toLowerCase();
       let score = 0;
+      let tokenHits = 0;
 
-      if (titleLower.includes(lowerQuery) && lowerQuery.length > 3) score += 20;
+      if (titleLower.includes(lowerQuery) && lowerQuery.length > 4) score += 20;
 
       for (const token of tokens) {
-        if (titleLower.includes(token)) score += 7;
-        else if (bodyLower.includes(token)) score += 3;
+        if (chunk.titleTokens.has(token)) {
+          score += 8;
+          tokenHits += 1;
+        } else if (chunk.bodyTokens.has(token)) {
+          score += 4;
+          tokenHits += 1;
+        }
       }
 
       if (score === 0 && contextTokens.length > 0) {
         for (const t of contextTokens) {
-          if (titleLower.includes(t)) score += 2;
+          if (chunk.titleTokens.has(t)) {
+            score += 3;
+            tokenHits += 1;
+          }
         }
       }
 
-      if (wantsCourses && chunk.kind === "course") {
+      if (wantsPurchaseHelp && chunk.kind === "platform") {
         score += 18;
+      }
+      if (wantsCourses && chunk.kind === "course") {
+        score += 14;
       }
       if (wantsPractice && chunk.kind === "practice") {
-        score += 18;
+        score += 16;
       }
-      if (wantsTechnicalQa && chunk.kind === "qa" && score >= 5) {
+      if (wantsTechnicalQa && chunk.kind === "qa" && tokenHits >= 2) {
         score += 8;
       }
 
@@ -378,14 +516,19 @@ function scoreChunks(
       if (
         chunk.kind === "course" &&
         /\btamil\b/.test(lowerQuery) &&
-        bodyLower.includes("tamil")
+        chunk.bodyTokens.has("tamil")
       ) {
         score += 9;
       }
 
+      // Avoid spurious 1-token matches inside long Q&A documents
+      if (chunk.kind === "qa" && tokenHits < 2) {
+        score = 0;
+      }
+
       return { chunk, score };
     })
-    .filter((entry) => entry.score >= 4)
+    .filter((entry) => entry.score >= 5)
     .sort((a, b) => b.score - a.score)
     .slice(0, 6)
     .map((entry) => entry.chunk);
@@ -560,6 +703,12 @@ ${contextBlock || "No exact catalog match found; answer the user's question dire
   });
 }
 
+function formatPlatformSummary(
+  kb: ReturnType<typeof buildKnowledgeBase>
+): string {
+  return `${kb.totalCourses} published courses across ${kb.categories.map((c) => c.name).join(", ")}; 5 free Practice Arenas (CodeArena, WebForge, QueryMaster, BugHunter, CloudStudio); Personal Plan (${kb.monthlyStr} / ${kb.annualStr}) with ${kb.planCourseRows.length} included courses.`;
+}
+
 async function computeChatResponse(
   query: string,
   history: ChatTurn[]
@@ -600,6 +749,69 @@ async function computeChatResponse(
     };
   }
 
+  const isPurchaseOrDashboardIssue =
+    /\b(bought|purchase|purchased|paid|payment|razorpay|order|orders)\b/.test(lower) &&
+    /\b(not|missing|no|didnt|didn't|cant|can't|unable|where|dashboard|library|showing|show|access|sync|unlock)\b/.test(
+      lower
+    );
+
+  if (isPurchaseOrDashboardIssue) {
+    const troubleshootingCards: ChatCard[] = [
+      {
+        title: "Open My Learning Dashboard",
+        subtitle:
+          "Refresh your dashboard library and confirm you are signed into the exact account used during checkout.",
+        meta: "Learner Library",
+        href: "/dashboard",
+        badge: "Check Access",
+      },
+      {
+        title: "Contact Learner Support (24h SLA)",
+        subtitle:
+          "Share your Razorpay payment ID or registered email at support@elevate.courses so we can reconcile your enrollment.",
+        meta: "support@elevate.courses",
+        href: "/contact",
+        badge: "Order Support",
+      },
+      {
+        title: "Personal Plan Account & Sync",
+        subtitle:
+          "If you purchased Personal Plan, check subscription status and included courses here.",
+        meta: "Subscription Status",
+        href: "/personal-plan/account",
+        badge: "Personal Plan",
+      },
+    ];
+
+    const supportContext = kb.chunks.filter((c) =>
+      [
+        "platform-dashboard-missing-course",
+        "platform-contact",
+        "platform-personal-plan-account",
+      ].includes(c.id)
+    );
+    const llmResult = await callConfiguredLlm(
+      query,
+      history,
+      supportContext,
+      formatPlatformSummary(kb)
+    );
+
+    const deterministicSupportReply =
+      "If a course you bought isn't showing up in your dashboard, check these steps:\n1. Verify you're logged in with the exact same email or Google account used during Razorpay checkout.\n2. Refresh your My Learning Dashboard (/dashboard) or check Personal Plan Account (/personal-plan/account) if you subscribed to a pass.\n3. If payment succeeded and the course is still missing, message us on Contact Support (/contact) or email support@elevate.courses with your payment/order receipt ID so our team can reconcile your enrollment right away.";
+
+    return {
+      reply: llmResult ? llmResult.text : deterministicSupportReply,
+      cards: troubleshootingCards,
+      followUps: [
+        "Contact support",
+        "Tell me about Personal Plan",
+        "Recommend top courses",
+      ],
+      mode: llmResult ? llmResult.source : "local-rag",
+    };
+  }
+
   let retrieved = scoreChunks(kb.chunks, query, tokens, "");
   if (retrieved.length === 0 && recentUserHistory) {
     retrieved = scoreChunks(
@@ -625,7 +837,7 @@ async function computeChatResponse(
     }
   }
 
-  const summaryStats = `${kb.totalCourses} published courses across ${kb.categories.map((c) => c.name).join(", ")}; 5 free Practice Arenas (CodeArena, WebForge, QueryMaster, BugHunter, CloudStudio); Personal Plan (${kb.monthlyStr} / ${kb.annualStr}) with ${kb.planCourseRows.length} included courses.`;
+  const summaryStats = formatPlatformSummary(kb);
 
   const llmResult = await callConfiguredLlm(
     query,
@@ -701,9 +913,12 @@ async function computeChatResponse(
     const topQa = retrieved.find((r) => r.kind === "qa");
     const topCourse = retrieved.find((r) => r.kind === "course");
     const topPractice = retrieved.find((r) => r.kind === "practice");
+    const topPlatform = retrieved.find((r) => r.kind === "platform");
 
     let deterministicReply = "";
-    if (topQa) {
+    if (topPlatform) {
+      deterministicReply = topPlatform.cardSubtitle;
+    } else if (topQa) {
       deterministicReply = `${topQa.cardSubtitle} (From our ${topQa.meta} guide — click the card below for code examples.)`;
     } else if (topCourse && /\bfree\b/.test(lower)) {
       const freeCourses = kb.courses.filter((c) => c.price === 0).length;
@@ -767,7 +982,7 @@ export async function generateChatResponse(
   // That guarantees 20,000 simultaneous queries on shared/popular questions complete with <1ms overhead.
   const canUseAnswerCache = history.length <= 1;
   if (canUseAnswerCache) {
-    const cacheKey = `chat:ans:v1:${normalizeCacheKey(query)}`;
+    const cacheKey = `chat:ans:v2:${normalizeCacheKey(query)}`;
     return cachedAsync(cacheKey, 10 * 60 * 1000, () =>
       computeChatResponse(query, history)
     );
