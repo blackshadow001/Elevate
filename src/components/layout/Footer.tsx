@@ -101,10 +101,25 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-[#26344D] flex flex-col sm:flex-row items-center justify-between text-xs text-[#94A3B8] gap-4">
-          <p>© 2026 {brand.name}. All rights reserved.</p>
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1">
+            <p>© 2026 {brand.name}. All rights reserved.</p>
+            <span className="hidden sm:inline text-[#475569]" aria-hidden="true">·</span>
+            <p>
+              Powered by{" "}
+              <a
+                href="https://www.gentizeinnovations.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-white/90 hover:text-[#FF6B35] underline decoration-[#475569] underline-offset-4 transition-colors"
+              >
+                Gentize
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </p>
+          </div>
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1.5 text-white/80">
-              <Globe className="w-3.5 h-3.5 text-[#FF6B35]" />
+              <Globe className="w-3.5 h-3.5 text-[#FF6B35]" aria-hidden="true" />
               English (India) · INR (₹)
             </span>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
