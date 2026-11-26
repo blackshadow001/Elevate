@@ -29,7 +29,7 @@ import {
   Unlock, 
   Layers, 
   Code2, 
-  Sparkles,
+  BadgeCheck,
   BookOpen,
   Map,
   X,

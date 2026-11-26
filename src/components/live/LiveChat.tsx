@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { LiveChatMessage } from "@/data/chatMessages";
-import { Send, Smile, Sparkles } from "lucide-react";
+import { Send, Smile, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 interface LiveChatProps {

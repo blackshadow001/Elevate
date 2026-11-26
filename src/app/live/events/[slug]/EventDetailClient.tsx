@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { LiveEvent } from "@/data/events";
 import { 
-  Sparkles, 
+  BadgeCheck,
   ArrowLeft, 
   Calendar, 
   Clock, 

@@ -9,7 +9,7 @@ import {
   Code2,
   Flame,
   Gift,
-  Sparkles,
+  BadgeCheck,
   Terminal,
 } from "lucide-react";
 
@@ -155,7 +155,7 @@ export function CoursesPromoBanner({
             <div className="relative flex flex-col items-center justify-between gap-8 lg:flex-row">
               <div className="max-w-xl space-y-4">
                 <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Featured Specialization</span>
                 </span>
                 <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">

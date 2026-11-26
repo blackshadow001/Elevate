@@ -13,7 +13,7 @@ import {
   PlusCircle, 
   Video, 
   ArrowRight, 
-  Sparkles, 
+  BadgeCheck,
   TrendingUp,
   Calendar,
   Clock,
@@ -64,7 +64,7 @@ export default function InstructorStudioOverviewPage() {
       <div className="bg-white rounded-3xl border border-[#E5E7EB] p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <BadgeCheck className="w-3.5 h-3.5 text-purple-600" />
             <span>Instructor Studio</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#172033] tracking-tight">

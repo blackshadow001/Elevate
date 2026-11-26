@@ -15,7 +15,7 @@ import {
   Globe2,
   Layers,
   ShieldCheck,
-  Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -146,7 +146,7 @@ export default function InstructorApplyPage() {
             <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-center">
               <div className="lg:col-span-7 space-y-5">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/10 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-[#FF8A5B]">
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Teach on Elevate</span>
                 </div>
                 <h1 className="text-3xl sm:text-5xl font-black leading-[1.1] tracking-tight text-balance">

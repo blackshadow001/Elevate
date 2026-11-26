@@ -23,7 +23,7 @@ import {
   Braces,
   ArrowRight,
   ChevronRight,
-  Sparkles
+  BadgeCheck
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useWishlist } from "@/context/WishlistContext";
@@ -39,6 +39,8 @@ export function Navbar() {
   const [mobilePracticeOpen, setMobilePracticeOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const practiceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const exploreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -48,6 +50,9 @@ export function Navbar() {
       if (exploreTimeoutRef.current) clearTimeout(exploreTimeoutRef.current);
     };
   }, []);
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   const handlePracticeMouseEnter = () => {
     if (practiceTimeoutRef.current) clearTimeout(practiceTimeoutRef.current);
@@ -90,6 +95,7 @@ export function Navbar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/courses?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchOpen(false);
       setMobileMenuOpen(false);
     }
   };
@@ -101,6 +107,7 @@ export function Navbar() {
         setPracticeOpen(false);
         setProfileDropdownOpen(false);
         setMobileMenuOpen(false);
+        setSearchOpen(false);
       }
     }} className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
@@ -466,22 +473,19 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* Center: Search Field */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4">
-          <form onSubmit={handleSearchSubmit} className="relative w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for courses, skills, instructors..."
-              className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-full pl-10 pr-4 py-2 text-sm text-[#172033] placeholder:text-[#64748B] focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-inner"
-            />
-          </form>
-        </div>
-
         {/* Right: Auth, Wishlist & Dashboard Links */}
-        <div className="hidden lg:flex items-center gap-3.5">
+        <div className="ml-auto flex items-center gap-2 lg:gap-3.5">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search courses"
+            aria-haspopup="dialog"
+            aria-expanded={searchOpen}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#172033] hover:bg-[#FFF3EE] hover:text-[#E85D2A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6B35]"
+          >
+            <Search className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <div className="hidden lg:flex items-center gap-3.5">
           {/* Wishlist */}
           <Link
             href="/wishlist"
@@ -624,10 +628,10 @@ export function Navbar() {
             <Link href="/login" className="text-sm font-semibold text-[#172033] hover:text-[#FF6B35]">Login</Link>
             <Link href="/signup" className="px-4 py-2 rounded-xl bg-[#FF6B35] text-white text-xs font-bold hover:bg-[#E85D2A]">Sign Up</Link>
           </>}
-        </div>
+          </div>
 
         {/* Mobile Buttons */}
-        <div className="flex items-center gap-2 lg:hidden">
+        <div className="flex items-center lg:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -638,22 +642,31 @@ export function Navbar() {
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
+        </div>
       </div>
+
+      {searchOpen && (
+        <div role="dialog" aria-modal="true" aria-label="Search courses" className="fixed inset-0 z-[60] min-h-screen bg-[#172033]/35 px-4 pt-20 backdrop-blur-[2px]" onMouseDown={(event) => { if (event.target === event.currentTarget) setSearchOpen(false); }}>
+          <form onSubmit={handleSearchSubmit} className="mx-auto flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-[#E5E7EB] bg-white p-2 shadow-[0_20px_60px_rgba(23,32,51,0.22)]">
+            <Search className="ml-3 h-5 w-5 shrink-0 text-[#64748B]" aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search courses, skills, instructors..."
+              aria-label="Search courses, skills, or instructors"
+              className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-sm text-[#172033] outline-none placeholder:text-[#64748B]"
+            />
+            <button type="submit" disabled={!searchQuery.trim()} className="rounded-xl bg-[#FF6B35] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#E85D2A] disabled:cursor-not-allowed disabled:opacity-50">Search</button>
+            <button type="button" onClick={() => setSearchOpen(false)} aria-label="Close search" className="rounded-xl p-2.5 text-[#64748B] hover:bg-[#F7F8FA] hover:text-[#172033]"><X className="h-5 w-5" aria-hidden="true" /></button>
+          </form>
+        </div>
+      )}
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-[#E5E7EB] px-5 py-6 space-y-4 shadow-xl animate-in slide-in-from-top duration-200">
-          <form onSubmit={handleSearchSubmit} className="relative w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search courses..."
-              className="w-full bg-[#F7F8FA] border border-[#E5E7EB] rounded-lg pl-10 pr-4 py-2.5 text-sm"
-            />
-          </form>
-
           <div className="flex flex-col space-y-3 pt-2 font-medium text-[#172033]">
             <button type="button" onClick={() => setExploreOpen(!exploreOpen)} aria-expanded={exploreOpen} className="py-2 text-left border-b border-[#F7F8FA] flex justify-between items-center">
               <span>Explore Goals & Categories</span> <ChevronDown className={`w-4 h-4 transition-transform ${exploreOpen ? "rotate-180" : ""}`} />

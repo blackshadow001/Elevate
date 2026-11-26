@@ -19,7 +19,7 @@ import {
   XCircle,
   FileText,
   Calendar,
-  Sparkles,
+  BadgeCheck,
   ExternalLink,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, Globe, MessageCircle, ExternalLink, Share2, Sparkles, Award, ShieldCheck, Code2 } from "lucide-react";
+import { Mail, Globe, MessageCircle, ExternalLink, Share2, BadgeCheck, Award, ShieldCheck, Code2 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { brand } from "@/lib/brand";
 import { FOOTER_DIRECTORY_COLUMNS } from "@/data/megaMenuData";

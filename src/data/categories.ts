@@ -60,7 +60,7 @@ export const mockCategories: Category[] = [
     id: "cat-7",
     name: "AI & ML",
     slug: "ai-ml",
-    iconName: "Sparkles",
+    iconName: "BadgeCheck",
     courseCount: 92,
     colorAccent: "#FF6B35",
     description: "Generative AI, LLM prompting, PyTorch, Deep Learning & autonomous agents.",

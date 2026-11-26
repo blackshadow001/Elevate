@@ -11,7 +11,7 @@ import {
   HeartHandshake,
   Laptop,
   Rocket,
-  Sparkles,
+  BadgeCheck,
   Users,
 } from "lucide-react";
 
@@ -126,7 +126,7 @@ export default function CareersPage() {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
             <div className="max-w-3xl space-y-5">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/10 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-[#FF8A5B]">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>Careers at Elevate</span>
               </div>
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-[1.1] text-balance">

@@ -12,7 +12,7 @@ import {
   Globe2,
   Layers,
   ShieldCheck,
-  Sparkles,
+  BadgeCheck,
   Users,
 } from "lucide-react";
 
@@ -122,7 +122,7 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:items-center">
               <div className="lg:col-span-7 space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/10 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-[#FF8A5B]">
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>About Elevate</span>
                 </div>
                 <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-[1.1] text-balance">

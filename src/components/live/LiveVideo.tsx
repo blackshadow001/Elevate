@@ -9,7 +9,7 @@ import {
   VolumeX, 
   Monitor, 
   User, 
-  Sparkles,
+  BadgeCheck,
   Signal,
   Layers
 } from "lucide-react";

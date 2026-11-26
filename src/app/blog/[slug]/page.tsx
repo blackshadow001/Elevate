@@ -16,7 +16,7 @@ import {
   Clock,
   HelpCircle,
   Lightbulb,
-  Sparkles,
+  BadgeCheck,
   Tag,
 } from "lucide-react";
 
@@ -491,7 +491,7 @@ export default async function BlogPostPage({ params }: Props) {
               {/* Tailored Practice Conversion Box */}
               <div className="rounded-2xl bg-[#172033] p-6 text-white shadow-sm space-y-4">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6B35]/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#FF8A5B]">
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>{post.practiceCta.badge}</span>
                 </span>
                 <h3 className="text-xl font-black leading-snug">

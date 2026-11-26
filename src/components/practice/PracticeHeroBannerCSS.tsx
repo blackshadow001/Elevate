@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { 
-  Sparkles, 
+  BadgeCheck,
   CheckCircle2, 
   Layers, 
   Cpu, 
@@ -121,7 +121,7 @@ export function PracticeHeroBannerCSS() {
           <div className="lg:col-span-7 space-y-5 lg:pr-2">
             {/* Top Platform Pill */}
             <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/90 bg-[#FFF5EE] px-4 py-1.5 text-xs font-bold text-[#FF6B35] shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#FF6B35] fill-orange-200" />
+              <BadgeCheck className="w-3.5 h-3.5 text-[#FF6B35] fill-orange-200" />
               <span>Elevate Practice Platform</span>
             </div>
 

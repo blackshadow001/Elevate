@@ -13,7 +13,7 @@ import {
   FileText, 
   Menu,
   X,
-  Sparkles,
+  BadgeCheck,
   Trophy,
   RotateCcw,
   Share2,

@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { PasswordVisibilityToggle } from "@/components/ui/PasswordVisibilityToggle";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
-import { Mail, Lock, ArrowRight, Sparkles, GraduationCap, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, BadgeCheck, GraduationCap, CheckCircle2 } from "lucide-react";
 
 function GoogleFeedback() {
   const params = useSearchParams();
@@ -108,7 +108,7 @@ export default function LoginPage() {
             </div>
             <div className="flex items-center gap-3 text-xs font-semibold text-[#172033]">
               <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4" />
+                <BadgeCheck className="w-4 h-4" />
               </div>
               <span>Interactive Live Masterclasses & Mentorship</span>
             </div>

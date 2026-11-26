@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, BadgeCheck } from "lucide-react";
 
 export function CTA() {
   return (
@@ -10,7 +10,7 @@ export function CTA() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#26344D] text-[#FF6B35] text-xs font-semibold mb-6">
-          <Sparkles className="w-3.5 h-3.5" />
+          <BadgeCheck className="w-3.5 h-3.5" />
           <span>Start Your Transformative Journey</span>
         </div>
 

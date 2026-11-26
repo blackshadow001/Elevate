@@ -9,7 +9,7 @@ import {
   Clock,
   Flame,
   Search,
-  Sparkles,
+  BadgeCheck,
   Terminal,
   TrendingUp,
 } from "lucide-react";
@@ -127,7 +127,7 @@ export function BlogExplorer({ posts }: BlogExplorerProps) {
               <div className="absolute inset-0 bg-gradient-to-t from-[#172033]/90 via-[#172033]/35 to-transparent" />
               <div className="absolute left-6 top-6 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF6B35] px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white shadow-xs">
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>Flagship Handbook</span>
                 </span>
                 <span className="rounded-full bg-white/95 px-3 py-1 text-[11px] font-bold text-[#172033]">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { MessageSquare, Users, Sparkles, ArrowRight, ShieldCheck, Code2 } from "lucide-react";
+import { MessageSquare, Users, BadgeCheck, ArrowRight, ShieldCheck, Code2 } from "lucide-react";
 
 import type { Metadata } from "next";
 
@@ -91,7 +91,7 @@ export default function CommunityPage() {
 
             <div className="bg-white rounded-3xl border border-[#E5E7EB] p-8 shadow-xs space-y-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#3B82F6] flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
+                <BadgeCheck className="w-5 h-5" />
               </div>
               <h3 className="text-lg font-bold text-[#172033]">#project-showcase</h3>
               <p className="text-xs text-[#64748B] leading-relaxed">

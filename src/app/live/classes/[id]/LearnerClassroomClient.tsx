@@ -24,7 +24,7 @@ import {
   FolderDown, 
   Vote, 
   ArrowLeft, 
-  Sparkles,
+  BadgeCheck,
   Users,
   Video
 } from "lucide-react";

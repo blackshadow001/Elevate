@@ -16,7 +16,7 @@ import {
   Radio, 
   Calendar, 
   Flame, 
-  Sparkles, 
+  BadgeCheck,
   ArrowRight, 
   Users, 
   Clock, 
@@ -128,7 +128,7 @@ export default function LiveLearningLandingPage() {
                     : "bg-white text-[#64748B] hover:text-[#172033] border border-[#E5E7EB] hover:bg-slate-50"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <BadgeCheck className="w-3.5 h-3.5" />
                 <span>Events ({events.length})</span>
               </button>
             </div>
@@ -213,7 +213,7 @@ export default function LiveLearningLandingPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    <BadgeCheck className="w-5 h-5 text-purple-600" />
                     <h2 className="text-xl sm:text-2xl font-black text-[#172033]">
                       Special Community Events & Workshops
                     </h2>

@@ -15,7 +15,7 @@ import {
   Layers, 
   Globe, 
   CheckCircle2, 
-  Sparkles 
+  BadgeCheck
 } from "lucide-react";
 
 export default function ScheduleLiveClassPage() {

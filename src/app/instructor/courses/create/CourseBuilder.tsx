@@ -29,7 +29,7 @@ import {
   HelpCircle, 
   Briefcase, 
   Paperclip, 
-  Sparkles, 
+  BadgeCheck,
   ImageIcon, 
   Play, 
   CheckCircle2,
@@ -1333,7 +1333,7 @@ export function CourseBuilder({ initialCourse }: { initialCourse?: InstructorCou
               disabled={uploadingVideo}
               className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-[#16A34A] hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-97 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
+              <BadgeCheck className="w-4 h-4" />
               <span>Submit for Approval</span>
             </button>
           </div>

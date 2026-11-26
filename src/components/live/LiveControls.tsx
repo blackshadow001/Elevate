@@ -13,7 +13,7 @@ import {
   LogOut,
   HelpCircle,
   Settings,
-  Sparkles
+  BadgeCheck
 } from "lucide-react";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 

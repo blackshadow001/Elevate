@@ -7,7 +7,7 @@ import {
   ArrowUpRight,
   RotateCcw,
   Send,
-  Sparkles,
+  BadgeCheck,
   X,
 } from "lucide-react";
 import type { ChatCard } from "@/app/api/chat/route";
@@ -531,7 +531,7 @@ export function ElevateChatbot() {
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#172033] px-5 py-3.5 text-white">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#5B21FF] text-white shadow-xs">
-                <Sparkles className="h-5 w-5" aria-hidden="true" />
+                <BadgeCheck className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

@@ -15,7 +15,7 @@ import {
   Send,
   MessageSquare,
   HelpCircle,
-  Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";

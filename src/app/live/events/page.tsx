@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { LiveEvent } from "@/data/events";
 import { liveService } from "@/services/liveService";
 import { EventCard } from "@/components/live/EventCard";
-import { Sparkles, ArrowLeft, Calendar, Users } from "lucide-react";
+import { BadgeCheck, ArrowLeft, Calendar, Users } from "lucide-react";
 
 export default function EventsCatalogPage() {
   const [events, setEvents] = useState<LiveEvent[]>([]);

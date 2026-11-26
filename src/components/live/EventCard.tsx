@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { LiveEvent } from "@/data/events";
-import { Calendar, Clock, Users, ArrowRight, CheckCircle2, Sparkles, Tag } from "lucide-react";
+import { Calendar, Clock, Users, ArrowRight, CheckCircle2, BadgeCheck, Tag } from "lucide-react";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { liveService } from "@/services/liveService";
 

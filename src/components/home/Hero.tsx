@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, CheckCircle2, PlayCircle, Sparkles, Star, Zap } from "lucide-react";
+import { ArrowRight, BookOpenCheck, CheckCircle2, PlayCircle, BadgeCheck, Star, Zap } from "lucide-react";
 import type { Course } from "@/types";
 
 export function Hero({ courses }: { courses: Course[] }) {
@@ -13,7 +13,7 @@ export function Hero({ courses }: { courses: Course[] }) {
       <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-6 lg:grid-cols-12 lg:gap-10 lg:px-8">
         <div className="text-center lg:col-span-7 lg:text-left">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/60 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-[#E85D2A] sm:text-sm">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            <BadgeCheck className="h-4 w-4" aria-hidden="true" />
             Learn with Elevate
           </div>
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.12] tracking-tight text-[#172033] sm:text-5xl lg:text-[64px]">

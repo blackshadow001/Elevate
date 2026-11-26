@@ -1,7 +1,7 @@
-import { BarChart3, BookOpen, Bot, BrainCircuit, BriefcaseBusiness, ChartNoAxesCombined, Code2, Coins, Cpu, Database, Flower2, Globe, Handshake, Heart, Laptop, Lightbulb, Megaphone, MessageCircle, MousePointer2, Paintbrush, Palette, PenTool, Settings2, Shapes, Sparkles, Sun, Target, Terminal, TrendingUp, Workflow, Zap } from "lucide-react";
+import { BarChart3, BookOpen, Bot, BrainCircuit, BriefcaseBusiness, ChartNoAxesCombined, Code2, Coins, Cpu, Database, Flower2, Globe, Handshake, Heart, Laptop, Lightbulb, Megaphone, MessageCircle, MousePointer2, Paintbrush, Palette, PenTool, Settings2, Shapes, BadgeCheck, Sun, Target, Terminal, TrendingUp, Workflow, Zap } from "lucide-react";
 
 const artwork = {
-  "ai-generative-ai": { Icon: BrainCircuit, Accent: Sparkles, Detail: Cpu, from: "#1B2955", to: "#7658B8", glow: "#C7B7FF" },
+  "ai-generative-ai": { Icon: BrainCircuit, Accent: BadgeCheck, Detail: Cpu, from: "#1B2955", to: "#7658B8", glow: "#C7B7FF" },
   "ai-tools-automation": { Icon: Workflow, Accent: Zap, Detail: Settings2, from: "#164B72", to: "#2688A4", glow: "#8EE5EF" },
   "technology-programming": { Icon: Terminal, Accent: Code2, Detail: Database, from: "#173D5A", to: "#3974BE", glow: "#8EC6FF" },
   "digital-marketing": { Icon: Megaphone, Accent: BarChart3, Detail: MousePointer2, from: "#653A3E", to: "#D97848", glow: "#FFD0A4" },
@@ -14,7 +14,7 @@ const artwork = {
 } as const;
 
 export function CatalogArtwork({ categoryId, topicTitle, className = "" }: { categoryId: string; topicTitle?: string; className?: string }) {
-  const visual = artwork[categoryId as keyof typeof artwork] ?? { Icon: BookOpen, Accent: Sparkles, Detail: Bot, from: "#24334F", to: "#64748B", glow: "#CFD8E5" };
+  const visual = artwork[categoryId as keyof typeof artwork] ?? { Icon: BookOpen, Accent: BadgeCheck, Detail: Bot, from: "#24334F", to: "#64748B", glow: "#CFD8E5" };
   const Icon = visual.Icon;
   const Accent = visual.Accent;
   const Detail = visual.Detail;

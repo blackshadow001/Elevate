@@ -12,7 +12,7 @@ import {
   HelpCircle,
   Mail,
   ShieldCheck,
-  Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -168,7 +168,7 @@ export default function ContactPage() {
 
                 <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-xs hover:border-[#FF6B35]/50 transition-all flex items-start gap-4">
                   <div className="p-3 rounded-xl bg-sky-50 text-sky-600 shrink-0">
-                    <Sparkles className="w-5 h-5" aria-hidden="true" />
+                    <BadgeCheck className="w-5 h-5" aria-hidden="true" />
                   </div>
                   <div className="space-y-1">
                     <h3 className="text-base font-bold text-[#172033]">

@@ -17,7 +17,7 @@ import {
   ChevronDown,
   Share2,
   ArrowRight,
-  Sparkles,
+  BadgeCheck,
   MonitorPlay,
   Layers3,
   X
@@ -216,7 +216,7 @@ export function CourseDetailClient({ course, relatedCourses = [] }: CourseDetail
           {/* Left Content Column */}
           <div id="course-content" className="order-2 space-y-10 lg:order-1 lg:col-span-8">
             <section className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
-              <div className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-[#E85D2A]"><Sparkles className="h-4 w-4" /> Your learning path</div>
+              <div className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-[#E85D2A]"><BadgeCheck className="h-4 w-4" /> Your learning path</div>
               <h2 className="max-w-2xl text-2xl font-extrabold tracking-tight text-[#172033] sm:text-3xl">What you will explore</h2>
               <p className="mt-3 text-sm leading-relaxed text-[#64748B]">Follow the published lessons in order, practise the activities, and keep your progress in one place.</p>
               {course.whatYouWillLearn.length > 0 && <div className="mt-7 grid gap-3 sm:grid-cols-2">{course.whatYouWillLearn.slice(0, 6).map((outcome, index) => <div key={`${outcome}-${index}`} className="flex gap-3 rounded-2xl bg-[#FFF7F1] p-4"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#E85D2A]" /><span className="text-sm font-medium leading-relaxed text-[#172033]">{outcome}</span></div>)}</div>}

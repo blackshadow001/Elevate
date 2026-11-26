@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { LiveClass } from "@/data/liveClasses";
-import { Users, ArrowRight, Radio, Sparkles, BookOpen } from "lucide-react";
+import { Users, ArrowRight, Radio, BadgeCheck, BookOpen } from "lucide-react";
 
 interface LiveNowCardProps {
   liveClass: LiveClass;
