@@ -100,24 +100,23 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-[#26344D] flex flex-col sm:flex-row items-center justify-between text-xs text-[#94A3B8] gap-4">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1">
-            <p>© 2026 {brand.name}. All rights reserved.</p>
-            <span className="hidden sm:inline text-[#475569]" aria-hidden="true">·</span>
-            <p>
-              Powered by{" "}
-              <a
-                href="https://www.gentizeinnovations.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-white/90 hover:text-[#FF6B35] underline decoration-[#475569] underline-offset-4 transition-colors"
-              >
-                Gentize
-                <span className="sr-only"> (opens in a new tab)</span>
-              </a>
-            </p>
-          </div>
-          <div className="flex items-center gap-6">
+        <div className="pt-8 border-t border-[#26344D] flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center text-xs text-[#94A3B8] gap-4">
+          <p className="text-center lg:text-left lg:justify-self-start">
+            © 2026 {brand.name}. All rights reserved.
+          </p>
+          <p className="text-center lg:justify-self-center">
+            Powered by{" "}
+            <a
+              href="https://www.gentizeinnovations.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white/90 hover:text-[#FF6B35] underline decoration-[#475569] underline-offset-4 transition-colors"
+            >
+              Gentize
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </p>
+          <div className="flex flex-wrap items-center justify-center lg:justify-end gap-x-6 gap-y-2 lg:justify-self-end">
             <span className="flex items-center gap-1.5 text-white/80">
               <Globe className="w-3.5 h-3.5 text-[#FF6B35]" aria-hidden="true" />
               English (India) · INR (₹)
