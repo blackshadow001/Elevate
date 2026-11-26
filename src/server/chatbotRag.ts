@@ -27,7 +27,7 @@ export interface ChatReplyPayload {
   reply: string;
   cards: ChatCard[];
   followUps: string[];
-  mode: "local-rag" | "offline-llm-rag" | "cloud-llm-rag";
+  mode: "local-rag" | "cloud-llm-rag";
 }
 
 interface KnowledgeChunk {
@@ -536,7 +536,7 @@ function scoreChunks(
 
 interface LlmResult {
   text: string;
-  source: "offline-llm-rag" | "cloud-llm-rag";
+  source: "cloud-llm-rag";
 }
 
 async function callConfiguredLlm(
@@ -553,17 +553,11 @@ async function callConfiguredLlm(
   ).replace(/\/$/, "");
   const openaiModel = process.env.LLM_MODEL?.trim() || "gpt-4o-mini";
 
-  // Local/Remote Offline LLM (Ollama / vLLM / Llama.cpp)
-  const localLlmUrl = process.env.LOCAL_LLM_URL?.trim()?.replace(/\/$/, "");
-  const localLlmModel = process.env.LOCAL_LLM_MODEL?.trim() || "qwen2.5:3b";
-
-  if (!geminiKey && !openaiKey && !localLlmUrl) {
+  if (!geminiKey && !openaiKey) {
     return null;
   }
 
-  const maxConcurrent = Number(
-    process.env.MAX_CONCURRENT_LLM || (geminiKey || openaiKey ? 50 : 4)
-  );
+  const maxConcurrent = Number(process.env.MAX_CONCURRENT_LLM || 50);
 
   return withLlmConcurrencyGuard(maxConcurrent, 64, 4000, async () => {
     const contextBlock = retrieved
@@ -573,29 +567,73 @@ async function callConfiguredLlm(
       )
       .join("\n\n");
 
-    const systemPrompt = `You are Elevate Assistant, an intelligent software engineering mentor, technical problem-solver, and customer advisor on the Elevate learning platform.
+    const systemPrompt = `You are Elevate Assistant, an intelligent, concise engineering mentor and customer support specialist for the Elevate learning platform.
 
-Capabilities & Rules:
-1. Understand the user's intent deeply and answer ALL types of questions—complex coding, algorithms, SQL, system design, debugging, math, career guidance, OR Elevate account/course/payment questions—directly, accurately, and concisely.
-2. When answering questions about Elevate courses, dashboard, orders, pricing, Personal Plan, certificates, or practice labs, ground your response accurately using the Platform Facts & Retrieved Context below (never invent prices or URLs not listed).
-3. Write Big-O / math in plain text (for example O(log n) or O(n)), NEVER using LaTeX delimiters, and keep answers crisp and well-structured (under 220 words).
+Core Response Rules:
+1. Answer ALL user questions deeply and accurately — from programming, algorithms, SQL, system design, debugging, and math to Elevate courses, billing, dashboard, and certificates.
+2. Stay strictly relevant to what the user asked. Never add unrelated troubleshooting branches (for example, do NOT mention free courses or catalog suggestions when a learner reports a missing paid purchase, and do NOT ask what payment method they used). Never repeat information already visible in clickable cards; link routes cleanly using markdown labels like [Profile](/profile) or [Learning Dashboard](/dashboard) instead of bolding raw URLs.
+3. For platform/support questions, keep replies tight, empathetic, and actionable (under 110 words). For technical/coding/architecture questions, keep answers crisp, high-signal, and scannable (under 230 words, plain-text Big-O like O(log n) — never LaTeX).
+4. Use clean Markdown (short lists, inline \`code\`, fenced code blocks, compact tables when comparing options). Never wrap entire bullet headings in heavy bold+path noise.
 
 Elevate Platform Facts:
 - ${summaryStats}
-- Dashboard (/dashboard): Contains "Pick up where you left off" (enrolled courses), "My Certificates", "Upcoming Live Classes", and at the bottom "Explore More Courses" (unpurchased catalog suggestions that are NOT charged).
-- Orders & Receipts (/profile): Learners can check signed-in account email and paid order history.
-- Payments & Missing Courses (/contact): Razorpay supports UPI, cards, and netbanking; if a paid course is missing from /dashboard, verify the checkout email/Google account or contact support@elevate.courses (24h business SLA).
-- Subscriptions (/personal-plan & /personal-plan/account): Active Personal Plan automatically unlocks included pro courses without individual checkout; Free (₹0) courses also enroll in one click.
-- Practice Arenas (/practice): CodeArena (100 DSA levels), QueryMaster (Live SQL), WebForge (UI Sandbox), BugHunter (Debugging), CloudStudio (Cloud IDE) — all free in-browser.
-- Verification & Teaching: Verify credentials at /certificates/verify; apply to teach at /instructor/apply.
+- Dashboard ([Learning Dashboard](/dashboard)): "Pick up where you left off" lists enrolled courses; the bottom "Explore More Courses" row displays unpurchased catalog suggestions that are never charged.
+- Orders & Receipts ([Profile](/profile)): Shows signed-in account email and paid order receipts.
+- Missing Paid Course Support ([Contact Support](/contact)): Razorpay enrollment mismatches happen when signed in with a different email/Google account; unresolved paid orders are reconciled within 24 business hours via support@elevate.courses with the Razorpay order ID.
+- Subscriptions ([Personal Plan](/personal-plan) & [Personal Plan Account](/personal-plan/account)): Active subscribers get included Pro courses unlocked automatically.
+- Practice Arenas ([Practice Hub](/practice)): CodeArena (100 DSA levels), QueryMaster (Live SQL), WebForge (UI Sandbox), BugHunter (Debugging), CloudStudio (Cloud IDE).
+- Verification & Teaching: [Certificate Verification](/certificates/verify) and [Become an Instructor](/instructor/apply).
 
 Retrieved Elevate Context:
-${contextBlock || "No specific catalog item matched; answer the user's question thoroughly and naturally."}`;
+${contextBlock || "No specific catalog item matched; answer the user's question directly and clearly."}`;
+
+    const fewShotExamples: Array<{ role: "user" | "assistant"; content: string }> = [
+      {
+        role: "user",
+        content: "i have bought a course but it was not showing in the dashboard",
+      },
+      {
+        role: "assistant",
+        content: `Here is the fastest way to recover your purchased course:
+
+1. **Verify your signed-in account:** Open [Profile](/profile) and confirm your email matches the exact email (or Google account) used at Razorpay checkout, and check whether the order appears in your paid order history.
+2. **Refresh your access:** Hard-refresh your [Learning Dashboard](/dashboard) (or sync your subscription on [Personal Plan Account](/personal-plan/account) if you bought a Pass).
+3. **Contact support if still missing:** Email support@elevate.courses with your Razorpay order ID and checkout email — our team reconciles enrollments within 24 business hours.`,
+      },
+      {
+        role: "user",
+        content: "How do SQL window functions differ from GROUP BY?",
+      },
+      {
+        role: "assistant",
+        content: `\`GROUP BY\` collapses rows into one summary row per group, while window functions compute aggregates **across related rows while keeping every row intact**.
+
+- **Cardinality:** \`GROUP BY\` maps n rows to g groups; window functions (\`OVER (...)\`) map n rows to n rows.
+- **Columns:** \`GROUP BY\` restricts \`SELECT\` to grouped keys and aggregates; window functions let you mix row details alongside group stats like \`AVG(salary) OVER (PARTITION BY dept)\`.
+- **Evaluation order:** Window functions run *after* \`WHERE\`, \`GROUP BY\`, and \`HAVING\`, so wrap \`ROW_NUMBER()\` in a CTE before filtering.
+- **Cost:** Hash-based \`GROUP BY\` runs in roughly O(n), whereas sorted windows typically cost O(n log n) per partition.
+
+You can drill live window queries in [QueryMaster](/practice/querymaster).`,
+      },
+    ];
+
+    const normalizeReply = (raw: string) =>
+      raw
+        .trim()
+        // Replace bolded route tokens like **/profile** with clean route links
+        .replace(/\*\*(\/[a-z0-9\-_/]+)\*\*/gi, "$1")
+        // Convert inline LaTeX delimiters \(...\) to plain text if emitted
+        .replace(/\\\((.+?)\\\)/g, "$1")
+        .replace(/\n{3,}/g, "\n\n");
 
     try {
       // 1. Prefer high-scale Cloud LLM when explicitly configured
       if (geminiKey) {
         const contents = [
+          ...fewShotExamples.map((m) => ({
+            role: m.role === "user" ? "user" : "model",
+            parts: [{ text: m.content }],
+          })),
           ...history.slice(-6).map((m) => ({
             role: m.role === "user" ? "user" : "model",
             parts: [{ text: m.text }],
@@ -613,7 +651,7 @@ ${contextBlock || "No specific catalog item matched; answer the user's question 
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: systemPrompt }] },
               contents,
-              generationConfig: { maxOutputTokens: 700, temperature: 0.35 },
+              generationConfig: { maxOutputTokens: 700, temperature: 0.25 },
             }),
           }
         );
@@ -621,13 +659,9 @@ ${contextBlock || "No specific catalog item matched; answer the user's question 
           const json = await res.json();
           const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (typeof text === "string" && text.trim()) {
-            const isLocalEndpoint =
-              process.env.LOCAL_LLM_MODE === "offline" ||
-              openaiBaseUrl.includes("127.0.0.1") ||
-              openaiBaseUrl.includes("localhost");
             return {
-              text: text.trim(),
-              source: isLocalEndpoint ? "offline-llm-rag" : "cloud-llm-rag",
+              text: normalizeReply(text),
+              source: "cloud-llm-rag",
             };
           }
         }
@@ -636,25 +670,22 @@ ${contextBlock || "No specific catalog item matched; answer the user's question 
       if (openaiKey) {
         const messages = [
           { role: "system", content: systemPrompt },
+          ...fewShotExamples,
           ...history.slice(-6).map((m) => ({ role: m.role, content: m.text })),
           { role: "user", content: userQuery },
         ];
-        const isLocalEndpoint =
-          process.env.LOCAL_LLM_MODE === "offline" ||
-          openaiBaseUrl.includes("127.0.0.1") ||
-          openaiBaseUrl.includes("localhost");
         const res = await fetch(`${openaiBaseUrl}/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${openaiKey}`,
           },
-          signal: AbortSignal.timeout(isLocalEndpoint ? 45000 : 30000),
+          signal: AbortSignal.timeout(30000),
           body: JSON.stringify({
             model: openaiModel,
             messages,
-            max_tokens: isLocalEndpoint ? 300 : 2400,
-            temperature: 0.3,
+            max_tokens: 2400,
+            temperature: 0.2,
           }),
         });
         if (res.ok) {
@@ -662,44 +693,9 @@ ${contextBlock || "No specific catalog item matched; answer the user's question 
           const text = json?.choices?.[0]?.message?.content;
           if (typeof text === "string" && text.trim()) {
             return {
-              text: text.trim(),
-              source: isLocalEndpoint ? "offline-llm-rag" : "cloud-llm-rag",
+              text: normalizeReply(text),
+              source: "cloud-llm-rag",
             };
-          }
-        }
-      }
-
-      // 2. Offline Local / Dedicated Inference Server (Ollama native /api/chat)
-      if (localLlmUrl) {
-        const ollamaMessages = [
-          { role: "system", content: systemPrompt },
-          ...history.slice(-6).map((m) => ({
-            role: m.role === "user" ? "user" : "assistant",
-            content: m.text,
-          })),
-          { role: "user", content: userQuery },
-        ];
-        const res = await fetch(`${localLlmUrl}/api/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(25000),
-          body: JSON.stringify({
-            model: localLlmModel,
-            messages: ollamaMessages,
-            stream: false,
-            keep_alive: "15m",
-            options: {
-              temperature: 0.35,
-              num_ctx: 4096,
-              num_predict: 550,
-            },
-          }),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const text = json?.message?.content;
-          if (typeof text === "string" && text.trim()) {
-            return { text: text.trim(), source: "offline-llm-rag" };
           }
         }
       }
@@ -865,9 +861,17 @@ async function computeChatResponse(
   if (isPurchaseOrDashboardIssue) {
     const troubleshootingCards: ChatCard[] = [
       {
+        title: "Check Profile & Order History",
+        subtitle:
+          "Confirm your signed-in account email and paid Razorpay order receipts.",
+        meta: "Account & Receipts",
+        href: "/profile",
+        badge: "Verify Orders",
+      },
+      {
         title: "Open My Learning Dashboard",
         subtitle:
-          "Refresh your dashboard library and confirm you are signed into the exact account used during checkout.",
+          "Refresh your dashboard library to load newly activated course enrollments.",
         meta: "Learner Library",
         href: "/dashboard",
         badge: "Check Access",
@@ -875,18 +879,10 @@ async function computeChatResponse(
       {
         title: "Contact Learner Support (24h SLA)",
         subtitle:
-          "Share your Razorpay payment ID or registered email at support@elevate.courses so we can reconcile your enrollment.",
+          "Share your Razorpay payment ID or registered email at support@elevate.courses for reconciliation.",
         meta: "support@elevate.courses",
         href: "/contact",
         badge: "Order Support",
-      },
-      {
-        title: "Personal Plan Account & Sync",
-        subtitle:
-          "If you purchased Personal Plan, check subscription status and included courses here.",
-        meta: "Subscription Status",
-        href: "/personal-plan/account",
-        badge: "Personal Plan",
       },
     ];
 
@@ -905,14 +901,14 @@ async function computeChatResponse(
     );
 
     const deterministicSupportReply =
-      "If a course you bought isn't showing up in your dashboard, check these steps:\n1. Verify you're logged in with the exact same email or Google account used during Razorpay checkout.\n2. Refresh your My Learning Dashboard (/dashboard) or check Personal Plan Account (/personal-plan/account) if you subscribed to a pass.\n3. If payment succeeded and the course is still missing, message us on Contact Support (/contact) or email support@elevate.courses with your payment/order receipt ID so our team can reconcile your enrollment right away.";
+      "Here is how to recover a missing purchased course:\n\n1. **Check your signed-in email:** Visit [Profile](/profile) to confirm your account email matches Razorpay checkout and check your paid order history.\n2. **Refresh your library:** Hard-refresh your [Learning Dashboard](/dashboard) (or sync Personal Plan on [Personal Plan Account](/personal-plan/account)).\n3. **Contact support:** Email support@elevate.courses via [Contact Support](/contact) with your Razorpay order ID for reconciliation within 24 business hours.";
 
     return {
       reply: llmResult ? llmResult.text : deterministicSupportReply,
       cards: troubleshootingCards,
       followUps: [
         "Contact support",
-        "Tell me about Personal Plan",
+        "Check Personal Plan sync",
         "Recommend top courses",
       ],
       mode: llmResult ? llmResult.source : "local-rag",
@@ -953,12 +949,13 @@ async function computeChatResponse(
     summaryStats
   );
 
-  // Build deduplicated cards from top retrieved context
+  // Build deduplicated cards from top retrieved context (at most 1 card per article/route)
   const dedupedCards: ChatCard[] = [];
-  const seenHrefs = new Set<string>();
+  const seenBaseHrefs = new Set<string>();
   for (const item of retrieved) {
-    if (seenHrefs.has(item.href)) continue;
-    seenHrefs.add(item.href);
+    const baseHref = item.href.split("#")[0];
+    if (seenBaseHrefs.has(baseHref)) continue;
+    seenBaseHrefs.add(baseHref);
     dedupedCards.push({
       title: item.title,
       subtitle: item.cardSubtitle,
@@ -1088,7 +1085,7 @@ export async function generateChatResponse(
   // That guarantees 20,000 simultaneous queries on shared/popular questions complete with <1ms overhead.
   const canUseAnswerCache = history.length <= 1;
   if (canUseAnswerCache) {
-    const cacheKey = `chat:ans:v5:${normalizeCacheKey(query)}`;
+    const cacheKey = `chat:ans:v6:${normalizeCacheKey(query)}`;
     return cachedAsync(cacheKey, 10 * 60 * 1000, () =>
       computeChatResponse(query, history)
     );

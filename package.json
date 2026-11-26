@@ -9,7 +9,6 @@
     "dev": "next dev --webpack -p 4500",
     "build": "next build --webpack",
     "start": "node scripts/db.mjs && node scripts/start-server.mjs",
-    "llm:local": "python scripts/local-llm-server.py",
     "lint": "eslint",
     "db:migrate": "node scripts/db.mjs",
     "db:seed": "node scripts/seed.mjs",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -21,6 +21,367 @@ interface ChatMessage {
 }
 
 const STORAGE_KEY = "elevate_chatbot_history_v1";
+
+const SAFE_ROUTE_REGEX =
+  /^\/(?:dashboard|profile|contact|faq|courses(?:\/[A-Za-z0-9\-_%]+)?|personal-plan(?:\/[A-Za-z0-9\-_]+)?|practice(?:\/[A-Za-z0-9\-_]+)?|blog(?:\/[A-Za-z0-9\-_#]+)?|certificates(?:\/verify(?:\/[A-Za-z0-9\-_]+)?)?|instructor\/apply|live(?:\/[A-Za-z0-9\-_/]+)?)$/;
+
+const INLINE_TOKEN_REGEX =
+  /(\[[^\]\n]+\]\(\/[A-Za-z0-9\-_/#%?=&.]+\)|`[^`\n]+`|\*\*[^*\n]+?\*\*|\*[^*\n]+?\*|support@elevate\.courses|(?<![A-Za-z0-9])\/(?:dashboard|profile|contact|faq|courses(?:\/[A-Za-z0-9\-_%]+)?|personal-plan(?:\/account|\/checkout)?|practice(?:\/[A-Za-z0-9\-_]+)?|blog(?:\/[A-Za-z0-9\-_#]+)?|certificates(?:\/verify)?|instructor\/apply)(?![A-Za-z0-9\-_/]))/g;
+
+function renderInlineTokens(
+  text: string,
+  keyPrefix: string,
+  onNavigate: () => void
+): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  INLINE_TOKEN_REGEX.lastIndex = 0;
+
+  while ((match = INLINE_TOKEN_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+    const token = match[0];
+    const tokenKey = `${keyPrefix}-${match.index}`;
+
+    if (token.startsWith("[")) {
+      const linkMatch = /^\[([^\]\n]+)\]\((\/[^)\s]+)\)$/.exec(token);
+      if (linkMatch) {
+        const [, label, href] = linkMatch;
+        nodes.push(
+          <Link
+            key={tokenKey}
+            href={href}
+            onClick={onNavigate}
+            className="font-semibold text-[#5B21FF] underline decoration-[#5B21FF]/40 underline-offset-2 hover:text-[#4314B8]"
+          >
+            {label}
+          </Link>
+        );
+      } else {
+        nodes.push(token);
+      }
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      nodes.push(
+        <code
+          key={tokenKey}
+          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[12px] text-[#334155]"
+        >
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else if (token.startsWith("**") && token.endsWith("**")) {
+      nodes.push(
+        <strong key={tokenKey} className="font-semibold text-[#172033]">
+          {renderInlineTokens(token.slice(2, -2), `${tokenKey}-b`, onNavigate)}
+        </strong>
+      );
+    } else if (token.startsWith("*") && token.endsWith("*")) {
+      nodes.push(
+        <em key={tokenKey} className="italic">
+          {token.slice(1, -1)}
+        </em>
+      );
+    } else if (token === "support@elevate.courses") {
+      nodes.push(
+        <a
+          key={tokenKey}
+          href="mailto:support@elevate.courses"
+          className="font-semibold text-[#5B21FF] underline decoration-[#5B21FF]/40 underline-offset-2 hover:text-[#4314B8]"
+        >
+          {token}
+        </a>
+      );
+    } else if (SAFE_ROUTE_REGEX.test(token)) {
+      nodes.push(
+        <Link
+          key={tokenKey}
+          href={token}
+          onClick={onNavigate}
+          className="font-semibold text-[#5B21FF] underline decoration-[#5B21FF]/40 underline-offset-2 hover:text-[#4314B8]"
+        >
+          {token}
+        </Link>
+      );
+    } else {
+      nodes.push(token);
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+  return nodes;
+}
+
+function parseTableRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function renderTextBlocks(
+  segment: string,
+  segKey: string,
+  onNavigate: () => void
+): ReactNode[] {
+  const lines = segment.replace(/\r\n/g, "\n").split("\n");
+  const blocks: ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      i += 1;
+      continue;
+    }
+
+    // Markdown table block
+    if (
+      trimmed.startsWith("|") &&
+      i + 1 < lines.length &&
+      /^\|?[\s:-]+\|[\s|:-]*$/.test(lines[i + 1].trim())
+    ) {
+      const headers = parseTableRow(trimmed);
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        rows.push(parseTableRow(lines[i]));
+        i += 1;
+      }
+      blocks.push(
+        <div
+          key={`${segKey}-tbl-${i}`}
+          className="my-2 overflow-x-auto rounded-xl border border-[#E2E8F0]"
+        >
+          <table className="w-full border-collapse text-left text-[12px]">
+            <thead className="bg-slate-50 text-[#172033]">
+              <tr>
+                {headers.map((h, idx) => (
+                  <th
+                    key={`${segKey}-th-${idx}`}
+                    scope="col"
+                    className="border-b border-[#E2E8F0] px-2.5 py-1.5 font-bold"
+                  >
+                    {renderInlineTokens(h, `${segKey}-th-${idx}`, onNavigate)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F1F5F9]">
+              {rows.map((row, rIdx) => (
+                <tr key={`${segKey}-tr-${rIdx}`}>
+                  {headers.map((_, cIdx) => (
+                    <td
+                      key={`${segKey}-td-${rIdx}-${cIdx}`}
+                      className="px-2.5 py-1.5 align-top text-[#334155]"
+                    >
+                      {renderInlineTokens(
+                        row[cIdx] || "",
+                        `${segKey}-td-${rIdx}-${cIdx}`,
+                        onNavigate
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    // Markdown heading
+    const headingMatch = /^#{1,4}\s+(.+)$/.exec(trimmed);
+    if (headingMatch) {
+      blocks.push(
+        <h3
+          key={`${segKey}-h-${i}`}
+          className="pt-1 text-[13.5px] font-bold leading-snug text-[#172033]"
+        >
+          {renderInlineTokens(headingMatch[1], `${segKey}-h-${i}`, onNavigate)}
+        </h3>
+      );
+      i += 1;
+      continue;
+    }
+
+    // Ordered list
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const items: string[] = [];
+      const startLine = i;
+      while (i < lines.length) {
+        const cur = lines[i].trim();
+        const itemMatch = /^\d+\.\s+(.+)$/.exec(cur);
+        if (itemMatch) {
+          items.push(itemMatch[1]);
+          i += 1;
+        } else if (
+          cur &&
+          items.length > 0 &&
+          !cur.startsWith("#") &&
+          !/^[-*•]\s+/.test(cur) &&
+          !cur.startsWith("|")
+        ) {
+          items[items.length - 1] = `${items[items.length - 1]} ${cur}`;
+          i += 1;
+        } else {
+          break;
+        }
+      }
+      blocks.push(
+        <ol
+          key={`${segKey}-ol-${startLine}`}
+          className="my-1.5 list-decimal space-y-1.5 pl-4.5 text-[13.5px] leading-relaxed"
+        >
+          {items.map((item, idx) => (
+            <li key={`${segKey}-oli-${startLine}-${idx}`}>
+              {renderInlineTokens(
+                item,
+                `${segKey}-oli-${startLine}-${idx}`,
+                onNavigate
+              )}
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Unordered list
+    if (/^[-*•]\s+/.test(trimmed)) {
+      const items: string[] = [];
+      const startLine = i;
+      while (i < lines.length) {
+        const cur = lines[i].trim();
+        const itemMatch = /^[-*•]\s+(.+)$/.exec(cur);
+        if (itemMatch) {
+          items.push(itemMatch[1]);
+          i += 1;
+        } else if (
+          cur &&
+          items.length > 0 &&
+          !cur.startsWith("#") &&
+          !/^\d+\.\s+/.test(cur) &&
+          !cur.startsWith("|")
+        ) {
+          items[items.length - 1] = `${items[items.length - 1]} ${cur}`;
+          i += 1;
+        } else {
+          break;
+        }
+      }
+      blocks.push(
+        <ul
+          key={`${segKey}-ul-${startLine}`}
+          className="my-1.5 list-disc space-y-1 pl-4.5 text-[13.5px] leading-relaxed"
+        >
+          {items.map((item, idx) => (
+            <li key={`${segKey}-uli-${startLine}-${idx}`}>
+              {renderInlineTokens(
+                item,
+                `${segKey}-uli-${startLine}-${idx}`,
+                onNavigate
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Standard paragraph
+    const paraLines: string[] = [];
+    const startLine = i;
+    while (i < lines.length) {
+      const cur = lines[i].trim();
+      if (
+        !cur ||
+        /^#{1,4}\s+/.test(cur) ||
+        /^\d+\.\s+/.test(cur) ||
+        /^[-*•]\s+/.test(cur) ||
+        cur.startsWith("|")
+      ) {
+        break;
+      }
+      paraLines.push(cur);
+      i += 1;
+    }
+    if (paraLines.length > 0) {
+      blocks.push(
+        <p key={`${segKey}-p-${startLine}`} className="leading-relaxed">
+          {renderInlineTokens(
+            paraLines.join(" "),
+            `${segKey}-p-${startLine}`,
+            onNavigate
+          )}
+        </p>
+      );
+    }
+  }
+
+  return blocks;
+}
+
+function FormattedMessageContent({
+  text,
+  onNavigate,
+}: {
+  text: string;
+  onNavigate: () => void;
+}) {
+  const parts: ReactNode[] = [];
+  const codeBlockRegex = /```([A-Za-z0-9_-]*)\n?([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      const before = text.slice(lastIndex, match.index);
+      parts.push(
+        <Fragment key={`seg-${lastIndex}`}>
+          {renderTextBlocks(before, `seg-${lastIndex}`, onNavigate)}
+        </Fragment>
+      );
+    }
+    const lang = match[1];
+    const code = match[2].replace(/\n$/, "");
+    parts.push(
+      <div
+        key={`code-${match.index}`}
+        className="my-2 overflow-hidden rounded-xl border border-slate-800/40 bg-[#0F172A] text-slate-100"
+      >
+        {lang && (
+          <div className="border-b border-white/10 bg-white/5 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-slate-400">
+            {lang}
+          </div>
+        )}
+        <pre className="overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed">
+          <code>{code}</code>
+        </pre>
+      </div>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(
+      <Fragment key={`seg-${lastIndex}`}>
+        {renderTextBlocks(text.slice(lastIndex), `seg-${lastIndex}`, onNavigate)}
+      </Fragment>
+    );
+  }
+
+  return <div className="space-y-2">{parts}</div>;
+}
 
 const INITIAL_MESSAGE: ChatMessage = {
   id: "welcome",
@@ -163,7 +524,7 @@ export function ElevateChatbot() {
       {isOpen && (
         <section
           role="dialog"
-          aria-label="Elevate Assistant Chat"
+          aria-labelledby="elevate-chat-title"
           className="flex w-[calc(100vw-2rem)] sm:w-[400px] h-[min(78vh,600px)] flex-col overflow-hidden rounded-3xl border border-[#E2E8F0] bg-[#FFFDF9] shadow-[0_24px_64px_rgba(23,32,51,0.22)]"
         >
           {/* Header */}
@@ -174,7 +535,10 @@ export function ElevateChatbot() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="truncate text-sm font-extrabold tracking-tight">
+                  <h2
+                    id="elevate-chat-title"
+                    className="truncate text-sm font-extrabold tracking-tight"
+                  >
                     Elevate Assistant
                   </h2>
                   <span
@@ -210,7 +574,13 @@ export function ElevateChatbot() {
           </header>
 
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 space-y-4">
+          <div
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            aria-label="Chat messages"
+            className="flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 space-y-4"
+          >
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -219,13 +589,20 @@ export function ElevateChatbot() {
                 } space-y-2.5`}
               >
                 <div
-                  className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13.5px] leading-relaxed shadow-2xs ${
+                  className={`max-w-[90%] break-words rounded-2xl px-4 py-3 text-[13.5px] leading-relaxed shadow-2xs ${
                     msg.role === "user"
-                      ? "rounded-br-sm bg-[#5B21FF] font-medium text-white"
+                      ? "whitespace-pre-wrap rounded-br-sm bg-[#5B21FF] font-medium text-white"
                       : "rounded-bl-sm border border-[#E2E8F0] bg-white text-[#172033]"
                   }`}
                 >
-                  {msg.text}
+                  {msg.role === "assistant" ? (
+                    <FormattedMessageContent
+                      text={msg.text}
+                      onNavigate={() => setIsOpen(false)}
+                    />
+                  ) : (
+                    msg.text
+                  )}
                 </div>
 
                 {/* Clickable Recommendation Cards */}
