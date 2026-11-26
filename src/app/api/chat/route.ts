@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       "anonymous";
-    if (!checkRateLimit(`chat:${ip}`, 40, 60_000)) {
+    if (!checkRateLimit(`chat:${ip}`, 60, 60_000)) {
       throw new ApiError(
         429,
         "RATE_LIMITED",

@@ -219,7 +219,7 @@ export function ElevateChatbot() {
                 } space-y-2.5`}
               >
                 <div
-                  className={`max-w-[88%] rounded-2xl px-4 py-3 text-[13.5px] leading-relaxed shadow-2xs ${
+                  className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[13.5px] leading-relaxed shadow-2xs ${
                     msg.role === "user"
                       ? "rounded-br-sm bg-[#5B21FF] font-medium text-white"
                       : "rounded-bl-sm border border-[#E2E8F0] bg-white text-[#172033]"
