@@ -561,9 +561,11 @@ async function callConfiguredLlm(
     return null;
   }
 
-  const maxConcurrent = Number(process.env.MAX_CONCURRENT_LLM || (geminiKey || openaiKey ? 20 : 4));
+  const maxConcurrent = Number(
+    process.env.MAX_CONCURRENT_LLM || (geminiKey || openaiKey ? 50 : 4)
+  );
 
-  return withLlmConcurrencyGuard(maxConcurrent, 16, 2000, async () => {
+  return withLlmConcurrencyGuard(maxConcurrent, 64, 4000, async () => {
     const contextBlock = retrieved
       .map(
         (c, i) =>
@@ -571,18 +573,24 @@ async function callConfiguredLlm(
       )
       .join("\n\n");
 
-    const systemPrompt = `You are Elevate Assistant, an expert software engineering mentor, problem solver, and course advisor on the Elevate learning platform.
+    const systemPrompt = `You are Elevate Assistant, an intelligent software engineering mentor, technical problem-solver, and customer advisor on the Elevate learning platform.
 
 Capabilities & Rules:
-1. Answer ALL types of questions—coding, algorithms, SQL, system design, debugging, math, career strategy—accurately and concisely.
-2. NEVER invent numbers, fees, or rupee prices if an exact price is not explicitly shown in the Live Platform Snapshot below; instead direct users to /personal-plan or the course card for live pricing.
-3. Write complexity/math in plain text (for example O(log n) or O(n)), NEVER using LaTeX delimiters, and keep responses sharp (under 220 words).
+1. Understand the user's intent deeply and answer ALL types of questions—complex coding, algorithms, SQL, system design, debugging, math, career guidance, OR Elevate account/course/payment questions—directly, accurately, and concisely.
+2. When answering questions about Elevate courses, dashboard, orders, pricing, Personal Plan, certificates, or practice labs, ground your response accurately using the Platform Facts & Retrieved Context below (never invent prices or URLs not listed).
+3. Write Big-O / math in plain text (for example O(log n) or O(n)), NEVER using LaTeX delimiters, and keep answers crisp and well-structured (under 220 words).
 
-Live Platform Snapshot:
-${summaryStats}
+Elevate Platform Facts:
+- ${summaryStats}
+- Dashboard (/dashboard): Contains "Pick up where you left off" (enrolled courses), "My Certificates", "Upcoming Live Classes", and at the bottom "Explore More Courses" (unpurchased catalog suggestions that are NOT charged).
+- Orders & Receipts (/profile): Learners can check signed-in account email and paid order history.
+- Payments & Missing Courses (/contact): Razorpay supports UPI, cards, and netbanking; if a paid course is missing from /dashboard, verify the checkout email/Google account or contact support@elevate.courses (24h business SLA).
+- Subscriptions (/personal-plan & /personal-plan/account): Active Personal Plan automatically unlocks included pro courses without individual checkout; Free (₹0) courses also enroll in one click.
+- Practice Arenas (/practice): CodeArena (100 DSA levels), QueryMaster (Live SQL), WebForge (UI Sandbox), BugHunter (Debugging), CloudStudio (Cloud IDE) — all free in-browser.
+- Verification & Teaching: Verify credentials at /certificates/verify; apply to teach at /instructor/apply.
 
 Retrieved Elevate Context:
-${contextBlock || "No exact catalog match found; answer the user's question directly and thoughtfully, and optionally invite them to practice in Elevate's arenas when relevant."}`;
+${contextBlock || "No specific catalog item matched; answer the user's question thoroughly and naturally."}`;
 
     try {
       // 1. Prefer high-scale Cloud LLM when explicitly configured
@@ -701,6 +709,28 @@ ${contextBlock || "No exact catalog match found; answer the user's question dire
 
     return null;
   });
+}
+
+function suggestFollowUps(lower: string, isSupport: boolean): string[] {
+  if (isSupport) {
+    return [
+      "Tell me about Personal Plan",
+      "How do I contact support?",
+      "Recommend top courses",
+    ];
+  }
+  if (/\b(sql|database|query|index|table)\b/.test(lower)) {
+    return [
+      "Open SQL QueryMaster",
+      "Explain B-Tree composite indexes",
+      "Recommend Data & SQL guides",
+    ];
+  }
+  return [
+    "Show a code example",
+    "Open CodeArena practice",
+    "Recommend top courses",
+  ];
 }
 
 function formatPlatformSummary(
@@ -940,14 +970,13 @@ async function computeChatResponse(
   }
 
   if (llmResult) {
+    const isSupportQuery = /\b(bought|purchase|purchased|paid|payment|dashboard|order|support|contact|refund|account|verify|certificate)\b/.test(
+      lower
+    );
     return {
       reply: llmResult.text,
       cards: dedupedCards,
-      followUps: [
-        "Give a code example",
-        "Recommend a practice lab",
-        "Tell me about Personal Plan",
-      ],
+      followUps: suggestFollowUps(lower, isSupportQuery),
       mode: llmResult.source,
     };
   }
@@ -1059,7 +1088,7 @@ export async function generateChatResponse(
   // That guarantees 20,000 simultaneous queries on shared/popular questions complete with <1ms overhead.
   const canUseAnswerCache = history.length <= 1;
   if (canUseAnswerCache) {
-    const cacheKey = `chat:ans:v3:${normalizeCacheKey(query)}`;
+    const cacheKey = `chat:ans:v4:${normalizeCacheKey(query)}`;
     return cachedAsync(cacheKey, 10 * 60 * 1000, () =>
       computeChatResponse(query, history)
     );
