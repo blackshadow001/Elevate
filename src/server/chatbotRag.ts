@@ -649,11 +649,11 @@ ${contextBlock || "No specific catalog item matched; answer the user's question 
             "Content-Type": "application/json",
             Authorization: `Bearer ${openaiKey}`,
           },
-          signal: AbortSignal.timeout(isLocalEndpoint ? 45000 : 15000),
+          signal: AbortSignal.timeout(isLocalEndpoint ? 45000 : 30000),
           body: JSON.stringify({
             model: openaiModel,
             messages,
-            max_tokens: isLocalEndpoint ? 300 : 650,
+            max_tokens: isLocalEndpoint ? 300 : 2400,
             temperature: 0.3,
           }),
         });
@@ -1088,7 +1088,7 @@ export async function generateChatResponse(
   // That guarantees 20,000 simultaneous queries on shared/popular questions complete with <1ms overhead.
   const canUseAnswerCache = history.length <= 1;
   if (canUseAnswerCache) {
-    const cacheKey = `chat:ans:v4:${normalizeCacheKey(query)}`;
+    const cacheKey = `chat:ans:v5:${normalizeCacheKey(query)}`;
     return cachedAsync(cacheKey, 10 * 60 * 1000, () =>
       computeChatResponse(query, history)
     );
