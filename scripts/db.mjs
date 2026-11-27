@@ -62,7 +62,8 @@ try {
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`);
   const addExistingPractice = db.prepare(`UPDATE guided_steps SET practice_json=?
     WHERE id=? AND path_id=? AND practice_json='{}'`);
-  const shortTitle = (description) => description.split(/\.\s/)[0].slice(0, 72).replace(/[.,;:]+$/, '');
+  const updateOldTitle = db.prepare('UPDATE guided_steps SET title=? WHERE id=? AND path_id=? AND title=?');
+  const oldShortTitle = (description) => description.split(/\.\s/)[0].slice(0, 72).replace(/[.,;:]+$/, '');
   for (const path of comprehensiveCurriculum) {
     const programs = instructionPrograms[path.slug];
     if (!programs || programs.length !== path.modules.length)
@@ -71,21 +72,22 @@ try {
     addProgram.run(path.id, path.slug, path.title, path.summary, path.project.title,
       path.project.brief, JSON.stringify(path.project.requirements), JSON.stringify(exam));
     let position = 0;
-    const add = (unit, kind, block, title, body, rules = {}, practice = null) => {
+    const add = (unit, kind, block, title, body, rules = {}, practice = null, previousTitle = null) => {
       position += 1;
       const stepId = `${path.id}-${String(position).padStart(3, '0')}`;
       const practiceJson = JSON.stringify(practice || {});
       addProgramStep.run(stepId, path.id, position,
         kind, title, body, '', JSON.stringify(rules), unit.chapter, unit.title, block, practiceJson);
       if (practice) addExistingPractice.run(practiceJson, stepId, path.id);
+      if (previousTitle) updateOldTitle.run(title, stepId, path.id, previousTitle);
     };
     for (const [moduleIndex, unit] of path.modules.entries()) {
       const practice = programs[moduleIndex];
       add(unit, 'reading', 'lecture', unit.title, unit.theory);
       add(unit, 'reading', 'lecture', `Worked example: ${unit.title}`.slice(0, 110), unit.example);
-      add(unit, 'reading', 'workshop', shortTitle(unit.workshop), `${unit.workshop}\n\nFollow the program below before continuing.`, {}, practice);
-      add(unit, 'project', 'lab', shortTitle(unit.lab), `${unit.lab}\n\nDescribe what you built or tested in at least 120 characters. This is a practice reflection, not a code test. The final certification project receives human review.`,
-        { minChars: 120 }, { tools: practice.tools, challenge: practice.challenge, expect: practice.expect });
+      add(unit, 'reading', 'workshop', `Practice: ${unit.title}`, `${unit.workshop}\n\nFollow the program below before continuing.`, {}, practice, oldShortTitle(unit.workshop));
+      add(unit, 'project', 'lab', `Try it yourself: ${unit.title}`, `${unit.lab}\n\nDescribe what you built or tested in at least 120 characters. This is a practice reflection, not a code test. The final certification project receives human review.`,
+        { minChars: 120 }, { tools: practice.tools, challenge: practice.challenge, expect: practice.expect }, oldShortTitle(unit.lab));
       add(unit, 'reading', 'review', `Review: ${unit.title}`.slice(0, 110), unit.review);
       unit.checks.forEach(([question, answer]) =>
         add(unit, 'fill_blank', 'quiz', question.slice(0, 100), question, { expected: answer }));

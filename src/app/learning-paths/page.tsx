@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, Code2 } from "lucide-react";
+import { ArrowRight, Award, BookOpenCheck, Code2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
@@ -31,6 +31,15 @@ export default function LearningPathsPage() {
     <p className="text-xs font-extrabold uppercase tracking-widest text-[#E85D2A]">Guided learning</p>
     <h1 className="mt-2 text-4xl font-black text-[#172033]">Learn by doing, one step at a time.</h1>
     <p className="mt-3 max-w-2xl text-[#64748B]">Theory, worked examples, guided workshops, independent labs, module reviews and quizzes. Complete the coursework, then submit a final project and assessment for an Elevate certificate.</p>
+    <section className="mt-8 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="guided-purpose">
+      <h2 id="guided-purpose" className="text-2xl font-extrabold text-[#172033]">Why we built guided learning</h2>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-[#475569]">Elevate helps beginners turn an unfamiliar subject into a working skill. Every path explains the idea and its purpose, walks through an example, gives you a program to try, and asks you to build a variation. The final project brings those parts together.</p>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl bg-[#F7F8FA] p-5"><BookOpenCheck className="h-6 w-6 text-[#E85D2A]" /><h3 className="mt-3 font-extrabold text-[#172033]">Understand</h3><p className="mt-2 text-sm leading-6 text-[#475569]">Learn what a concept means, when to use it, and how the example works.</p></div>
+        <div className="rounded-2xl bg-[#F7F8FA] p-5"><Code2 className="h-6 w-6 text-[#E85D2A]" /><h3 className="mt-3 font-extrabold text-[#172033]">Build</h3><p className="mt-2 text-sm leading-6 text-[#475569]">Follow steps in your editor or terminal, check the result, then try the lab yourself.</p></div>
+        <div className="rounded-2xl bg-[#F7F8FA] p-5"><Award className="h-6 w-6 text-[#E85D2A]" /><h3 className="mt-3 font-extrabold text-[#172033]">Show your skill</h3><p className="mt-2 text-sm leading-6 text-[#475569]">Complete the modules, pass the assessment, and submit a final project for administrator review.</p></div>
+      </div>
+    </section>
     {error && <p role="alert" className="mt-8 text-red-700">{error}</p>}
     <div className="mt-8 flex gap-3"><button type="button" onClick={() => switchView("current")} aria-pressed={view === "current"} className={`rounded-full px-4 py-2 text-sm font-bold ${view === "current" ? "bg-[#172033] text-white" : "border bg-white"}`}>Current paths</button><button type="button" onClick={() => switchView("archive")} aria-pressed={view === "archive"} className={`rounded-full px-4 py-2 text-sm font-bold ${view === "archive" ? "bg-[#172033] text-white" : "border bg-white"}`}>Archive</button></div>
     <div className="mt-6 grid gap-5 md:grid-cols-2">{paths.map((path) => <Link key={path.id} href={`/learning-paths/${path.slug}`} className="group rounded-3xl border border-[#E5E7EB] bg-white p-7 shadow-sm transition-shadow hover:shadow-lg focus-visible:outline-2 focus-visible:outline-[#E85D2A]">

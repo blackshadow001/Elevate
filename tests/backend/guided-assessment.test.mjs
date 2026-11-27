@@ -58,6 +58,12 @@ test('assessment certificate requires finished coursework, a passed exam and hum
   const slug = 'python-basics';
   const path = await call(`/api/learning-paths/${slug}`);
   assert.equal(path.body.data.steps.length, 42);
+  assert.ok(path.body.data.guide.purpose.length > 80);
+  assert.equal(path.body.data.guide.modules.length, 6);
+  assert.ok(path.body.data.guide.modules.every((unit) => unit.concepts.length >= 3 && unit.walkthrough.length >= 3 && unit.pitfalls.length >= 2));
+  const gitPath = await call('/api/learning-paths/git-basics');
+  assert.match(gitPath.body.data.guide.purpose, /GitHub hosts a Git repository online/);
+  assert.match(gitPath.body.data.guide.modules[0].concepts[0][1], /offline/);
   assert.equal(path.body.data.steps[2].block_type, 'workshop');
   assert.equal(path.body.data.steps[2].practice.steps.length, 3);
   assert.match(path.body.data.steps[2].practice.code, /Decimal/);

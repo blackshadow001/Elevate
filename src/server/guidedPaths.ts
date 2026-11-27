@@ -3,6 +3,7 @@ import { ApiError } from "@/server/api";
 import { getDb, transaction } from "@/server/db";
 import type { SessionUser } from "@/server/auth";
 import { guidedAssessment } from "@/server/guidedAssessment";
+import { learningGuides } from "@/data/learningGuides";
 
 type PathRow = { id: string; slug: string; title: string; summary: string; owner_id: string | null; status: string; project_title: string; project_brief: string; project_requirements_json: string };
 type StepRow = { id: string; path_id: string; position: number; kind: string; title: string; body: string; starter_code: string; answer_json: string; chapter_title: string; module_title: string; block_type: string; practice_json: string };
@@ -48,7 +49,8 @@ export function guidedPath(slug: string, user: SessionUser | null) {
   const completedIds = user ? (getDb().prepare(`SELECT sp.step_id FROM guided_step_progress sp JOIN guided_steps s ON s.id=sp.step_id
     WHERE s.path_id=? AND sp.user_id=? AND sp.passed=1`).all(path.id, user.id) as { step_id: string }[]).map((row) => row.step_id) : [];
   const completion = user ? getDb().prepare("SELECT id,issued_at FROM guided_path_completions WHERE path_id=? AND user_id=?").get(path.id, user.id) : null;
-  return { id: path.id, slug: path.slug, title: path.title, summary: path.summary, steps, completedIds, completion,
+  const guide = learningGuides[path.slug] || null;
+  return { id: path.id, slug: path.slug, title: path.title, summary: path.summary, steps, completedIds, completion, guide,
     project: path.project_title ? { title: path.project_title, brief: path.project_brief,
       requirements: JSON.parse(path.project_requirements_json) as string[] } : null,
     assessment: user && path.project_title ? guidedAssessment(path.id, user.id) : null };
