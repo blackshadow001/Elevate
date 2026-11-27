@@ -49,6 +49,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
     group: "COURSES",
     items: [
       { label: "Review courses", href: "/control-center/courses/approvals", icon: ClipboardCheck },
+      { label: "Review learning paths", href: "/control-center/learning-paths", icon: BookOpen },
       { label: "All courses", href: "/control-center/courses", icon: BookOpen },
       { label: "Course pricing", href: "/control-center/pricing", icon: IndianRupee },
     ],

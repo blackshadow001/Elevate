@@ -34,6 +34,7 @@ function InstructorStudioContent({
     { label: "Overview", href: "/instructor", icon: LayoutDashboard },
     { label: "My Courses", href: "/instructor/courses", icon: BookOpen },
     { label: "Create Course", href: "/instructor/courses/create", icon: PlusCircle },
+    { label: "Learning Paths", href: "/instructor/learning-paths", icon: GraduationCap },
     { label: "Live Classes", href: "/instructor/live-classes", icon: Video },
     { label: "Bootcamps", href: "/instructor/bootcamps", icon: Flame },
     { label: "Students", href: "/instructor/students", icon: Users },

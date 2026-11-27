@@ -118,6 +118,13 @@ export default function PracticeHubPage() {
         {/* Practice Hero Banner (Full-Bleed Pure CSS/SVG/HTML) */}
         <PracticeHeroBannerCSS />
 
+        <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-5 rounded-3xl border border-orange-200 bg-orange-50 p-7 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="text-xs font-bold uppercase tracking-widest text-[#D65B28]">Guided learning</p><h2 className="mt-2 text-2xl font-extrabold text-[#172033]">Start with a clear path</h2><p className="mt-2 max-w-2xl text-sm text-[#64748B]">Learn web development in small steps, check your answers instantly, and build a final project. Sign in to keep your progress across devices.</p></div>
+            <Link href="/learning-paths" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#172033] px-5 py-3 text-sm font-bold text-white">Explore paths <ArrowRight className="h-4 w-4" /></Link>
+          </div>
+        </section>
+
         {/* Daily Coding Challenge (Dedicated Standalone Section) */}
         <section id="daily-challenge" className="pt-12 sm:pt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172033] via-[#1E293B] to-[#0F172A] p-7 sm:p-10 text-white shadow-xl border border-slate-800">

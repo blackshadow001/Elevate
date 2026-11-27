@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [upcomingClasses, setUpcomingClasses] = useState<LiveClass[]>([]);
   const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
   const [recommendationError, setRecommendationError] = useState(false);
+  const [guidedProgress, setGuidedProgress] = useState<{ completed: number; total: number } | null>(null);
   useEffect(() => {
     if (isReady && !isAuthenticated) router.replace("/login");
   }, [isReady, isAuthenticated, router]);
@@ -30,6 +31,15 @@ export default function DashboardPage() {
     liveService.getLiveClasses().then((items) => {
       if (active) setUpcomingClasses(items.filter((item) => item.status === "scheduled" || item.status === "live"));
     }).catch(() => { if (active) setUpcomingClasses([]); });
+    return () => { active = false; };
+  }, [isAuthenticated]);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    fetch("/api/learning-paths/web-development-foundations", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => { if (active && body?.data) setGuidedProgress({ completed: body.data.completedIds.length, total: body.data.steps.length }); })
+      .catch(() => {});
     return () => { active = false; };
   }, [isAuthenticated]);
   useEffect(() => {
@@ -84,6 +94,7 @@ export default function DashboardPage() {
       <main id="learning-tools" className="flex-1 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           <section className="space-y-5"><div><p className="text-xs font-bold uppercase tracking-widest text-[#E85D2A]">Your learning space</p><h2 className="mt-1 text-2xl font-extrabold text-[#172033]">Welcome back, {user.name.split(" ")[0]}</h2></div>{continueCourses.length > 0 && <><h3 className="text-lg font-bold text-[#172033]">Pick up where you left off</h3><div className="grid gap-4 md:grid-cols-3">{continueCourses.map((course) => <Link key={course.courseId} href={`/learn/${course.courseSlug}/${course.lastLessonId}`} className="group flex overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm hover:border-[#FF6B35]"><div className="h-32 w-24 shrink-0 bg-[#172033]">{course.courseImage && <img src={course.courseImage} alt="" className="h-full w-full object-cover" />}</div><div className="min-w-0 flex-1 p-4"><p className="line-clamp-2 text-sm font-bold text-[#172033]">{course.courseTitle}</p><p className="mt-2 line-clamp-1 text-xs text-[#64748B]">Next: {course.lastLessonTitle}</p><div className="mt-3 h-1.5 rounded-full bg-[#E5E7EB]"><div className="h-full rounded-full bg-[#FF6B35]" style={{ width: `${course.progressPercent}%` }} /></div><p className="mt-1 text-xs font-semibold text-[#E85D2A]">{course.progressPercent}% complete · Continue →</p></div></Link>)}</div></>}</section>
+          {guidedProgress && <Link href="/learning-paths/web-development-foundations" className="block rounded-2xl border border-orange-200 bg-white p-6 shadow-sm hover:border-[#FF6B35]"><p className="text-xs font-bold uppercase tracking-widest text-[#E85D2A]">Guided learning path</p><h3 className="mt-2 text-xl font-extrabold text-[#172033]">Web Development Foundations</h3><p className="mt-1 text-sm text-[#64748B]">{guidedProgress.completed} of {guidedProgress.total} steps complete · Continue learning →</p><div className="mt-4 h-2 max-w-lg overflow-hidden rounded-full bg-[#E5E7EB]"><div className="h-full rounded-full bg-[#FF6B35]" style={{ width: `${guidedProgress.total ? guidedProgress.completed / guidedProgress.total * 100 : 0}%` }} /></div></Link>}
           {/* Upcoming Live Classes (Requirement 6) */}
           <div className="space-y-6 pt-2">
             <div className="flex items-center justify-between">
