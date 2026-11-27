@@ -130,24 +130,23 @@ export function Navbar() {
               Courses
             </Link>
 
-            {/* Practice Dropdown matching reference image */}
+            {/* Practice Link + Hover Dropdown */}
             <div 
               className="relative"
               onMouseEnter={handlePracticeMouseEnter}
               onMouseLeave={handlePracticeMouseLeave}
             >
-              <button
-                type="button"
-                onClick={() => setPracticeOpen((prev) => !prev)}
-                aria-expanded={practiceOpen}
-                aria-haspopup="true"
+              <Link
+                href="/practice"
+                onClick={() => setPracticeOpen(false)}
+                aria-current={pathname.startsWith("/practice") ? "page" : undefined}
                 className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 cursor-pointer ${
                   pathname.startsWith("/practice") ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
                 }`}
               >
                 <span>Practice</span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${practiceOpen ? "rotate-180 text-[#FF6B35]" : ""}`} />
-              </button>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${practiceOpen ? "rotate-180 text-[#FF6B35]" : ""}`} aria-hidden="true" />
+              </Link>
 
               {practiceOpen && (
                 <div
