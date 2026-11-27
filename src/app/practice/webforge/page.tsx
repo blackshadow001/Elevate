@@ -134,7 +134,7 @@ export default function WebForgePage() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Breadcrumb & Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E5E7EB]">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <Link
               href="/practice"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748B] hover:text-[#FF6B35] transition-colors"
@@ -143,18 +143,18 @@ export default function WebForgePage() {
               <span>Practice Hub</span>
             </Link>
             <span className="text-[#CBD5E1]">/</span>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
                 <Terminal className="w-3.5 h-3.5" />
                 <span>WebForge</span>
               </span>
-              <span className="text-sm font-bold text-[#172033]">
+              <span className="w-full min-w-0 text-sm font-bold text-[#172033] sm:w-auto">
                 {challenge.title}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <label htmlFor="challenge-select" className="text-xs font-semibold text-[#64748B]">
               Select Project:
             </label>
@@ -162,7 +162,7 @@ export default function WebForgePage() {
               id="challenge-select"
               value={selectedIdx}
               onChange={(e) => setSelectedIdx(Number(e.target.value))}
-              className="text-xs font-semibold bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#172033] focus:outline-none focus:border-[#FF6B35] shadow-sm cursor-pointer"
+              className="w-full min-w-0 max-w-full cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold text-[#172033] shadow-sm focus:border-[#FF6B35] focus:outline-none sm:w-auto"
             >
               {WEBKATA_CHALLENGES.map((c, i) => (
                 <option key={c.id} value={i}>

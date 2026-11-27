@@ -20,7 +20,7 @@ export function Hero({ courses }: { courses: Course[] }) {
             </div>
           </Reveal>
           <Reveal immediate variant="mask" delay={0.08} duration={0.65}>
-            <h1 className="mt-6 text-4xl font-extrabold leading-[1.12] tracking-tight text-[#172033] sm:text-5xl lg:text-[64px]">
+            <h1 className="mt-6 text-4xl font-extrabold leading-[1.12] tracking-tight text-[#172033] sm:text-5xl xl:text-[64px]">
               Elevate your skills. <br />
               Elevate your <span className="relative inline-block text-[#FF6B35]">future.<svg className="absolute -bottom-2 left-0 h-3 w-full text-[#FF6B35]/40" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true"><path className="hero-curve-draw" d="M0,15 Q50,0 100,15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" /></svg></span>
             </h1>

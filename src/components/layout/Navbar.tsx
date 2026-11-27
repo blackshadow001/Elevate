@@ -110,13 +110,13 @@ export function Navbar() {
         setSearchOpen(false);
       }
     }} className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+      <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 2xl:max-w-[1600px]">
         {/* Left: Brand Logo & Links */}
         <div className="flex items-center gap-8">
           <Logo />
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-6 text-[15px] font-medium text-[#172033]">
+          <nav className={`${isAuthenticated ? "hidden 2xl:flex" : "hidden xl:flex"} items-center gap-4 text-sm font-medium text-[#172033] 2xl:gap-6 2xl:text-[15px]`}>
             <Link
               href="/courses"
               onMouseEnter={() => {
@@ -501,7 +501,7 @@ export function Navbar() {
           >
             <Search className="h-5 w-5" aria-hidden="true" />
           </button>
-          <div className="hidden lg:flex items-center gap-3.5">
+          <div className={`${isAuthenticated ? "hidden 2xl:flex" : "hidden xl:flex"} items-center gap-2 2xl:gap-3.5`}>
           {/* Wishlist */}
           <Link
             href="/wishlist"
@@ -651,7 +651,7 @@ export function Navbar() {
           </div>
 
         {/* Mobile Buttons */}
-        <div className="flex items-center lg:hidden">
+        <div className={`items-center ${isAuthenticated ? "flex 2xl:hidden" : "flex xl:hidden"}`}>
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -686,7 +686,7 @@ export function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b border-[#E5E7EB] px-5 py-6 space-y-4 shadow-xl animate-in slide-in-from-top duration-200">
+        <div className={`${isAuthenticated ? "2xl:hidden" : "xl:hidden"} space-y-4 border-b border-[#E5E7EB] bg-white px-5 py-6 shadow-xl animate-in slide-in-from-top duration-200`}>
           <div className="flex flex-col space-y-3 pt-2 font-medium text-[#172033]">
             <button type="button" onClick={() => setExploreOpen(!exploreOpen)} aria-expanded={exploreOpen} className="py-2 text-left border-b border-[#F7F8FA] flex justify-between items-center">
               <span>Explore Goals & Categories</span> <ChevronDown className={`w-4 h-4 transition-transform ${exploreOpen ? "rotate-180" : ""}`} />

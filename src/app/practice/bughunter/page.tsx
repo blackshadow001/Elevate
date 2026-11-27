@@ -141,7 +141,7 @@ export default function BugHunterPage() {
         {/* Header Breadcrumbs, Language Filter & Switcher */}
         <div className="flex flex-col gap-4 mb-6 pb-4 border-b border-[#E5E7EB]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <Link
                 href="/practice"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748B] hover:text-[#FF6B35] transition-colors"
@@ -150,12 +150,12 @@ export default function BugHunterPage() {
                 <span>Practice Hub</span>
               </Link>
               <span className="text-[#CBD5E1]">/</span>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">
                   <Bug className="w-3.5 h-3.5" />
                   <span>BugHunter</span>
                 </span>
-                <span className="text-sm font-bold text-[#172033]">
+                <span className="w-full min-w-0 text-sm font-bold text-[#172033] sm:w-auto">
                   {activeChallenge.title}
                 </span>
               </div>
@@ -173,7 +173,7 @@ export default function BugHunterPage() {
                 id="bug-select"
                 value={activeChallenge.id}
                 onChange={(e) => handleChallengeChange(e.target.value)}
-                className="text-xs font-semibold bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-[#172033] focus:outline-none focus:border-[#FF6B35] shadow-xs cursor-pointer"
+                className="w-full min-w-0 max-w-full cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold text-[#172033] shadow-xs focus:border-[#FF6B35] focus:outline-none sm:w-auto"
               >
                 {filteredChallenges.map((c) => (
                   <option key={c.id} value={c.id}>

@@ -182,13 +182,13 @@ export default function FAQPage() {
                   {section.questions.map((item, idx) => (
                     <article
                       key={idx}
-                      className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-xs hover:border-[#FF6B35]/30 transition-all space-y-2"
+                      className="min-w-0 space-y-2 rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs transition-all hover:border-[#FF6B35]/30 sm:p-6"
                     >
                       <h3 className="text-base sm:text-lg font-bold text-[#172033] flex items-start gap-2.5">
                         <span className="text-[#FF6B35] font-extrabold shrink-0 mt-0.5">Q.</span>
-                        <span>{item.q}</span>
+                        <span className="min-w-0 [overflow-wrap:anywhere]">{item.q}</span>
                       </h3>
-                      <p className="text-sm sm:text-base text-[#64748B] leading-relaxed pl-6">
+                      <p className="pl-6 text-sm leading-relaxed text-[#64748B] [overflow-wrap:anywhere] sm:text-base">
                         {item.a}
                       </p>
                     </article>

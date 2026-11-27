@@ -235,9 +235,9 @@ export default function CodeArenaPage() {
 
       <main className="flex-1 max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex flex-col justify-between">
         {/* Top HUD: HackerRank Rating & 100-Level Roadmap */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-5 py-3.5 mb-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-3 py-3.5 mb-5 shadow-xs flex flex-wrap items-center justify-between gap-4 sm:px-5">
           {/* Level Info & Map Trigger */}
-          <div className="flex items-center gap-3">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
             <Link
               href="/practice"
               className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all"
@@ -246,8 +246,8 @@ export default function CodeArenaPage() {
               <ArrowLeft className="w-4 h-4" />
             </Link>
 
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1 sm:flex-initial">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold text-[#FF6B35] uppercase tracking-wider">
                   Level {currentLevelNum} of 100
                 </span>
@@ -255,7 +255,7 @@ export default function CodeArenaPage() {
                   {currentLevel.concept.toUpperCase()}
                 </span>
               </div>
-              <h1 className="text-sm sm:text-base font-extrabold text-[#172033] truncate max-w-[280px] sm:max-w-md">
+              <h1 className="max-w-full truncate text-sm font-extrabold text-[#172033] sm:max-w-md sm:text-base">
                 {currentPuzzle.title}
               </h1>
             </div>
@@ -263,7 +263,7 @@ export default function CodeArenaPage() {
             <button
               type="button"
               onClick={() => setShowLevelMapModal(true)}
-              className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#FF6B35]/10 border border-[#FF6B35]/25 text-[#FF6B35] hover:bg-[#FF6B35] hover:text-white transition-all shadow-xs"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-3 py-1.5 text-xs font-bold text-[#FF6B35] shadow-xs transition-all hover:bg-[#FF6B35] hover:text-white sm:ml-2 sm:w-auto"
             >
               <Map className="w-3.5 h-3.5" />
               <span>100 Levels Map</span>

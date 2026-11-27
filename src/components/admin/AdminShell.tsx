@@ -161,7 +161,7 @@ export default function AdminShell({
       <div className="min-h-screen bg-[#FFFDF9] flex flex-col antialiased text-[#172033]">
         {/* Top Operational Bar */}
         <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#E5E7EB] bg-white px-4 sm:px-6 shadow-xs">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
@@ -171,9 +171,10 @@ export default function AdminShell({
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="flex items-center gap-2.5">
-              <Logo href="/control-center" />
-              <span className="rounded-md bg-[#FFF0EB] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6B35]">Control Center</span>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="sm:hidden"><Logo href="/control-center" size="compact" /></span>
+              <span className="hidden sm:inline-flex"><Logo href="/control-center" /></span>
+              <span className="hidden rounded-md bg-[#FFF0EB] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6B35] sm:inline-flex">Control Center</span>
             </div>
 
             <button
@@ -187,7 +188,7 @@ export default function AdminShell({
           </div>
 
           {/* Quick links & Profile */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-4">
             <Link
               href="/"
               target="_blank"
@@ -208,14 +209,14 @@ export default function AdminShell({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF6B35] opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF6B35]"></span>
                 </span>
-                <span>{pendingApprovals} to review</span>
+                <span className="hidden sm:inline">{pendingApprovals} to review</span>
               </Link>
             )}
 
             {/* Admin identity pill */}
-            <div className="flex items-center gap-3 border-l border-[#E5E7EB] pl-3 sm:pl-4">
-              {adminUser.avatar ? <img src={adminUser.avatar} alt="" className="h-9 w-9 rounded-xl object-cover" /> :
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#172033] text-white font-bold text-xs uppercase shadow-xs">{adminUser.name.slice(0, 2)}</div>}
+            <div className="flex items-center gap-2 sm:gap-3 sm:border-l sm:border-[#E5E7EB] sm:pl-4">
+              {adminUser.avatar ? <img src={adminUser.avatar} alt="" className="hidden h-9 w-9 rounded-xl object-cover sm:block" /> :
+                <div className="hidden h-9 w-9 items-center justify-center rounded-xl bg-[#172033] text-white font-bold text-xs uppercase shadow-xs sm:flex">{adminUser.name.slice(0, 2)}</div>}
               <div className="hidden sm:flex flex-col text-left">
                 <Link href="/control-center/my-profile" title="My profile" className="text-xs font-bold text-[#172033] leading-none hover:text-[#FF6B35]">{adminUser.name}</Link>
                 <span className="text-[10px] text-[#64748B] font-medium leading-tight mt-0.5">
