@@ -118,6 +118,8 @@ test('guided curriculum seeds six assessed programs and retains introductory pro
       assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2'").get().n, 252);
       assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_paths WHERE status='archived' AND slug LIKE '%-intro-2026'").get().n, 6);
       assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_paths WHERE status='published' AND length(project_title)>0 AND json_array_length(exam_json)=12").get().n, 6);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2' AND block_type='workshop' AND json_array_length(practice_json,'$.steps')>=3 AND length(json_extract(practice_json,'$.code'))>50").get().n, 36);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2' AND block_type='lab' AND length(json_extract(practice_json,'$.challenge'))>40").get().n, 36);
       assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     } finally { db.close(); }
   } finally {

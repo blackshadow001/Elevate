@@ -59,7 +59,10 @@ test('assessment certificate requires finished coursework, a passed exam and hum
   const path = await call(`/api/learning-paths/${slug}`);
   assert.equal(path.body.data.steps.length, 42);
   assert.equal(path.body.data.steps[2].block_type, 'workshop');
+  assert.equal(path.body.data.steps[2].practice.steps.length, 3);
+  assert.match(path.body.data.steps[2].practice.code, /Decimal/);
   assert.equal(path.body.data.steps[3].block_type, 'lab');
+  assert.ok(path.body.data.steps[3].practice.challenge.length > 40);
   const signup = await call('/api/auth/register', { method: 'POST', body: {
     name: 'Guided Learner', email: 'guided-learner@example.invalid', password: 'Testing12345!' } });
   assert.equal(signup.status, 201);

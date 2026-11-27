@@ -5,7 +5,7 @@ import type { SessionUser } from "@/server/auth";
 import { guidedAssessment } from "@/server/guidedAssessment";
 
 type PathRow = { id: string; slug: string; title: string; summary: string; owner_id: string | null; status: string; project_title: string; project_brief: string; project_requirements_json: string };
-type StepRow = { id: string; path_id: string; position: number; kind: string; title: string; body: string; starter_code: string; answer_json: string; chapter_title: string; module_title: string; block_type: string };
+type StepRow = { id: string; path_id: string; position: number; kind: string; title: string; body: string; starter_code: string; answer_json: string; chapter_title: string; module_title: string; block_type: string; practice_json: string };
 const kinds = ["reading", "fill_blank", "code", "project"] as const;
 const allowedTags = ["style", "main", "section", "h1", "h2", "p", "a", "ul", "li"];
 
@@ -43,6 +43,7 @@ export function guidedPath(slug: string, user: SessionUser | null) {
     id: step.id, path_id: step.path_id, position: step.position, kind: step.kind,
     title: step.title, body: step.body, starter_code: step.starter_code.replaceAll("\\n", "\n"), chapter_title: step.chapter_title,
     module_title: step.module_title, block_type: step.block_type,
+    practice: JSON.parse(step.practice_json || "{}"),
   }));
   const completedIds = user ? (getDb().prepare(`SELECT sp.step_id FROM guided_step_progress sp JOIN guided_steps s ON s.id=sp.step_id
     WHERE s.path_id=? AND sp.user_id=? AND sp.passed=1`).all(path.id, user.id) as { step_id: string }[]).map((row) => row.step_id) : [];
