@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { GuidedProjectReviewQueue } from "@/components/admin/GuidedProjectReviewQueue";
 
 type Path = { id: string; title: string; summary: string; tutorName: string | null; stepCount: number; status: string };
 type Step = { id: string; title: string; kind: string; body: string; answer: { expected?: string; requiredTags?: string[] } };
@@ -52,6 +53,7 @@ export default function LearningPathReviewsPage() {
     <h1 className="text-3xl font-black text-[#172033]">Review learning paths</h1>
     <p className="mt-2 text-sm text-[#64748B]">Inspect every step before publishing. Published paths can be archived without losing learner progress.</p>
     {message && <p role="status" className="mt-5 rounded-xl bg-orange-50 p-3 text-sm">{message}</p>}
+    <GuidedProjectReviewQueue />
     <div className="mt-7 space-y-4">{paths.map((path) => <article key={path.id} className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
       <h2 className="text-lg font-extrabold">{path.title}</h2>
       <p className="mt-1 text-sm text-[#64748B]">{path.summary}</p>

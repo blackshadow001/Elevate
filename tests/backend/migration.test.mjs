@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -97,7 +97,7 @@ test('Google identity migration preserves accounts and enforces unique links', (
   }
 });
 
-test('guided curriculum seeds six chaptered paths once and retains the original path', () => {
+test('guided curriculum seeds six assessed programs and retains introductory progress paths', () => {
   const root = resolve(import.meta.dirname, '../..');
   const path = resolve(root, 'data', `guided-curriculum-${randomBytes(6).toString('hex')}.sqlite`);
   const env = { ...process.env, DATABASE_URL: `file:${path}` };
@@ -111,13 +111,53 @@ test('guided curriculum seeds six chaptered paths once and retains the original 
       const paths = db.prepare(`SELECT p.slug,p.status,COUNT(s.id) steps,COUNT(DISTINCT s.chapter_title) chapters
         FROM guided_paths p LEFT JOIN guided_steps s ON s.path_id=p.id GROUP BY p.id ORDER BY p.slug`).all();
       assert.equal(paths.filter((item) => item.status === 'published').length, 6);
-      assert.ok(paths.filter((item) => item.status === 'published').every((item) => item.steps === 16 && item.chapters === 4));
+      assert.ok(paths.filter((item) => item.status === 'published').every((item) => item.steps === 42 && item.chapters === 3));
       assert.deepEqual({ ...paths.find((item) => item.slug === 'web-development-foundations') },
         { slug: 'web-development-foundations', status: 'archived', steps: 6, chapters: 2 });
-      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE 'curriculum-%'").get().n, 96);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE 'curriculum-%-v1'").get().n, 96);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2'").get().n, 252);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_paths WHERE status='archived' AND slug LIKE '%-intro-2026'").get().n, 6);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_paths WHERE status='published' AND length(project_title)>0 AND json_array_length(exam_json)=12").get().n, 6);
       assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     } finally { db.close(); }
   } finally {
     for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
   }
+});
+
+test('upgrading a started introductory path preserves progress and its completion record', () => {
+  const root = resolve(import.meta.dirname, '../..');
+  const path = resolve(root, 'data', `guided-upgrade-${randomBytes(6).toString('hex')}.sqlite`);
+  const db = new DatabaseSync(path);
+  try {
+    db.exec("PRAGMA foreign_keys=ON; CREATE TABLE schema_migrations(name TEXT PRIMARY KEY);");
+    for (const file of readdirSync(resolve(root, 'src/db/migrations')).filter((name) => name.endsWith('.sql') && name < '027_').sort()) {
+      db.exec(readFileSync(resolve(root, 'src/db/migrations', file), 'utf8'));
+      db.prepare('INSERT INTO schema_migrations(name) VALUES (?)').run(file);
+    }
+    db.prepare("INSERT INTO users(id,name,email,password_hash,role) VALUES(?,?,?,?,?)")
+      .run('started-learner', 'Started Learner', 'started@example.invalid', 'test-hash', 'learner');
+    db.prepare("INSERT INTO guided_paths(id,slug,title,summary,status) VALUES(?,?,?,?,?)")
+      .run('curriculum-python-v1', 'python-basics', 'Python Basics', 'Introductory path', 'published');
+    db.prepare("INSERT INTO guided_steps(id,path_id,position,kind,title,body,chapter_title) VALUES(?,?,?,?,?,?,?)")
+      .run('python-v1-first', 'curriculum-python-v1', 1, 'reading', 'Read Python', 'An introductory Python lesson.', 'Chapter 1');
+    db.prepare("INSERT INTO guided_step_progress(user_id,step_id,response,passed) VALUES(?,?,?,1)")
+      .run('started-learner', 'python-v1-first', 'read');
+    db.prepare("INSERT INTO guided_path_completions(id,user_id,path_id) VALUES(?,?,?)")
+      .run('legacy-completion', 'started-learner', 'curriculum-python-v1');
+  } finally { db.close(); }
+  try {
+    const result = spawnSync(process.execPath, ['scripts/db.mjs'], {
+      cwd: root, env: { ...process.env, DATABASE_URL: `file:${path}` }, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const upgraded = new DatabaseSync(path);
+    try {
+      assert.deepEqual({ ...upgraded.prepare("SELECT slug,status FROM guided_paths WHERE id='curriculum-python-v1'").get() },
+        { slug: 'python-basics-intro-2026', status: 'archived' });
+      assert.equal(upgraded.prepare("SELECT passed FROM guided_step_progress WHERE user_id='started-learner' AND step_id='python-v1-first'").get().passed, 1);
+      assert.equal(upgraded.prepare("SELECT id FROM guided_path_completions WHERE id='legacy-completion'").get().id, 'legacy-completion');
+      assert.equal(upgraded.prepare("SELECT id FROM guided_paths WHERE slug='python-basics'").get().id, 'curriculum-python-v2');
+      assert.deepEqual(upgraded.prepare('PRAGMA foreign_key_check').all(), []);
+    } finally { upgraded.close(); }
+  } finally { for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true }); }
 });

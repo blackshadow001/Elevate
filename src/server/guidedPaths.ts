@@ -2,9 +2,10 @@ import "server-only";
 import { ApiError } from "@/server/api";
 import { getDb, transaction } from "@/server/db";
 import type { SessionUser } from "@/server/auth";
+import { guidedAssessment } from "@/server/guidedAssessment";
 
-type PathRow = { id: string; slug: string; title: string; summary: string; owner_id: string | null; status: string };
-type StepRow = { id: string; path_id: string; position: number; kind: string; title: string; body: string; starter_code: string; answer_json: string; chapter_title: string };
+type PathRow = { id: string; slug: string; title: string; summary: string; owner_id: string | null; status: string; project_title: string; project_brief: string; project_requirements_json: string };
+type StepRow = { id: string; path_id: string; position: number; kind: string; title: string; body: string; starter_code: string; answer_json: string; chapter_title: string; module_title: string; block_type: string };
 const kinds = ["reading", "fill_blank", "code", "project"] as const;
 const allowedTags = ["style", "main", "section", "h1", "h2", "p", "a", "ul", "li"];
 
@@ -30,7 +31,7 @@ function stepsFor(pathId: string): StepRow[] {
 }
 
 export function listGuidedPaths(status: "published" | "archived" = "published") {
-  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount,COUNT(DISTINCT s.chapter_title) AS chapterCount
+  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount,COUNT(DISTINCT s.chapter_title) AS chapterCount,COUNT(DISTINCT s.module_title) AS moduleCount
     FROM guided_paths p LEFT JOIN guided_steps s ON s.path_id=p.id
     WHERE p.status=? GROUP BY p.id ORDER BY p.created_at`).all(status);
 }
@@ -41,11 +42,15 @@ export function guidedPath(slug: string, user: SessionUser | null) {
   const steps = stepsFor(path.id).map((step) => ({
     id: step.id, path_id: step.path_id, position: step.position, kind: step.kind,
     title: step.title, body: step.body, starter_code: step.starter_code.replaceAll("\\n", "\n"), chapter_title: step.chapter_title,
+    module_title: step.module_title, block_type: step.block_type,
   }));
   const completedIds = user ? (getDb().prepare(`SELECT sp.step_id FROM guided_step_progress sp JOIN guided_steps s ON s.id=sp.step_id
     WHERE s.path_id=? AND sp.user_id=? AND sp.passed=1`).all(path.id, user.id) as { step_id: string }[]).map((row) => row.step_id) : [];
   const completion = user ? getDb().prepare("SELECT id,issued_at FROM guided_path_completions WHERE path_id=? AND user_id=?").get(path.id, user.id) : null;
-  return { id: path.id, slug: path.slug, title: path.title, summary: path.summary, steps, completedIds, completion };
+  return { id: path.id, slug: path.slug, title: path.title, summary: path.summary, steps, completedIds, completion,
+    project: path.project_title ? { title: path.project_title, brief: path.project_brief,
+      requirements: JSON.parse(path.project_requirements_json) as string[] } : null,
+    assessment: user && path.project_title ? guidedAssessment(path.id, user.id) : null };
 }
 
 export function submitGuidedStep(slug: string, stepId: string, user: SessionUser, response: unknown) {
@@ -58,14 +63,18 @@ export function submitGuidedStep(slug: string, stepId: string, user: SessionUser
     throw new ApiError(409, "PREVIOUS_STEP_REQUIRED", "Complete the previous step first.");
   const step = steps[index];
   const answer = value(response, "Response", 1, 10000);
-  const rules = JSON.parse(step.answer_json) as { expected?: string; requiredTags?: string[]; requiredTerms?: string[] };
+  const rules = JSON.parse(step.answer_json) as { expected?: string; requiredTags?: string[]; requiredTerms?: string[]; minChars?: number };
   let missing: string[] = [];
   let passed = false;
   if (step.kind === "reading") passed = answer === "read";
   else if (step.kind === "fill_blank") passed = answer.toLocaleLowerCase() === rules.expected?.trim().toLocaleLowerCase();
   else if (rules.requiredTerms?.length) {
     missing = rules.requiredTerms.filter((term) => !answer.toLocaleLowerCase().includes(term.toLocaleLowerCase()));
-    passed = missing.length === 0;
+    passed = missing.length === 0 && answer.length >= (rules.minChars || 0);
+    if (answer.length < (rules.minChars || 0)) missing.push(`at least ${rules.minChars} characters of explanation`);
+  } else if (rules.minChars) {
+    passed = answer.length >= rules.minChars;
+    if (!passed) missing = [`at least ${rules.minChars} characters of explanation`];
   } else {
     const html = answer.replace(/<!--[\s\S]*?-->/g, "");
     missing = (rules.requiredTags || []).filter((tag) => {
@@ -84,7 +93,7 @@ export function submitGuidedStep(slug: string, stepId: string, user: SessionUser
       ON CONFLICT(user_id,step_id) DO UPDATE SET response=excluded.response,
       passed=MAX(guided_step_progress.passed,excluded.passed),updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')`)
       .run(user.id, stepId, answer, passed ? 1 : 0);
-    if (passed && index === steps.length - 1) {
+    if (passed && index === steps.length - 1 && !path.project_title) {
       const count = (db.prepare(`SELECT COUNT(*) AS n FROM guided_step_progress sp JOIN guided_steps s ON s.id=sp.step_id
         WHERE s.path_id=? AND sp.user_id=? AND sp.passed=1`).get(path.id, user.id) as { n: number }).n;
       if (count === steps.length) db.prepare("INSERT OR IGNORE INTO guided_path_completions(id,user_id,path_id) VALUES(?,?,?)").run(crypto.randomUUID(), user.id, path.id);
@@ -95,7 +104,7 @@ export function submitGuidedStep(slug: string, stepId: string, user: SessionUser
 }
 
 export function ownGuidedPaths(user: SessionUser) {
-  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount,COUNT(DISTINCT s.chapter_title) AS chapterCount
+  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount,COUNT(DISTINCT s.chapter_title) AS chapterCount,COUNT(DISTINCT s.module_title) AS moduleCount
     FROM guided_paths p LEFT JOIN guided_steps s ON s.path_id=p.id
     WHERE p.owner_id=? GROUP BY p.id ORDER BY p.updated_at DESC`).all(user.id);
 }
@@ -216,9 +225,14 @@ export function returnGuidedPath(id: string) {
 }
 
 export function verifyGuidedCompletion(id: string) {
+  const certificate = getDb().prepare(`SELECT c.id,c.issued_at,p.title AS pathTitle,u.name AS learnerName,
+    e.score,e.total FROM guided_certificates c JOIN guided_paths p ON p.id=c.path_id
+    JOIN users u ON u.id=c.user_id JOIN guided_exam_attempts e ON e.id=c.exam_attempt_id
+    WHERE c.id=?`).get(id) as { id: string; issued_at: string; pathTitle: string; learnerName: string; score: number; total: number } | undefined;
+  if (certificate) return { ...certificate, kind: "assessed_certificate" as const };
   const row = getDb().prepare(`SELECT c.id,c.issued_at,p.title AS pathTitle,u.name AS learnerName
     FROM guided_path_completions c JOIN guided_paths p ON p.id=c.path_id
-    JOIN users u ON u.id=c.user_id WHERE c.id=?`).get(id);
+    JOIN users u ON u.id=c.user_id WHERE c.id=?`).get(id) as { id: string; issued_at: string; pathTitle: string; learnerName: string } | undefined;
   if (!row) throw new ApiError(404, "COMPLETION_NOT_FOUND", "Completion record not found.");
-  return row;
+  return { ...row, kind: "completion_record" as const };
 }
