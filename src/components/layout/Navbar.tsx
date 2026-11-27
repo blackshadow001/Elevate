@@ -155,6 +155,14 @@ export function Navbar() {
                 >
                   <div className="space-y-1">
                     <Link
+                      href="/learning-paths"
+                      onClick={() => setPracticeOpen(false)}
+                      className="flex items-center gap-3.5 rounded-xl border border-orange-200 bg-orange-50 p-3 text-[#172033] transition-colors hover:bg-orange-100"
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FF6B35] text-white"><BookOpen className="h-5 w-5" /></span>
+                      <span><strong className="block text-sm">Guided Learning Paths</strong><span className="mt-0.5 block text-xs text-[#64748B]">Short lessons, quick checks, and a project</span></span>
+                    </Link>
+                    <Link
                       href="/practice/codearena"
                       onClick={() => setPracticeOpen(false)}
                       className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FFFDF9] hover:shadow-sm border border-transparent hover:border-orange-100/80 transition-all group"
@@ -277,6 +285,15 @@ export function Navbar() {
                 </div>
               )}
             </div>
+
+            <Link
+              href="/learning-paths"
+              onMouseEnter={() => { setPracticeOpen(false); setExploreOpen(false); }}
+              aria-current={pathname.startsWith("/learning-paths") ? "page" : undefined}
+              className={`hidden py-1 text-sm font-semibold transition-colors hover:text-[#FF6B35] xl:inline-flex ${pathname.startsWith("/learning-paths") ? "text-[#FF6B35]" : "text-[#172033]"}`}
+            >
+              Learning Paths
+            </Link>
 
             <Link
               href="/career-paths"
@@ -593,6 +610,10 @@ export function Navbar() {
                       <LayoutDashboard className="w-4 h-4 text-[#FF6B35]" />
                       <span>Learner Dashboard</span>
                     </Link>
+                    <Link href="/learning-paths" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#172033] hover:bg-[#F7F8FA] hover:text-[#FF6B35]">
+                      <BookOpen className="h-4 w-4 text-[#FF6B35]" />
+                      <span>Guided Learning Paths</span>
+                    </Link>
                     <Link
                       href="/live-classes"
                       className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#172033] hover:bg-[#F7F8FA]"
@@ -701,6 +722,9 @@ export function Navbar() {
               className="py-2 hover:text-[#FF6B35] border-b border-[#F7F8FA]"
             >
               Browse All Courses
+            </Link>
+            <Link href="/learning-paths" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 border-b border-[#F7F8FA] py-2 font-semibold text-[#D65B28]">
+              <BookOpen className="h-4 w-4" /> Guided Learning Paths
             </Link>
 
             {/* Practice Mobile Drawer */}

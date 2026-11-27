@@ -13,7 +13,8 @@ import {
   Database, 
   Terminal, 
   Code2, 
-  Braces 
+  Braces,
+  ArrowRight
 } from "lucide-react";
 
 export function PracticeHeroBannerCSS() {
@@ -135,6 +136,10 @@ export function PracticeHeroBannerCSS() {
             <p className="text-sm sm:text-base text-[#64748B] leading-relaxed max-w-xl">
               Sharpen your algorithmic thinking, build fullstack web components, query real relational databases, and debug production code with zero setup required.
             </p>
+
+            <Link href="/learning-paths" className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#172033] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/10 transition-colors hover:bg-[#FF6B35] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6B35]">
+              Explore guided learning paths <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
 
             {/* Quick Feature Pills (Single horizontal row on desktop, wrapping gracefully on mobile) */}
             <div className="flex flex-wrap lg:flex-nowrap items-center gap-2.5 sm:gap-3 pt-2 text-xs sm:text-sm font-semibold text-[#172033]">
