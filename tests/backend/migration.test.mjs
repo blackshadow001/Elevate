@@ -96,3 +96,28 @@ test('Google identity migration preserves accounts and enforces unique links', (
     for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
   }
 });
+
+test('guided curriculum seeds six chaptered paths once and retains the original path', () => {
+  const root = resolve(import.meta.dirname, '../..');
+  const path = resolve(root, 'data', `guided-curriculum-${randomBytes(6).toString('hex')}.sqlite`);
+  const env = { ...process.env, DATABASE_URL: `file:${path}` };
+  try {
+    for (let run = 0; run < 2; run++) {
+      const result = spawnSync(process.execPath, ['scripts/db.mjs'], { cwd: root, env, encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    }
+    const db = new DatabaseSync(path);
+    try {
+      const paths = db.prepare(`SELECT p.slug,p.status,COUNT(s.id) steps,COUNT(DISTINCT s.chapter_title) chapters
+        FROM guided_paths p LEFT JOIN guided_steps s ON s.path_id=p.id GROUP BY p.id ORDER BY p.slug`).all();
+      assert.equal(paths.filter((item) => item.status === 'published').length, 6);
+      assert.ok(paths.filter((item) => item.status === 'published').every((item) => item.steps === 16 && item.chapters === 4));
+      assert.deepEqual({ ...paths.find((item) => item.slug === 'web-development-foundations') },
+        { slug: 'web-development-foundations', status: 'archived', steps: 6, chapters: 2 });
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE 'curriculum-%'").get().n, 96);
+      assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    } finally { db.close(); }
+  } finally {
+    for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
+  }
+});

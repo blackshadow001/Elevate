@@ -4,7 +4,7 @@ import { getDb, transaction } from "@/server/db";
 import type { SessionUser } from "@/server/auth";
 
 type PathRow = { id: string; slug: string; title: string; summary: string; owner_id: string | null; status: string };
-type StepRow = { id: string; path_id: string; position: number; kind: string; title: string; body: string; starter_code: string; answer_json: string };
+type StepRow = { id: string; path_id: string; position: number; kind: string; title: string; body: string; starter_code: string; answer_json: string; chapter_title: string };
 const kinds = ["reading", "fill_blank", "code", "project"] as const;
 const allowedTags = ["style", "main", "section", "h1", "h2", "p", "a", "ul", "li"];
 
@@ -30,7 +30,7 @@ function stepsFor(pathId: string): StepRow[] {
 }
 
 export function listGuidedPaths(status: "published" | "archived" = "published") {
-  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount
+  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount,COUNT(DISTINCT s.chapter_title) AS chapterCount
     FROM guided_paths p LEFT JOIN guided_steps s ON s.path_id=p.id
     WHERE p.status=? GROUP BY p.id ORDER BY p.created_at`).all(status);
 }
@@ -40,7 +40,7 @@ export function guidedPath(slug: string, user: SessionUser | null) {
   if (path.status !== "published" && path.status !== "archived") throw new ApiError(404, "PATH_NOT_FOUND", "Learning path not found.");
   const steps = stepsFor(path.id).map((step) => ({
     id: step.id, path_id: step.path_id, position: step.position, kind: step.kind,
-    title: step.title, body: step.body, starter_code: step.starter_code.replaceAll("\\n", "\n"),
+    title: step.title, body: step.body, starter_code: step.starter_code.replaceAll("\\n", "\n"), chapter_title: step.chapter_title,
   }));
   const completedIds = user ? (getDb().prepare(`SELECT sp.step_id FROM guided_step_progress sp JOIN guided_steps s ON s.id=sp.step_id
     WHERE s.path_id=? AND sp.user_id=? AND sp.passed=1`).all(path.id, user.id) as { step_id: string }[]).map((row) => row.step_id) : [];
@@ -58,12 +58,15 @@ export function submitGuidedStep(slug: string, stepId: string, user: SessionUser
     throw new ApiError(409, "PREVIOUS_STEP_REQUIRED", "Complete the previous step first.");
   const step = steps[index];
   const answer = value(response, "Response", 1, 10000);
-  const rules = JSON.parse(step.answer_json) as { expected?: string; requiredTags?: string[] };
+  const rules = JSON.parse(step.answer_json) as { expected?: string; requiredTags?: string[]; requiredTerms?: string[] };
   let missing: string[] = [];
   let passed = false;
   if (step.kind === "reading") passed = answer === "read";
   else if (step.kind === "fill_blank") passed = answer.toLocaleLowerCase() === rules.expected?.trim().toLocaleLowerCase();
-  else {
+  else if (rules.requiredTerms?.length) {
+    missing = rules.requiredTerms.filter((term) => !answer.toLocaleLowerCase().includes(term.toLocaleLowerCase()));
+    passed = missing.length === 0;
+  } else {
     const html = answer.replace(/<!--[\s\S]*?-->/g, "");
     missing = (rules.requiredTags || []).filter((tag) => {
       const element = html.match(new RegExp(`<${tag}\\b([^>]*)>([\\s\\S]*?)</${tag}\\s*>`, "i"));
@@ -92,7 +95,7 @@ export function submitGuidedStep(slug: string, stepId: string, user: SessionUser
 }
 
 export function ownGuidedPaths(user: SessionUser) {
-  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount
+  return getDb().prepare(`SELECT p.id,p.slug,p.title,p.summary,p.status,COUNT(s.id) AS stepCount,COUNT(DISTINCT s.chapter_title) AS chapterCount
     FROM guided_paths p LEFT JOIN guided_steps s ON s.path_id=p.id
     WHERE p.owner_id=? GROUP BY p.id ORDER BY p.updated_at DESC`).all(user.id);
 }
@@ -110,6 +113,7 @@ function stepInput(input: Record<string, unknown>) {
   const kind = value(input.kind, "Type", 1, 20);
   if (!kinds.includes(kind as typeof kinds[number])) throw new ApiError(422, "INVALID_INPUT", "Choose a valid step type.");
   const title = value(input.title, "Step title", 3, 120);
+  const chapterTitle = value(input.chapterTitle || "Getting started", "Chapter title", 3, 120);
   const body = value(input.body, "Instructions", 10, 4000);
   const starter = typeof input.starterCode === "string" ? input.starterCode.slice(0, 4000) : "";
   let answer: { expected?: string; requiredTags?: string[] } = {};
@@ -120,7 +124,7 @@ function stepInput(input: Record<string, unknown>) {
       throw new ApiError(422, "INVALID_INPUT", "Select 1–8 supported HTML tags to check.");
     answer = { requiredTags: [...new Set(tags)] as string[] };
   }
-  return { kind, title, body, starter, answerJson: JSON.stringify(answer) };
+  return { kind, title, chapterTitle, body, starter, answerJson: JSON.stringify(answer) };
 }
 
 export function ownGuidedPath(id: string, user: SessionUser) {
@@ -146,8 +150,8 @@ export function addGuidedStep(id: string, user: SessionUser, input: Record<strin
   const count = stepsFor(path.id).length;
   if (count >= 40) throw new ApiError(422, "PATH_FULL", "A path can have at most 40 steps.");
   const stepId = crypto.randomUUID();
-  getDb().prepare(`INSERT INTO guided_steps(id,path_id,position,kind,title,body,starter_code,answer_json)
-    VALUES(?,?,?,?,?,?,?,?)`).run(stepId, path.id, count + 1, step.kind, step.title, step.body, step.starter, step.answerJson);
+  getDb().prepare(`INSERT INTO guided_steps(id,path_id,position,kind,title,body,starter_code,answer_json,chapter_title)
+    VALUES(?,?,?,?,?,?,?,?,?)`).run(stepId, path.id, count + 1, step.kind, step.title, step.body, step.starter, step.answerJson, step.chapterTitle);
   return { id: stepId, position: count + 1 };
 }
 
@@ -155,8 +159,8 @@ export function editGuidedStep(pathId: string, stepId: string, user: SessionUser
   const path = findPath(pathId);
   canEdit(path, user);
   const step = stepInput(input);
-  const result = getDb().prepare(`UPDATE guided_steps SET kind=?,title=?,body=?,starter_code=?,answer_json=? WHERE id=? AND path_id=?`)
-    .run(step.kind, step.title, step.body, step.starter, step.answerJson, stepId, path.id);
+  const result = getDb().prepare(`UPDATE guided_steps SET kind=?,title=?,body=?,starter_code=?,answer_json=?,chapter_title=? WHERE id=? AND path_id=?`)
+    .run(step.kind, step.title, step.body, step.starter, step.answerJson, step.chapterTitle, stepId, path.id);
   if (!result.changes) throw new ApiError(404, "STEP_NOT_FOUND", "Step not found.");
   return { id: stepId };
 }

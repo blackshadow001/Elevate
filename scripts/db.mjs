@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
+import { guidedCurriculum } from '../src/data/guidedCurriculum.mjs';
 
 const deployment = process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
 const raw = process.env.DATABASE_URL || (deployment ? '' : 'file:./data/learnly.sqlite');
@@ -29,6 +30,32 @@ for (const name of readdirSync(resolve('src/db/migrations')).filter((file) => fi
     db.exec('ROLLBACK');
     throw error;
   }
+}
+// Seed versioned, published guided lessons without overwriting learner progress or tutor work.
+db.exec('BEGIN IMMEDIATE');
+try {
+  const addPath = db.prepare(`INSERT OR IGNORE INTO guided_paths(id,slug,title,summary,status)
+    VALUES(?,?,?,?,'published')`);
+  const addStep = db.prepare(`INSERT OR IGNORE INTO guided_steps
+    (id,path_id,position,kind,title,body,starter_code,answer_json,chapter_title)
+    VALUES(?,?,?,?,?,?,?,?,?)`);
+  for (const path of guidedCurriculum) {
+    addPath.run(path.id, path.slug, path.title, path.summary);
+    let position = 0;
+    for (const chapter of path.chapters) {
+      for (const [title, body, answer] of chapter.steps) {
+        position += 1;
+        const kind = Array.isArray(answer) ? 'project' : typeof answer === 'string' ? 'fill_blank' : 'reading';
+        const rules = Array.isArray(answer) ? { requiredTerms: answer } : typeof answer === 'string' ? { expected: answer } : {};
+        addStep.run(`${path.id}-${String(position).padStart(2, '0')}`, path.id, position, kind,
+          title, body, '', JSON.stringify(rules), chapter.title);
+      }
+    }
+  }
+  db.exec('COMMIT');
+} catch (error) {
+  db.exec('ROLLBACK');
+  throw error;
 }
 console.log(`Database ready: ${dbPath}`);
 db.close();
