@@ -199,6 +199,7 @@ function CoursesExplorerInner({ initialCourses, initialCategories, initialCatego
           />
           {search && (
             <button
+              type="button"
               onClick={() => setSearch("")}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
               aria-label="Clear search query"
@@ -506,6 +507,7 @@ function CoursesExplorerInner({ initialCourses, initialCategories, initialCatego
               <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB]">
                 <h3 className="text-base font-bold text-[#172033]">Filters</h3>
                 <button
+                  type="button"
                   onClick={() => setMobileFilterOpen(false)}
                   aria-label="Close filters"
                   className="p-1 text-slate-500 hover:text-black"

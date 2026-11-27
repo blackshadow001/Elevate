@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { PRACTICE_MODULES } from "@/data/practiceData";
 import { PracticeHeroBannerCSS } from "@/components/practice/PracticeHeroBannerCSS";
+import { Reveal } from "@/components/ui/Reveal";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -135,24 +136,28 @@ export default function PracticeHubPage() {
                 </div>
 
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-                    Daily Coding Challenge
-                  </h2>
-                  <p className="text-xs sm:text-sm text-orange-300 font-semibold mt-1">
-                    Earn 50 XP &amp; Practice Badges
-                  </p>
-                  <p className="text-sm text-slate-300 leading-relaxed mt-2.5">
-                    Keep your problem-solving momentum sharp every day. Solve today’s curated challenge in CodeKata or SQLKata.
-                  </p>
+                  <Reveal variant="mask">
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                      Daily Coding Challenge
+                    </h2>
+                  </Reveal>
+                  <Reveal direction="up" delay={0.06}>
+                    <p className="text-xs sm:text-sm text-orange-300 font-semibold mt-1">
+                      Earn 50 XP &amp; Practice Badges
+                    </p>
+                    <p className="text-sm text-slate-300 leading-relaxed mt-2.5">
+                      Keep your problem-solving momentum sharp every day. Solve today’s curated challenge in CodeKata or SQLKata.
+                    </p>
+                  </Reveal>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3 shrink-0 lg:pl-6 lg:border-l lg:border-slate-700/60">
                 <Link
                   href="/practice/codekata"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-[#E85D2A] transition-all"
+                  className="btn-elevate-primary group inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-[#E85D2A]"
                 >
-                  <Play className="w-4 h-4 fill-current" />
+                  <Play className="w-4 h-4 fill-current transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none" aria-hidden="true" />
                   <span>Solve Today&apos;s Problem</span>
                 </Link>
               </div>
@@ -164,16 +169,22 @@ export default function PracticeHubPage() {
         <section id="tracks" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#FF6B35] mb-1">
-                Explore Tracks
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
-                Five Specialized Practice Environments
-              </h2>
+              <Reveal direction="up">
+                <div className="text-xs font-bold uppercase tracking-wider text-[#FF6B35] mb-1">
+                  Explore Tracks
+                </div>
+              </Reveal>
+              <Reveal variant="mask" delay={0.05}>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#172033]">
+                  Five Specialized Practice Environments
+                </h2>
+              </Reveal>
             </div>
-            <p className="text-sm text-[#64748B] max-w-md">
-              Choose an environment below to test your knowledge, prepare for technical interview rounds, or test new ideas.
-            </p>
+            <Reveal direction="up" delay={0.1}>
+              <p className="text-sm text-[#64748B] max-w-md">
+                Choose an environment below to test your knowledge, prepare for technical interview rounds, or test new ideas.
+              </p>
+            </Reveal>
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 sm:gap-8">

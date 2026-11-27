@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { Reveal } from "@/components/ui/Reveal";
 import {
   ArrowRight,
   Award,
@@ -121,31 +122,39 @@ export default function AboutPage() {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:items-center">
               <div className="lg:col-span-7 space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/10 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-[#FF8A5B]">
-                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>About Elevate</span>
-                </div>
-                <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-[1.1] text-balance">
-                  Skills are changing faster than traditional education. We bridge the gap.
-                </h1>
-                <p className="max-w-2xl text-base sm:text-lg leading-relaxed text-slate-300 text-pretty">
-                  Elevate unites practitioner-taught video courses, five live in-browser coding sandboxes, and structured career handbooks into one focused platform built for modern builders.
-                </p>
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <Link
-                    href="/courses"
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#E85A2A]"
-                  >
-                    <span>Explore Courses</span>
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                  <Link
-                    href="/careers"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-white/20"
-                  >
-                    <span>Join Our Team</span>
-                  </Link>
-                </div>
+                <Reveal immediate direction="up" delay={0.02}>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/10 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-[#FF8A5B]">
+                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>About Elevate</span>
+                  </div>
+                </Reveal>
+                <Reveal immediate variant="mask" delay={0.07}>
+                  <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-[1.1] text-balance">
+                    Skills are changing faster than traditional education. We bridge the gap.
+                  </h1>
+                </Reveal>
+                <Reveal immediate direction="up" delay={0.14}>
+                  <p className="max-w-2xl text-base sm:text-lg leading-relaxed text-slate-300 text-pretty">
+                    Elevate unites practitioner-taught video courses, five live in-browser coding sandboxes, and structured career handbooks into one focused platform built for modern builders.
+                  </p>
+                </Reveal>
+                <Reveal immediate direction="up" delay={0.2}>
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    <Link
+                      href="/courses"
+                      className="btn-elevate-primary group inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3 text-sm font-bold text-white hover:bg-[#E85A2A]"
+                    >
+                      <span>Explore Courses</span>
+                      <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transform-none" aria-hidden="true" />
+                    </Link>
+                    <Link
+                      href="/careers"
+                      className="btn-elevate-secondary inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white hover:bg-white/20"
+                    >
+                      <span>Join Our Team</span>
+                    </Link>
+                  </div>
+                </Reveal>
               </div>
 
               <div className="lg:col-span-5">
@@ -321,24 +330,26 @@ export default function AboutPage() {
                   <Globe2 className="h-4 w-4" aria-hidden="true" />
                   <span>Built for Individuals & Growing Teams</span>
                 </div>
-                <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-balance">
-                  Ready to sharpen your craft or empower your engineering organization?
-                </h2>
+                <Reveal variant="mask">
+                  <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-balance">
+                    Ready to sharpen your craft or empower your engineering organization?
+                  </h2>
+                </Reveal>
                 <p className="text-sm sm:text-base leading-relaxed text-slate-300">
                   Start practicing for free in our interactive environments or reach out to build tailored upskilling tracks for your team.
                 </p>
               </div>
               <div className="lg:col-span-5 flex flex-wrap gap-3 lg:justify-end">
                 <Link
-                  href="/register"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3.5 text-sm font-bold text-white hover:bg-[#E85A2A]"
+                  href="/signup"
+                  className="btn-elevate-primary inline-flex items-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-3.5 text-sm font-bold text-white hover:bg-[#E85A2A]"
                 >
                   <Users className="h-4 w-4" aria-hidden="true" />
                   <span>Create Free Account</span>
                 </Link>
                 <Link
                   href="/contact"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-bold text-white hover:bg-white/20"
+                  className="btn-elevate-secondary inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-bold text-white hover:bg-white/20"
                 >
                   <ShieldCheck className="h-4 w-4" aria-hidden="true" />
                   <span>Partner With Us</span>

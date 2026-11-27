@@ -323,6 +323,7 @@ export default function AdminShell({
                     <button
                       type="button"
                       onClick={() => setMobileOpen(false)}
+                      aria-label="Close navigation menu"
                       className="p-1.5 rounded-lg text-[#64748B] hover:bg-[#F8FAFC]"
                     >
                       <X className="h-5 w-5" />

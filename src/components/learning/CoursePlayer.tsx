@@ -212,8 +212,9 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                   View Your Certificate
                 </Link>}
                 <button
+                  type="button"
                   onClick={() => router.push(`/learn/${course.slug}/${allFlatLessons[0].id}`)}
-                  className="px-4 py-2.5 rounded-xl bg-[#26344D] hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl bg-[#26344D] hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Review from Start</span>
@@ -292,9 +293,10 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                   onClick={() => {
                     router.push(`/learn/${course.slug}/${prevLesson.id}`);
                   }}
+                  aria-label="Previous lesson"
                   className="inline-flex items-center gap-1.5 bg-[#F7F8FA] hover:bg-slate-200 text-[#172033] text-xs sm:text-sm font-semibold px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] transition-colors"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline">Previous</span>
                 </button>
               )}
@@ -303,14 +305,14 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                 type="button"
                 onClick={() => { void toggleCompleted(currentLesson.id); }}
                 disabled={savingProgress || isCompleted || isMediaUnavailable || requiresSubmission}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all active:scale-95 ${
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isCompleted
                     ? "bg-emerald-50 text-[#16A34A] border border-emerald-200"
                     : "bg-[#172033] text-white hover:bg-[#26344D]"
                 }`}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{isCompleted ? "Completed ✓" : "Mark Complete"}</span>
+                <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                <span>{savingProgress ? "Saving..." : isCompleted ? "Completed ✓" : "Mark Complete"}</span>
               </button>
 
               {nextLesson && (
@@ -318,10 +320,10 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                   type="button"
                   onClick={handleMarkCompleteAndNext}
                   disabled={savingProgress || isMediaUnavailable || requiresSubmission}
-                  className="inline-flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#E85D2A] text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-colors active:scale-95"
+                  className="inline-flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#E85D2A] text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>Next Lesson</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <span>{savingProgress ? "Saving..." : "Next Lesson"}</span>
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -458,13 +460,14 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                     className="flex-1 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-xs text-[#172033] focus:outline-none focus:border-[#FF6B35]"
                   />
                   <button
+                    type="button"
                     onClick={() => {
                       if (!questionText.trim()) return;
                       setQuestionsByLesson((previous) => ({ ...previous, [currentLesson.id]: [questionText.trim(), ...(previous[currentLesson.id] || [])] }));
                       setQuestionText("");
                       notify({ type: "info", title: "Demo question added", message: "Your question is visible in this session. Instructor delivery requires a backend." });
                     }}
-                    className="bg-[#FF6B35] text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-[#E85D2A]"
+                    className="bg-[#FF6B35] text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-[#E85D2A] transition-colors"
                   >
                     Post Question
                   </button>
@@ -502,33 +505,36 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                       const isLesCompleted = completedLessonIds.includes(lesson.id);
 
                       return (
-                        <button
+                        <div
                           key={lesson.id}
-                          type="button"
-                          onClick={() => {
-                            router.push(`/learn/${course.slug}/${lesson.id}`);
-                          }}
-                          className={`w-full text-left p-3.5 flex items-start gap-3 transition-colors ${
+                          className={`w-full p-3.5 flex items-start gap-3 transition-colors ${
                             isActive
                               ? "bg-orange-50 border-l-4 border-[#FF6B35]"
                               : "hover:bg-slate-50"
                           }`}
                         >
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
+                          <button
+                            type="button"
+                            onClick={() => {
                               void toggleCompleted(lesson.id);
                             }}
-                            className="mt-0.5"
+                            aria-label={isLesCompleted ? `Mark ${lesson.title} incomplete` : `Mark ${lesson.title} complete`}
+                            className="mt-0.5 rounded-full focus-visible:outline-2 focus-visible:outline-[#FF6B35]"
                           >
                             {isLesCompleted ? (
-                              <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+                              <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" aria-hidden="true" />
                             ) : (
-                              <Circle className="w-4 h-4 text-[#CBD5E1] shrink-0" />
+                              <Circle className="w-4 h-4 text-[#CBD5E1] shrink-0" aria-hidden="true" />
                             )}
-                          </div>
+                          </button>
 
-                          <div className="flex-1 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              router.push(`/learn/${course.slug}/${lesson.id}`);
+                            }}
+                            className="flex-1 min-w-0 text-left"
+                          >
                             <h4
                               className={`text-xs font-semibold leading-snug line-clamp-2 ${
                                 isActive ? "text-[#FF6B35]" : "text-[#172033]"
@@ -544,8 +550,8 @@ export function CoursePlayer({ course, initialLessonId }: CoursePlayerProps) {
                                 </span>
                               )}
                             </div>
-                          </div>
-                        </button>
+                          </button>
+                        </div>
                       );
                     })}
                   </div>

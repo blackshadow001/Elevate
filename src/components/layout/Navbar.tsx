@@ -141,7 +141,7 @@ export function Navbar() {
                 onClick={() => setPracticeOpen((prev) => !prev)}
                 aria-expanded={practiceOpen}
                 aria-haspopup="true"
-                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none cursor-pointer ${
+                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 cursor-pointer ${
                   pathname.startsWith("/practice") ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
                 }`}
               >
@@ -331,7 +331,7 @@ export function Navbar() {
                 onClick={() => setExploreOpen((prev) => !prev)}
                 aria-expanded={exploreOpen}
                 aria-haspopup="true"
-                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 focus:outline-none cursor-pointer ${
+                className={`flex items-center gap-1.5 hover:text-[#FF6B35] transition-colors py-1 cursor-pointer ${
                   exploreOpen ? "text-[#FF6B35] font-semibold" : "text-[#172033]"
                 }`}
               >
@@ -532,7 +532,7 @@ export function Navbar() {
               aria-expanded={profileDropdownOpen}
               aria-haspopup="true"
               aria-label={`${user.name} account menu`}
-              className="flex items-center gap-2.5 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none"
+              className="flex items-center gap-2.5 p-1 rounded-full hover:bg-slate-50 transition-colors cursor-pointer"
             >
               {user.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-[#E5E7EB]" /> :
                 <span className="flex w-8 h-8 items-center justify-center rounded-full bg-[#FFF0EB] text-xs font-bold text-[#E85D2A]" aria-hidden="true">{user.name.trim().slice(0, 2).toUpperCase()}</span>}

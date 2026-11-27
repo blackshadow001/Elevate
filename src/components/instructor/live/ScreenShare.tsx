@@ -64,6 +64,7 @@ export function ScreenShareModal({ isOpen, onClose, onConfirmShare }: ScreenShar
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close screen share dialog"
             className="p-1 rounded-lg text-[#64748B] hover:text-[#172033] cursor-pointer"
           >
             <X className="w-5 h-5" />

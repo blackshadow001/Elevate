@@ -50,9 +50,92 @@ body {
 }
 
 @layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+    transition:
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 180ms ease-out,
+      border-color 180ms ease-out,
+      color 180ms ease-out,
+      opacity 180ms ease-out;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   :where(a, button, input, select, textarea, [role="link"]):focus-visible {
     outline: 3px solid #FF6B35;
     outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .btn-elevate-primary,
+  .btn-elevate-secondary {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 180ms ease-out,
+      border-color 180ms ease-out,
+      color 180ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    button:not(:disabled):active,
+    .btn-elevate-primary:active,
+    .btn-elevate-secondary:active {
+      transform: scale(0.97);
+    }
+
+    .btn-elevate-primary::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(
+        110deg,
+        transparent 20%,
+        rgb(255 255 255 / 0.24) 48%,
+        transparent 76%
+      );
+      transform: translateX(-130%);
+      transition: transform 550ms cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .btn-elevate-primary:hover,
+    .btn-elevate-secondary:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-elevate-primary:hover::after,
+    .btn-elevate-primary:focus-visible::after {
+      transform: translateX(130%);
+    }
+  }
+}
+
+@keyframes heroCurveDraw {
+  from {
+    stroke-dashoffset: 140;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-curve-draw {
+    stroke-dasharray: 140;
+    stroke-dashoffset: 140;
+    animation: heroCurveDraw 700ms cubic-bezier(0.16, 1, 0.3, 1) 240ms forwards;
   }
 }
 
@@ -97,11 +180,14 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+  .animate-float-slow,
+  .animate-float-medium,
+  .animate-float-fast {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 

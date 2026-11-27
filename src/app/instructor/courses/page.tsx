@@ -245,6 +245,7 @@ export default function InstructorCoursesPage() {
               <button
                 type="button"
                 onClick={() => setConfirmModal({ open: false })}
+                aria-label="Close confirmation dialog"
                 className="text-slate-400 hover:text-[#172033] p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />

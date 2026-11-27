@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { CatalogArtwork } from "@/components/courses/CatalogArtwork";
 import { LEARNING_ROADMAPS, roadmapSteps, type LearningRoadmap } from "@/lib/learningRoadmaps";
 import type { Course } from "@/types";
+import { Reveal } from "@/components/ui/Reveal";
 
 export function RoadmapCard({ roadmap, courses }: { roadmap: LearningRoadmap; courses: Course[] }) {
   const steps = roadmapSteps(roadmap, courses);
@@ -28,13 +29,27 @@ export function CareerPaths({ courses }: { courses: Course[] }) {
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="max-w-2xl">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#D65B28]">A clear next step</p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[#172033] sm:text-4xl">Follow a learning roadmap</h2>
-          <p className="mt-2 text-sm leading-relaxed text-[#64748B] sm:text-base">Follow related topics in order. Each video becomes available after its course is published.</p>
+          <Reveal direction="up">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#D65B28]">A clear next step</p>
+          </Reveal>
+          <Reveal variant="mask" delay={0.05}>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[#172033] sm:text-4xl">Follow a learning roadmap</h2>
+          </Reveal>
+          <Reveal direction="up" delay={0.1}>
+            <p className="mt-2 text-sm leading-relaxed text-[#64748B] sm:text-base">Follow related topics in order. Each video becomes available after its course is published.</p>
+          </Reveal>
         </div>
-        <Link href="/career-paths" className="inline-flex w-fit items-center gap-2 text-sm font-bold text-[#D65B28] hover:text-[#A9451F]">Explore all roadmaps <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+        <Reveal direction="left" delay={0.08}>
+          <Link href="/career-paths" className="group inline-flex w-fit items-center gap-2 text-sm font-bold text-[#D65B28] transition-colors hover:text-[#A9451F]">Explore all roadmaps <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transform-none" /></Link>
+        </Reveal>
       </div>
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">{LEARNING_ROADMAPS.map((roadmap) => <RoadmapCard key={roadmap.slug} roadmap={roadmap} courses={courses} />)}</div>
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {LEARNING_ROADMAPS.map((roadmap, idx) => (
+          <Reveal key={roadmap.slug} direction="up" delay={idx * 0.06} className="h-full">
+            <RoadmapCard roadmap={roadmap} courses={courses} />
+          </Reveal>
+        ))}
+      </div>
       <p className="mt-6 inline-flex items-center gap-2 text-xs text-[#64748B]"><CheckCircle2 aria-hidden="true" className="h-4 w-4 text-[#16A34A]" />Roadmaps show the learning order; purchase is only available for published courses.</p>
     </div>
   </section>;

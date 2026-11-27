@@ -61,6 +61,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <span>{t.message}</span>
             </div>
             <button
+              type="button"
               onClick={() => removeToast(t.id)}
               className="text-slate-400 hover:text-white p-1 rounded-md transition-colors"
               aria-label="Dismiss notification"

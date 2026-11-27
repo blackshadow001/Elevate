@@ -181,6 +181,7 @@ export default function CreateBootcampPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/instructor/bootcamps"
+          aria-label="Back to bootcamps"
           className="p-2 rounded-xl bg-white border border-[#E5E7EB] hover:bg-slate-50 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 text-[#172033]" />

@@ -1,29 +1,36 @@
 import { Star, Quote } from "lucide-react";
 import { mockTestimonials } from "@/data/testimonials";
+import { Reveal } from "@/components/ui/Reveal";
 
 export function Testimonials() {
   return (
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="text-xs font-bold tracking-wider uppercase text-[#FF6B35] mb-2">
-            Success Stories
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172033] tracking-tight">
-            What our learners say
-          </h2>
-          <p className="mt-2 text-base text-[#64748B]">
-            Real people who transformed their careers and leveled up their engineering craftsmanship.
-          </p>
+          <Reveal direction="up">
+            <div className="text-xs font-bold tracking-wider uppercase text-[#FF6B35] mb-2">
+              Success Stories
+            </div>
+          </Reveal>
+          <Reveal variant="mask" delay={0.06}>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172033] tracking-tight">
+              What our learners say
+            </h2>
+          </Reveal>
+          <Reveal direction="up" delay={0.12}>
+            <p className="mt-2 text-base text-[#64748B]">
+              Real people who transformed their careers and leveled up their engineering craftsmanship.
+            </p>
+          </Reveal>
         </div>
 
         {/* Testimonials 4 Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {mockTestimonials.map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#FFFDF9] rounded-2xl border border-[#E5E7EB] p-6 flex flex-col justify-between hover:shadow-lg transition-shadow relative"
-            >
+          {mockTestimonials.map((item, idx) => (
+            <Reveal key={item.id} direction="up" delay={idx * 0.06} className="h-full">
+              <div
+                className="h-full bg-[#FFFDF9] rounded-2xl border border-[#E5E7EB] p-6 flex flex-col justify-between transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg motion-reduce:transform-none relative"
+              >
               <div>
                 <Quote className="w-8 h-8 text-[#FF6B35]/20 mb-3" />
                 {/* Rating */}
@@ -53,6 +60,7 @@ export function Testimonials() {
                 </div>
               </div>
             </div>
+            </Reveal>
           ))}
         </div>
       </div>

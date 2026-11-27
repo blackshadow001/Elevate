@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookOpenCheck, CheckCircle2, PlayCircle, BadgeCheck, Star, Zap } from "lucide-react";
 import type { Course } from "@/types";
+import { Reveal } from "@/components/ui/Reveal";
 
 export function Hero({ courses }: { courses: Course[] }) {
   const featured = courses.slice(0, 2);
@@ -12,25 +13,33 @@ export function Hero({ courses }: { courses: Course[] }) {
       <div className="pointer-events-none absolute -bottom-24 left-8 h-72 w-72 rounded-full bg-[#FF6B35]/5 blur-2xl" />
       <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-6 lg:grid-cols-12 lg:gap-10 lg:px-8">
         <div className="text-center lg:col-span-7 lg:text-left">
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/60 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-[#E85D2A] sm:text-sm">
-            <BadgeCheck className="h-4 w-4" aria-hidden="true" />
-            Learn with Elevate
-          </div>
-          <h1 className="mt-6 text-4xl font-extrabold leading-[1.12] tracking-tight text-[#172033] sm:text-5xl lg:text-[64px]">
-            Elevate your skills. <br />
-            Elevate your <span className="relative inline-block text-[#FF6B35]">future.<svg className="absolute -bottom-2 left-0 h-3 w-full text-[#FF6B35]/35" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0,15 Q50,0 100,15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" /></svg></span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#64748B] sm:text-lg lg:mx-0">
-            Elevate is an online learning platform offering practical courses, live learning, and career paths in AI, technology, and business. Learn from experts and build skills at your own pace.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
-            <Link href="/courses" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6B35] px-8 py-3.5 font-semibold text-white shadow-lg shadow-orange-500/20 hover:bg-[#E85D2A] sm:w-auto">
-              Explore Courses <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-            <Link href="/career-paths" className="inline-flex w-full items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-7 py-3.5 font-semibold text-[#172033] shadow-sm hover:bg-[#F7F8FA] sm:w-auto">
-              View Career Paths
-            </Link>
-          </div>
+          <Reveal immediate direction="up" delay={0.02} duration={0.45}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/60 bg-orange-50 px-3.5 py-1.5 text-xs font-semibold text-[#E85D2A] sm:text-sm">
+              <BadgeCheck className="h-4 w-4" aria-hidden="true" />
+              Learn with Elevate
+            </div>
+          </Reveal>
+          <Reveal immediate variant="mask" delay={0.08} duration={0.65}>
+            <h1 className="mt-6 text-4xl font-extrabold leading-[1.12] tracking-tight text-[#172033] sm:text-5xl lg:text-[64px]">
+              Elevate your skills. <br />
+              Elevate your <span className="relative inline-block text-[#FF6B35]">future.<svg className="absolute -bottom-2 left-0 h-3 w-full text-[#FF6B35]/40" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true"><path className="hero-curve-draw" d="M0,15 Q50,0 100,15" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" /></svg></span>
+            </h1>
+          </Reveal>
+          <Reveal immediate direction="up" delay={0.16} duration={0.55}>
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#64748B] sm:text-lg lg:mx-0">
+              Elevate is an online learning platform offering practical courses, live learning, and career paths in AI, technology, and business. Learn from experts and build skills at your own pace.
+            </p>
+          </Reveal>
+          <Reveal immediate direction="up" delay={0.22} duration={0.55}>
+            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
+              <Link href="/courses" className="btn-elevate-primary group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6B35] px-8 py-3.5 font-semibold text-white shadow-lg shadow-orange-500/20 hover:bg-[#E85D2A] hover:shadow-orange-500/35 sm:w-auto">
+                Explore Courses <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transform-none" aria-hidden="true" />
+              </Link>
+              <Link href="/career-paths" className="btn-elevate-secondary inline-flex w-full items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-7 py-3.5 font-semibold text-[#172033] shadow-sm hover:border-[#CBD5E1] hover:bg-[#F7F8FA] hover:shadow-md sm:w-auto">
+                View Career Paths
+              </Link>
+            </div>
+          </Reveal>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs font-medium text-[#64748B] lg:justify-start">
             <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#16A34A]" aria-hidden="true" />Learn at your pace</span>
             <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#16A34A]" aria-hidden="true" />Track your progress</span>

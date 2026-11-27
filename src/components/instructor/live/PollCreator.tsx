@@ -67,6 +67,7 @@ export function PollCreator({ onLaunchPoll, activePoll, onClose }: PollCreatorPr
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close poll dialog"
             className="text-[#64748B] hover:text-[#172033] cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -153,6 +154,7 @@ export function PollCreator({ onLaunchPoll, activePoll, onClose }: PollCreatorPr
                     <button
                       type="button"
                       onClick={() => handleRemoveOption(i)}
+                      aria-label={`Remove option ${i + 1}`}
                       className="p-1.5 text-[#64748B] hover:text-red-500 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

@@ -835,6 +835,7 @@ export default function CodeArenaPage() {
               <button
                 type="button"
                 onClick={() => setShowLevelMapModal(false)}
+                aria-label="Close level roadmap"
                 className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900"
               >
                 <X className="w-5 h-5" />

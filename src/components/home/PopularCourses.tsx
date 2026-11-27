@@ -24,25 +24,29 @@ export function PopularCourses({ courses }: PopularCoursesProps) {
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <Reveal direction="up">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8">
-            <div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8">
+          <div>
+            <Reveal variant="mask">
               <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172033] tracking-tight">
                 Available courses
               </h2>
+            </Reveal>
+            <Reveal direction="up" delay={0.08}>
               <p className="mt-2 text-base text-[#64748B]">
                 Browse courses currently published on Elevate.
               </p>
-            </div>
+            </Reveal>
+          </div>
+          <Reveal direction="left" delay={0.1}>
             <Link
               href="/courses"
-              className="mt-4 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-[#FF6B35] hover:text-[#E85D2A] transition-colors"
+              className="group mt-4 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-[#FF6B35] hover:text-[#E85D2A] transition-colors"
             >
               <span>View all courses</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transform-none" aria-hidden="true" />
             </Link>
-          </div>
-        </Reveal>
+          </Reveal>
+        </div>
 
         {/* Category Filter Tabs */}
         <Reveal direction="up" delay={0.1}>

@@ -109,7 +109,9 @@ export default function InstructorMessagesPage() {
             />
             <button
               type="submit"
-              className="p-3 bg-[#FF6B35] hover:bg-[#E85D2A] text-white rounded-xl shadow-xs cursor-pointer"
+              disabled={!replyText.trim()}
+              aria-label="Send reply"
+              className="p-3 bg-[#FF6B35] hover:bg-[#E85D2A] text-white rounded-xl shadow-xs cursor-pointer transition-colors disabled:opacity-40"
             >
               <Send className="w-4 h-4" />
             </button>

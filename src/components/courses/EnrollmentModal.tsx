@@ -50,6 +50,7 @@ export function EnrollmentModal({
         className="relative bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#E5E7EB] z-10 animate-in zoom-in-95 fade-in duration-200 space-y-6"
       >
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-black rounded-lg transition-colors"
           aria-label="Close dialog"

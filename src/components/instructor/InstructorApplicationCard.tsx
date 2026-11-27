@@ -125,7 +125,7 @@ export function InstructorApplicationCard() {
               Sign in to Continue
             </Link>
             <Link
-              href="/register"
+              href="/signup"
               className="inline-flex rounded-xl border border-[#CBD5E1] bg-white px-5 py-3 text-sm font-bold text-[#172033] transition-colors hover:border-[#FF6B35]"
             >
               Create Account
