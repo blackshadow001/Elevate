@@ -105,17 +105,28 @@ test('guided curriculum seeds six assessed programs and retains introductory pro
     for (let run = 0; run < 2; run++) {
       const result = spawnSync(process.execPath, ['scripts/db.mjs'], { cwd: root, env, encoding: 'utf8' });
       assert.equal(result.status, 0, result.stderr);
+      if (run === 0) {
+        const started = new DatabaseSync(path);
+        try {
+          started.prepare("INSERT INTO users(id,name,email,password_hash,role) VALUES(?,?,?,?,?)")
+            .run('existing-guided-learner', 'Existing Learner', 'existing-guided@example.invalid', 'unused', 'learner');
+          started.prepare("INSERT INTO guided_step_progress(user_id,step_id,response,passed) VALUES(?,?,?,1)")
+            .run('existing-guided-learner', 'curriculum-python-v2-001', 'read');
+        } finally { started.close(); }
+      }
     }
     const db = new DatabaseSync(path);
     try {
       const paths = db.prepare(`SELECT p.slug,p.status,COUNT(s.id) steps,COUNT(DISTINCT s.chapter_title) chapters
         FROM guided_paths p LEFT JOIN guided_steps s ON s.path_id=p.id GROUP BY p.id ORDER BY p.slug`).all();
       assert.equal(paths.filter((item) => item.status === 'published').length, 6);
-      assert.ok(paths.filter((item) => item.status === 'published').every((item) => item.steps === 42 && item.chapters === 3));
+      assert.ok(paths.filter((item) => item.status === 'published').every((item) => item.steps === 46 && item.chapters === 4));
       assert.deepEqual({ ...paths.find((item) => item.slug === 'web-development-foundations') },
         { slug: 'web-development-foundations', status: 'archived', steps: 6, chapters: 2 });
       assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE 'curriculum-%-v1'").get().n, 96);
-      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2'").get().n, 252);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2'").get().n, 276);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2' AND block_type='first_check'").get().n, 12);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_step_progress WHERE user_id='existing-guided-learner' AND step_id LIKE 'curriculum-python-v2-start-%' AND passed=1").get().n, 4);
       assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_paths WHERE status='archived' AND slug LIKE '%-intro-2026'").get().n, 6);
       assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_paths WHERE status='published' AND length(project_title)>0 AND json_array_length(exam_json)=12").get().n, 6);
       assert.equal(db.prepare("SELECT COUNT(*) n FROM guided_steps WHERE path_id LIKE '%-v2' AND block_type='workshop' AND json_array_length(practice_json,'$.steps')>=3 AND length(json_extract(practice_json,'$.code'))>50").get().n, 36);

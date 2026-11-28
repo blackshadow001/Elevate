@@ -7,6 +7,9 @@ export type PracticeProgramData = {
   run?: string;
   expect?: string;
   challenge?: string;
+  choices?: string[];
+  explanation?: string;
+  tokens?: string[];
 };
 
 export function PracticeProgram({

@@ -13,6 +13,7 @@ import {
   Globe,
   Layers,
   Terminal,
+  Trophy,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -206,6 +207,7 @@ export default function LearningPathsPage() {
               Archive
             </button>
           </div>
+          <Link href="/learning-paths/leaderboard" className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-bold text-[#9A3B17] hover:bg-orange-100"><Trophy className="h-4 w-4" />Leaderboard</Link>
           {!loading && paths.length > 0 && (
             <p className="text-xs font-semibold text-[#64748B]">
               Showing <strong className="text-[#172033]">{paths.length}</strong>{" "}

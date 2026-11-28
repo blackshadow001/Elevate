@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
+  Code2,
   Layers,
   Lock,
   Sparkles,
@@ -70,6 +71,10 @@ function moduleKey(chapterTitle: string, moduleTitle: string): string {
 }
 
 function getStepLabel(step: Step): string {
+  if (step.block_type === "first_idea") return "Start here";
+  if (step.block_type === "first_example") return "Tiny example";
+  if (step.block_type === "first_build") return "Build it";
+  if (step.block_type === "first_check") return "Quick check";
   if (step.block_type === "lecture") {
     return step.title.startsWith("Worked example:")
       ? "Worked example"
@@ -84,6 +89,10 @@ function getStepLabel(step: Step): string {
 }
 
 function getStepTag(step: Step): string {
+  if (step.block_type === "first_idea") return "Intro";
+  if (step.block_type === "first_example") return "Example";
+  if (step.block_type === "first_build") return "Build";
+  if (step.block_type === "first_check") return "Try it";
   if (step.block_type === "lecture") {
     return step.title.startsWith("Worked example:") ? "Example" : "Theory";
   }
@@ -183,9 +192,13 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
   );
 
   const step = path?.steps[selected];
+  const taughtModules = useMemo(
+    () => path ? [...new Set(path.steps.filter((item) => !item.block_type.startsWith("first_")).map((item) => item.module_title))] : [],
+    [path]
+  );
   const moduleGuide =
-    path?.guide && step
-      ? path.guide.modules[moduleTitles.indexOf(step.module_title)]
+    path?.guide && step && !step.block_type.startsWith("first_")
+      ? path.guide.modules[taughtModules.indexOf(step.module_title)]
       : null;
 
   function selectStep(index: number) {
@@ -263,13 +276,19 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
             ? "Path completed! Your completion record is saved."
             : path.project && nextCompletedIds.length === path.steps.length
               ? "Coursework complete. The final project and assessment are unlocked below."
-              : "Well done. Your progress is saved."
+              : step.practice?.explanation
+                ? `Correct! ${step.practice.explanation}`
+                : "Well done. Your progress is saved."
         );
       } else {
         setMissing(outcome.missing);
         setMessage(
-          step.kind === "fill_blank"
-            ? "Try again. Read the explanation and check the spelling."
+          step.block_type === "first_build"
+            ? "Try the pieces in the shown order. Use Clear to start again."
+            : step.kind === "fill_blank"
+            ? step.practice?.choices?.length
+              ? "Not quite. Try another answer, then check again."
+              : "Try again. Read the explanation and check the spelling."
             : "Your response needs a few more required elements."
         );
       }
@@ -289,6 +308,10 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
   const selectedLocked =
     !!path && selected > 0 && !completedSet.has(path.steps[selected - 1].id);
   const currentDone = !!step && completedSet.has(step.id);
+  const firstSteps = path?.steps.filter((item) => item.block_type.startsWith("first_")) || [];
+  const firstStepNumber = step?.block_type.startsWith("first_")
+    ? firstSteps.findIndex((item) => item.id === step.id) + 1
+    : 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F7F8FA]">
@@ -302,6 +325,8 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
             <ArrowLeft className="h-4 w-4" />
             All learning paths
           </Link>
+          <div className="flex flex-wrap items-center gap-2">
+          {path && <Link href={`/learning-paths/leaderboard?path=${encodeURIComponent(path.slug)}`} className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#475569] shadow-xs hover:border-[#FF6B35]/40 hover:text-[#D65B28]"><Trophy className="h-3.5 w-3.5" />Leaderboard</Link>}
           {path?.project && (
             <a
               href="#guided-assessment"
@@ -311,6 +336,7 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
               Final project & assessment
             </a>
           )}
+          </div>
         </div>
 
         {!path && error && (
@@ -582,6 +608,16 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
                     </span>
                   </div>
 
+                  {firstStepNumber > 0 && (
+                    <div className="mt-5 max-w-2xl" aria-label="First steps progress">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#475569]">
+                        <span>Your first small wins</span>
+                        <span>{firstStepNumber} of {firstSteps.length}</span>
+                      </div>
+                      <progress value={firstStepNumber} max={firstSteps.length} aria-label="First steps lesson progress" className="mt-2 block h-2 w-full appearance-none overflow-hidden rounded-full bg-orange-100 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-[#FF6B35] [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-orange-100 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-[#FF6B35]" />
+                    </div>
+                  )}
+
                   <p className="mt-5 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     {step.chapter_title} › {step.module_title}
                   </p>
@@ -592,6 +628,47 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
                   <p className="mt-4 max-w-3xl whitespace-pre-wrap text-[15px] leading-7 text-[#475569]">
                     {step.body}
                   </p>
+
+                  {step.block_type === "first_build" && step.practice?.tokens && (
+                    <div className="mt-6 max-w-2xl space-y-4" aria-label="Build the small example">
+                      <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#172033] text-white">
+                        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                          <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#FFB18F]"><Code2 className="h-4 w-4" aria-hidden="true" /> Your example</span>
+                          <button type="button" onClick={() => setResponse("")} className="text-xs font-semibold text-slate-200 underline underline-offset-2 hover:text-white">Clear</button>
+                        </div>
+                        <pre className="min-h-24 overflow-x-auto whitespace-pre p-4 text-sm leading-6"><code>{response || "Tap the pieces below to begin."}</code></pre>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-[#172033]">Tap each piece in order</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {step.practice.tokens.map((token, index) => (
+                            <button key={`${index}-${token}`} type="button" onClick={() => { setResponse((previous) => previous + token); setMessage(""); }} className="rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#172033] transition-colors hover:border-[#E85D2A] hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E85D2A]">{token.trimStart()}</button>
+                          ))}
+                        </div>
+                      </div>
+                      {slug === "web-development" && response && (
+                        <div>
+                          <p className="mb-2 text-sm font-semibold text-[#172033]">Browser preview</p>
+                          <iframe title="Your first page preview" sandbox="" srcDoc={`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">${response}`} className="h-24 w-full rounded-xl border border-[#CBD5E1] bg-white" />
+                        </div>
+                      )}
+                      {step.practice.expect && <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[#334155]"><strong>What you should see:</strong> {step.practice.expect}</p>}
+                    </div>
+                  )}
+
+                  {step.block_type.startsWith("first_") && step.block_type !== "first_build" && step.practice?.code && (
+                    <div className="mt-5 max-w-2xl overflow-hidden rounded-2xl border border-slate-700 bg-[#172033] text-white">
+                      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#FFB18F]">
+                        <Code2 className="h-4 w-4" aria-hidden="true" />
+                        Small example
+                      </div>
+                      <pre className="overflow-x-auto p-4 text-sm leading-6"><code>{step.practice.code}</code></pre>
+                      <div className="space-y-2 border-t border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-slate-200">
+                        {step.practice.run && <p><strong className="text-white">Try:</strong> {step.practice.run}</p>}
+                        {step.practice.expect && <p><strong className="text-white">You should see:</strong> {step.practice.expect}</p>}
+                      </div>
+                    </div>
+                  )}
 
                   {moduleGuide &&
                     ["lecture", "workshop", "lab"].includes(
@@ -611,23 +688,42 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
                       />
                     )}
 
-                  {step.practice && (
+                  {step.practice && !step.block_type.startsWith("first_") && (
                     <PracticeProgram
                       data={step.practice}
                       isLab={step.block_type === "lab"}
                     />
                   )}
 
-                  {step.kind === "fill_blank" && (
-                    <label className="mt-6 block text-sm font-bold text-[#172033]">
-                      Your answer
-                      <input
-                        value={response}
-                        onChange={(event) => setResponse(event.target.value)}
-                        className="mt-2 block w-full max-w-md rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 font-normal text-[#172033] focus:border-[#E85D2A] focus-visible:ring-2 focus-visible:ring-[#FF6B35]/25"
-                        autoComplete="off"
-                      />
-                    </label>
+                  {step.kind === "fill_blank" && step.block_type !== "first_build" && (
+                    step.practice?.choices?.length ? (
+                      <fieldset className="mt-6 max-w-2xl">
+                        <legend className="text-sm font-bold text-[#172033]">Choose an answer</legend>
+                        <div className="mt-3 grid gap-2.5">
+                          {step.practice.choices.map((choice) => (
+                            <button
+                              key={choice}
+                              type="button"
+                              aria-pressed={response === choice}
+                              onClick={() => { setResponse(choice); setMessage(""); }}
+                              className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E85D2A] ${response === choice ? currentDone ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-[#E85D2A] bg-orange-50 text-[#9A3B17]" : "border-[#CBD5E1] bg-white text-[#334155] hover:border-[#E85D2A] hover:bg-orange-50/50"}`}
+                            >
+                              {choice}
+                            </button>
+                          ))}
+                        </div>
+                      </fieldset>
+                    ) : (
+                      <label className="mt-6 block text-sm font-bold text-[#172033]">
+                        Your answer
+                        <input
+                          value={response}
+                          onChange={(event) => setResponse(event.target.value)}
+                          className="mt-2 block w-full max-w-md rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 font-normal text-[#172033] focus:border-[#E85D2A] focus-visible:ring-2 focus-visible:ring-[#FF6B35]/25"
+                          autoComplete="off"
+                        />
+                      </label>
+                    )
                   )}
 
                   {(step.kind === "code" || step.kind === "project") && (

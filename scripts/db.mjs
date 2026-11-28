@@ -4,6 +4,8 @@ import { dirname, isAbsolute, resolve } from 'node:path';
 import { guidedCurriculum } from '../src/data/guidedCurriculum.mjs';
 import { comprehensiveCurriculum } from '../src/data/comprehensiveCurriculum.mjs';
 import { instructionPrograms } from '../src/data/instructionPrograms.mjs';
+import { beginnerIntroductions } from '../src/data/beginnerIntroductions.mjs';
+import { guidedQuizChoices } from '../src/data/guidedQuizChoices.mjs';
 
 const deployment = process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
 const raw = process.env.DATABASE_URL || (deployment ? '' : 'file:./data/learnly.sqlite');
@@ -63,11 +65,24 @@ try {
   const addExistingPractice = db.prepare(`UPDATE guided_steps SET practice_json=?
     WHERE id=? AND path_id=? AND practice_json='{}'`);
   const updateOldTitle = db.prepare('UPDATE guided_steps SET title=? WHERE id=? AND path_id=? AND title=?');
+  const addBeginnerStep = db.prepare(`INSERT OR IGNORE INTO guided_steps
+    (id,path_id,position,kind,title,body,starter_code,answer_json,chapter_title,module_title,block_type,practice_json)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`);
+  const retainLegacyProgress = db.prepare(`INSERT OR IGNORE INTO guided_step_progress(user_id,step_id,response,passed)
+    SELECT DISTINCT progress.user_id,?,'Completed before beginner chapter was added',1
+    FROM guided_step_progress progress JOIN guided_steps original ON original.id=progress.step_id
+    WHERE original.path_id=? AND original.position>0 AND progress.passed=1`);
   const oldShortTitle = (description) => description.split(/\.\s/)[0].slice(0, 72).replace(/[.,;:]+$/, '');
   for (const path of comprehensiveCurriculum) {
     const programs = instructionPrograms[path.slug];
     if (!programs || programs.length !== path.modules.length)
       throw new Error(`Missing practice programs for ${path.slug}`);
+    const firstSteps = beginnerIntroductions[path.slug];
+    if (!firstSteps || firstSteps.length !== 4)
+      throw new Error(`Missing beginner introduction for ${path.slug}`);
+    const quizSets = guidedQuizChoices[path.slug];
+    if (!quizSets || quizSets.length !== path.modules.length)
+      throw new Error(`Missing knowledge checks for ${path.slug}`);
     const exam = path.modules.flatMap((module) => module.checks.map(([question, answer]) => ({ question, answer })));
     addProgram.run(path.id, path.slug, path.title, path.summary, path.project.title,
       path.project.brief, JSON.stringify(path.project.requirements), JSON.stringify(exam));
@@ -89,8 +104,21 @@ try {
       add(unit, 'project', 'lab', `Try it yourself: ${unit.title}`, `${unit.lab}\n\nDescribe what you built or tested in at least 120 characters. This is a practice reflection, not a code test. The final certification project receives human review.`,
         { minChars: 120 }, { tools: practice.tools, challenge: practice.challenge, expect: practice.expect }, oldShortTitle(unit.lab));
       add(unit, 'reading', 'review', `Review: ${unit.title}`.slice(0, 110), unit.review);
-      unit.checks.forEach(([question, answer]) =>
-        add(unit, 'fill_blank', 'quiz', question.slice(0, 100), question, { expected: answer }));
+      unit.checks.forEach(([question, answer], checkIndex) => {
+        const choices = quizSets[moduleIndex].choices[checkIndex];
+        if (!choices || choices.length < 2 || new Set(choices).size !== choices.length || !choices.includes(answer))
+          throw new Error(`Invalid choices for ${path.slug} module ${moduleIndex + 1} check ${checkIndex + 1}`);
+        add(unit, 'fill_blank', 'quiz', question.slice(0, 100), question,
+          { expected: answer }, { choices, explanation: quizSets[moduleIndex].explanation });
+      });
+    }
+    for (const [index, intro] of firstSteps.entries()) {
+      const stepId = `${path.id}-start-${String(index + 1).padStart(2, '0')}`;
+      addBeginnerStep.run(stepId, path.id, index - firstSteps.length, intro.kind,
+        intro.title, intro.body, '', JSON.stringify(intro.expected ? { expected: intro.expected } : {}),
+        'Start here · First steps', 'Your first small wins', intro.block, JSON.stringify(intro.practice || {}));
+      // Learners already working through the original course keep their unlocked place.
+      retainLegacyProgress.run(stepId, path.id);
     }
   }
   db.exec('COMMIT');
