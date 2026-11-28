@@ -549,7 +549,7 @@ export function GuidedPathPlayer({ slug }: { slug: string }) {
                                                 <Circle className="mt-0.5 h-4 w-4 shrink-0 text-[#CBD5E1]" />
                                               )}
                                               <span className="leading-snug">
-                                                {item.position}. {item.title}
+                                                {index + 1}. {item.title}
                                               </span>
                                             </span>
                                             <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-[#64748B]">
